@@ -61,9 +61,11 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
   }
   if (startsWith(ref, "@")) {
     tag <- sub("^@", "", ref)
-    if (grepl("^version\\(", tag)) {
+    if (startsWith(tag, "version(") && substring(tag, nchar(tag)) == ")") {
       # @version(YYYYMMDD-HHMMSS) を取り出す
-      return(sub("^version\\(([^)]+)\\)$", "\\1", tag))
+      inner <- substring(tag, nchar("version(") + 1L, nchar(tag) - 1L)
+      if (!nzchar(inner) || grepl(")", inner, fixed = TRUE)) return(tag)
+      return(inner)
     } else {
       p <- file.path(mdir, paste0("LABEL_", tag))
       if (!file.exists(p)) stop("Unknown label: ", tag)
