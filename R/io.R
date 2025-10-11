@@ -56,8 +56,20 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 
 .ol_resolve_state <- function(ref, project) {
   pr <- .ol_proj_root(project); mdir <- file.path(pr, "meta")
-  if (is.null(ref) || ref == "@latest") return(readLines(file.path(mdir, "LATEST"), n=1))
-  if (startsWith(ref, "@")) { tag <- sub("^@", "", ref); if (grepl("^version\(", tag)) return(sub("^version\(([^)]+)\)$","\1",tag)); p <- file.path(mdir, paste0("LABEL_", tag)); if (!file.exists(p)) stop("Unknown label: ", tag); return(readLines(p, n=1)) }
+  if (is.null(ref) || ref == "@latest") {
+    return(readLines(file.path(mdir, "LATEST"), n = 1))
+  }
+  if (startsWith(ref, "@")) {
+    tag <- sub("^@", "", ref)
+    if (grepl("^version\\(", tag)) {
+      # @version(YYYYMMDD-HHMMSS) を取り出す
+      return(sub("^version\\(([^)]+)\\)$", "\\1", tag))
+    } else {
+      p <- file.path(mdir, paste0("LABEL_", tag))
+      if (!file.exists(p)) stop("Unknown label: ", tag)
+      return(readLines(p, n = 1))
+    }
+  }
   ref
 }
 
