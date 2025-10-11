@@ -1,1 +1,1 @@
-library(testthat); library(VersionedExperiment); test_check('VersionedExperiment')
+library(testthat); library(OmicsLake); test_check('OmicsLake')
