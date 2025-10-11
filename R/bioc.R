@@ -9,7 +9,7 @@ ol_fread <- function(name, ref="@latest", select=NULL, drop=NULL, nrows=Inf, fil
   if (!is.null(select)) ds <- ds %>% dplyr::select(dplyr::all_of(select))
   if (!is.null(drop)) ds <- ds %>% dplyr::select(-dplyr::all_of(drop))
   if (!is.null(filter)) { expr <- rlang::parse_expr(filter); ds <- dplyr::filter(ds, !!expr) }
-  tbl <- if (is.infinite(nrows)) arrow::collect(ds) else ds %>% dplyr::slice_head(n=nrows) %>% arrow::collect()
+  tbl <- if (is.infinite(nrows)) dplyr::collect(ds) else ds %>% dplyr::slice_head(n=nrows) %>% dplyr::collect()
   if (isTRUE(as_tibble) && requireNamespace("tibble", quietly=TRUE)) tibble::as_tibble(tbl) else as.data.frame(tbl)
 }
 
@@ -21,7 +21,7 @@ ol_read_se <- function(name, ref="@latest", feature_col="feature", sample_col="s
   project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   dir <- file.path(pr, "tables", name, paste0("v_", sid))
-  df <- as.data.frame(arrow::collect(arrow::open_dataset(dir, format="parquet")))
+  df <- as.data.frame(dplyr::collect(arrow::open_dataset(dir, format="parquet")))
   feat <- factor(df[[feature_col]]); samp <- factor(df[[sample_col]])
   i <- as.integer(feat); j <- as.integer(samp); x <- as.numeric(df[[value_col]])
   mat <- Matrix::sparseMatrix(i=i, j=j, x=x, dims=c(nlevels(feat), nlevels(samp)), dimnames=list(levels(feat), levels(samp)))

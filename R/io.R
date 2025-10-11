@@ -78,13 +78,13 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 #' Read table/object by name and reference
 #' @export
 ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), collect = TRUE) {
-  .ol_require(c("arrow"))
+  .ol_require(c("arrow","dplyr"))
   project <- .ol_assert_project(project, "Call ol_init() first.")
   pr  <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   tdir <- file.path(pr, "tables", name, paste0("v_", sid))
   if (dir.exists(tdir)) {
     ds <- arrow::open_dataset(.ol_norm(tdir), format = "parquet")
-    return(if (isTRUE(collect)) as.data.frame(arrow::collect(ds)) else ds)
+    return(if (isTRUE(collect)) as.data.frame(dplyr::collect(ds)) else ds)
   }
   odir <- file.path(pr, "objects", name, paste0("v_", sid))
   if (dir.exists(odir)) {
