@@ -78,13 +78,13 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 #' Read table/object by name and reference
 #' @export
 ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), collect = TRUE) {
-  .ol_require(c("arrow"))
+  .ol_require("arrow")
   project <- .ol_assert_project(project, "Call ol_init() first.")
   pr  <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   tdir <- file.path(pr, "tables", name, paste0("v_", sid))
   if (dir.exists(tdir)) {
-    ds <- arrow::open_dataset(.ol_norm(tdir), format = "parquet")
-    return(if (isTRUE(collect)) as.data.frame(arrow::collect(ds)) else ds)
+    if (!isTRUE(collect)) return(arrow::open_dataset(.ol_norm(tdir), format = "parquet"))
+    return(.ol_collect_parquet_dir(tdir))
   }
   odir <- file.path(pr, "objects", name, paste0("v_", sid))
   if (dir.exists(odir)) {
@@ -93,6 +93,22 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
     if (endsWith(f, ".qs")) return(qs::qread(f)) else return(readRDS(f))
   }
   stop("Not found: ", name, " @ ", sid)
+}
+
+.ol_collect_parquet_dir <- function(dir) {
+  files <- list.files(dir, pattern = "[.]parquet$", recursive = TRUE, full.names = TRUE)
+  if (!length(files)) stop("No Parquet files found in: ", dir)
+  dfs <- lapply(sort(files), function(path) {
+    df <- arrow::read_parquet(path)
+    as.data.frame(df)
+  })
+  if (length(dfs) == 1) {
+    res <- dfs[[1]]
+  } else {
+    res <- do.call(rbind, dfs)
+  }
+  rownames(res) <- NULL
+  res
 }
 
 #' @export
