@@ -3,7 +3,7 @@
 ol_write <- function(name, data, project = getOption("ol.project"), compression = c("zstd","snappy","uncompressed")) {
   .ol_require(c("arrow"))
   compression <- match.arg(compression)
-  if (!nzchar(project)) stop("Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   pr <- .ol_proj_root(project)
   stage <- file.path(pr, "tables", name, "_stage")
   dir.create(stage, recursive = TRUE, showWarnings = FALSE)
@@ -15,7 +15,7 @@ ol_write <- function(name, data, project = getOption("ol.project"), compression 
 #' Save an R object (RDS/QS) staged for next commit
 #' @export
 ol_save <- function(name, object, project = getOption("ol.project"), prefer_qs = TRUE) {
-  if (!nzchar(project)) stop("Call ol_init() first.")
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project)
   stage <- file.path(pr, "objects", name, "_stage")
   dir.create(stage, recursive = TRUE, showWarnings = FALSE)
@@ -31,7 +31,7 @@ ol_save <- function(name, object, project = getOption("ol.project"), prefer_qs =
 #' @export
 ol_commit <- function(note = "", params = list(), project = getOption("ol.project")) {
   .ol_require(c("jsonlite","digest"))
-  if (!nzchar(project)) stop("Call ol_init() first.")
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr  <- .ol_proj_root(project)
   sid <- .ol_now_id()
   for (rootdir in c("tables","objects")) {
@@ -65,7 +65,7 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 #' @export
 ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), collect = TRUE) {
   .ol_require(c("arrow"))
-  if (!nzchar(project)) stop("Call ol_init() first.")
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr  <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   tdir <- file.path(pr, "tables", name, paste0("v_", sid))
   if (dir.exists(tdir)) {
@@ -87,6 +87,7 @@ ol_load <- function(name, ref = "@latest", project = getOption("ol.project")) ol
 #' @export
 ol_log <- function(project = getOption("ol.project")) {
   .ol_require("jsonlite")
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project); mdir <- file.path(pr, "meta")
   js <- list.files(mdir, pattern = "^state_.*\.json$", full.names = TRUE)
   if (!length(js)) return(utils::head(data.frame()))

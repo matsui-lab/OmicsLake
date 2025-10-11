@@ -2,6 +2,7 @@
 #' @export
 ol_fread <- function(name, ref="@latest", select=NULL, drop=NULL, nrows=Inf, filter=NULL,
                      project=getOption("ol.project"), as_tibble=FALSE) {
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   dir <- file.path(pr, "tables", name, paste0("v_", sid))
   ds <- arrow::open_dataset(dir, format="parquet")
@@ -17,6 +18,7 @@ ol_fread <- function(name, ref="@latest", select=NULL, drop=NULL, nrows=Inf, fil
 ol_read_se <- function(name, ref="@latest", feature_col="feature", sample_col="sample", value_col="value",
                        project=getOption("ol.project"), backing=c("hdf5","memory")) {
   backing <- match.arg(backing)
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   dir <- file.path(pr, "tables", name, paste0("v_", sid))
   df <- as.data.frame(arrow::collect(arrow::open_dataset(dir, format="parquet")))
@@ -35,6 +37,7 @@ ol_read_se <- function(name, ref="@latest", feature_col="feature", sample_col="s
 ol_read_mae <- function(assays, ref="@latest", project=getOption("ol.project"), backing=c("hdf5","memory")) {
   backing <- match.arg(backing)
   `%||%` <- function(a,b) if (!is.null(a)) a else b
+  project <- .ol_assert_project(project, "Call ol_init() first.")
   if (!requireNamespace("MultiAssayExperiment", quietly=TRUE)) stop("MultiAssayExperiment required.")
   se_list <- list()
   for (nm in names(assays)) {
