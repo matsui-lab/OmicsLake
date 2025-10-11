@@ -88,7 +88,7 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
   }
   odir <- file.path(pr, "objects", name, paste0("v_", sid))
   if (dir.exists(odir)) {
-    f <- list.files(odir, full.names = TRUE, pattern = "obj\.(qs|rds)$")
+    f <- list.files(odir, full.names = TRUE, pattern = "^obj[.](qs|rds)$")
     if (!length(f)) stop("No object payload found in: ", odir)
     if (endsWith(f, ".qs")) return(qs::qread(f)) else return(readRDS(f))
   }
@@ -103,7 +103,7 @@ ol_log <- function(project = getOption("ol.project")) {
   .ol_require("jsonlite")
   project <- .ol_assert_project(project, "Call ol_init() first.")
   pr <- .ol_proj_root(project); mdir <- file.path(pr, "meta")
-  js <- list.files(mdir, pattern = "^state_.*\.json$", full.names = TRUE)
+  js <- list.files(mdir, pattern = "^state_.*[.]json$", full.names = TRUE)
   if (!length(js)) return(utils::head(data.frame()))
   entries <- lapply(js, jsonlite::read_json, simplifyVector = TRUE)
   df <- do.call(rbind, lapply(entries, function(x) data.frame(state_id=x$state_id, created_at=x$created_at, note=x$note, stringsAsFactors=FALSE)))
