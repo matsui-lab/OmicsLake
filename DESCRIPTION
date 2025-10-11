@@ -1,0 +1,15 @@
+Package: VersionedExperiment
+Title: Versioned, On-Disk Omics Data Management for Bioconductor
+Version: 0.0.0.9000
+Authors@R: person(given = "Yusuke", family = "Matsui", role = c("aut", "cre"), email = "you@example.org")
+Description: Minimal Phase-1 implementation for versioned, reproducible omics data I/O.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.3)
+Imports: methods, utils, stats, jsonlite, digest, arrow, DBI, duckdb, Matrix, SummarizedExperiment, S4Vectors
+Suggests: qs, MultiAssayExperiment, HDF5Array, DelayedArray, knitr, rmarkdown, testthat (>= 3.0.0)
+VignetteBuilder: knitr
+biocViews: Infrastructure, DataImport, DataRepresentation
+URL: https://github.com/your-org/VersionedExperiment
+BugReports: https://github.com/your-org/VersionedExperiment/issues
