@@ -1,1 +1,3 @@
-test_that('init works', { expect_true(TRUE) })
+test_that('package loads successfully', {
+  expect_true(require(OmicsLake, quietly = TRUE))
+})
