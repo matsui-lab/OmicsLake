@@ -144,8 +144,8 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
       if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
     })
   }
-  catalog_name <- paste0("ol_", gsub("[^A-Za-z0-9_]", "_", basename(catalog)))
-  .ol_register_catalog(conn, catalog_name, catalog)
+  catalog_name <- "main"
+  # .ol_register_catalog(conn, catalog_name, catalog)
   schema_sql <- paste(DBI::dbQuoteIdentifier(conn, c(catalog_name, namespace)), collapse = ".")
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
   state <- list(
