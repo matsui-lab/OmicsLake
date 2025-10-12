@@ -83,17 +83,32 @@
     sprintf("CALL create_iceberg_catalog('%s', 'duckdb', {'type':'duckdb','path':'%s'})", catalog_name, escaped)
   )
   success <- FALSE
-  for (stmt in statements) {
+  errors <- list()
+  
+  for (i in seq_along(statements)) {
+    stmt <- statements[i]
     success <- tryCatch({
       DBI::dbExecute(conn, stmt)
       TRUE
     }, error = function(e) {
       msg <- conditionMessage(e)
+      errors[[i]] <<- msg
       if (grepl("already", msg, ignore.case = TRUE)) return(TRUE)
       FALSE
     })
     if (isTRUE(success)) break
   }
+  
+  if (!isTRUE(success)) {
+    error_details <- paste(sprintf("Attempt %d: %s\n  Error: %s", 
+                                   seq_along(errors), 
+                                   statements[seq_along(errors)], 
+                                   unlist(errors)), 
+                          collapse = "\n")
+    stop("Failed to register Iceberg catalog '", catalog_name, "' at path '", catalog_path, "'.\n",
+         "All registration attempts failed:\n", error_details, call. = FALSE)
+  }
+  
   invisible(TRUE)
 }
 
