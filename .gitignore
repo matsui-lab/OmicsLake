@@ -1,0 +1,15 @@
+# R CMD check output
+..Rcheck/
+*.Rcheck/
+
+# R session data
+.RData
+.Rhistory
+
+# Temporary files
+*~
+.DS_Store
+
+# Build artifacts
+*.tar.gz
+*.zip
