@@ -28,7 +28,11 @@
 }
 
 .ol_iceberg_schema_sql <- function(conn, state) {
-  paste(DBI::dbQuoteIdentifier(conn, c(state$catalog_name, state$namespace)), collapse = ".")
+  if (nzchar(state$catalog_name)) {
+    paste(DBI::dbQuoteIdentifier(conn, c(state$catalog_name, state$namespace)), collapse = ".")
+  } else {
+    DBI::dbQuoteIdentifier(conn, state$namespace)
+  }
 }
 
 .ol_iceberg_sql_ident <- function(conn, state, name) {
@@ -36,7 +40,11 @@
 }
 
 .ol_iceberg_qualified_name <- function(state, name) {
-  paste(state$catalog_name, state$namespace, name, sep = ".")
+  if (nzchar(state$catalog_name)) {
+    paste(state$catalog_name, state$namespace, name, sep = ".")
+  } else {
+    paste(state$namespace, name, sep = ".")
+  }
 }
 
 .ol_ensure_refs_table <- function(state) {
@@ -144,9 +152,8 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
       if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
     })
   }
-  catalog_name <- "main"
-  # .ol_register_catalog(conn, catalog_name, catalog)
-  schema_sql <- paste(DBI::dbQuoteIdentifier(conn, c(catalog_name, namespace)), collapse = ".")
+  catalog_name <- ""
+  schema_sql <- DBI::dbQuoteIdentifier(conn, namespace)
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
   state <- list(
     project = project,
