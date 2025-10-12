@@ -1,22 +1,36 @@
 #' Initialize an OmicsLake project
 #' @export
-ol_init <- function(project, root = NULL) {
+ol_init <- function(project, root = NULL, ...) {
   if (is.null(project) || !nzchar(project)) stop("project must be a non-empty string", call. = FALSE)
   if (!is.null(root)) options(ol.root = .ol_norm(root))
-  pr <- .ol_proj_root(project)
-  dir.create(file.path(pr, "tables"), recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(pr, "objects"), recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(pr, "meta"),    recursive = TRUE, showWarnings = FALSE)
-  options(ol.project = project)
-  invisible(.ol_norm(pr))
+  ol_init_iceberg(project = project, ...)
+  invisible(.ol_norm(.ol_proj_root(project)))
 }
 
 #' Label current state with a human-friendly alias
 #' @export
 ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first.")
-  pr <- .ol_proj_root(project); mdir <- file.path(pr, "meta")
-  if (is.null(state_id)) state_id <- readLines(file.path(mdir, "LATEST"), n=1)
-  writeLines(state_id, file.path(mdir, paste0("LABEL_", label)))
+  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  state <- try(.ol_get_iceberg_state(project), silent = TRUE)
+  if (inherits(state, "try-error")) return(invisible(TRUE))
+  .ol_ensure_refs_table(state)
+  conn <- state$conn
+  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  delete_sql <- sprintf(
+    "DELETE FROM %s WHERE table_name = %s AND tag = %s",
+    ident,
+    DBI::dbQuoteString(conn, "__project__"),
+    DBI::dbQuoteString(conn, label)
+  )
+  DBI::dbExecute(conn, delete_sql)
+  insert_sql <- sprintf(
+    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, %s)",
+    ident,
+    DBI::dbQuoteString(conn, "__project__"),
+    DBI::dbQuoteString(conn, label),
+    DBI::dbQuoteString(conn, if (is.null(state_id)) format(Sys.time(), "%Y%m%d-%H%M%S") else state_id),
+    "NULL"
+  )
+  DBI::dbExecute(conn, insert_sql)
   invisible(TRUE)
 }
