@@ -117,6 +117,12 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
   }
   dbfile <- file.path(pr, "duckdb.db")
   conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = dbfile, read_only = FALSE)
+  for (stmt in c("INSTALL avro", "LOAD avro")) {
+    tryCatch(DBI::dbExecute(conn, stmt), error = function(e) {
+      msg <- conditionMessage(e)
+      if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
+    })
+  }
   for (stmt in c("INSTALL iceberg", "LOAD iceberg")) {
     tryCatch(DBI::dbExecute(conn, stmt), error = function(e) {
       msg <- conditionMessage(e)
