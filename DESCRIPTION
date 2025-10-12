@@ -14,3 +14,4 @@ Suggests: qs, MultiAssayExperiment, HDF5Array, DelayedArray, knitr, rmarkdown, t
 biocViews: Infrastructure, DataImport, DataRepresentation
 URL: https://github.com/your-org/OmicsLake
 BugReports: https://github.com/your-org/OmicsLake/issues
+RoxygenNote: 7.3.3
