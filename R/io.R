@@ -51,7 +51,7 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
     bytes = I(list(bytes)),
     stringsAsFactors = FALSE
   )
-  DBI::dbAppendTable(conn, DBI::Id(catalog = state$catalog_name, schema = state$namespace, table = "__ol_objects"), payload)
+  DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_objects"), payload)
   invisible(TRUE)
 }
 
@@ -78,7 +78,7 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
     stringsAsFactors = FALSE
   )
   
-  DBI::dbAppendTable(conn, DBI::Id(catalog = state$catalog_name, schema = state$namespace, table = "__ol_commits"), commit_data)
+  DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_commits"), commit_data)
   
   invisible(commit_id)
 }
@@ -136,7 +136,7 @@ ol_list_tables <- function(project = getOption("ol.project")) {
   state <- .ol_get_iceberg_state(project)
   conn <- state$conn
   
-  tables <- DBI::dbListTables(conn, DBI::Id(catalog = state$catalog_name, schema = state$namespace))
+  tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
   tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits"))
   
   data.frame(

@@ -36,7 +36,7 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) 
   )
   DBI::dbExecute(conn, insert_sql)
   
-  tables <- DBI::dbListTables(conn, DBI::Id(catalog = state$catalog_name, schema = state$namespace))
+  tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
   tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits"))
   
   for (name in tables) {
