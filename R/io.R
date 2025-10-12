@@ -83,8 +83,9 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
   pr  <- .ol_proj_root(project); sid <- .ol_resolve_state(ref, project)
   tdir <- file.path(pr, "tables", name, paste0("v_", sid))
   if (dir.exists(tdir)) {
-    if (!isTRUE(collect)) return(arrow::open_dataset(.ol_norm(tdir), format = "parquet"))
-    return(.ol_collect_parquet_dir(tdir))
+    ds <- arrow::open_dataset(.ol_norm(tdir), format = "parquet")
+    if (!isTRUE(collect)) return(ds)
+    return(.ol_collect_parquet_dataset(ds))
   }
   odir <- file.path(pr, "objects", name, paste0("v_", sid))
   if (dir.exists(odir)) {
@@ -96,17 +97,15 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
 }
 
 .ol_collect_parquet_dir <- function(dir) {
-  files <- list.files(dir, pattern = "[.]parquet$", recursive = TRUE, full.names = TRUE)
-  if (!length(files)) stop("No Parquet files found in: ", dir)
-  dfs <- lapply(sort(files), function(path) {
-    df <- arrow::read_parquet(path)
-    as.data.frame(df)
-  })
-  if (length(dfs) == 1) {
-    res <- dfs[[1]]
-  } else {
-    res <- do.call(rbind, dfs)
-  }
+  if (!dir.exists(dir)) stop("No Parquet directory found in: ", dir)
+  ds <- arrow::open_dataset(.ol_norm(dir), format = "parquet")
+  .ol_collect_parquet_dataset(ds)
+}
+
+.ol_collect_parquet_dataset <- function(dataset) {
+  .ol_require("dplyr")
+  tbl <- dplyr::collect(dataset)
+  res <- as.data.frame(tbl)
   rownames(res) <- NULL
   res
 }
