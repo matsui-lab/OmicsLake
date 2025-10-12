@@ -2,6 +2,8 @@ Package: OmicsLake
 Title: OmicsLake: Versioned, On-Disk Omics Data Management for Bioconductor
 Version: 0.0.0.9000
 Authors@R: person(given = "Yusuke", family = "Matsui", role = c("aut", "cre"), email = "you@example.org")
+Author: Yusuke Matsui
+Maintainer: Yusuke Matsui <you@example.org>
 Description: A lightweight framework for versioned, on-disk omics data management using DuckDB + Arrow + Parquet.
     Provides simple read/write-style functions and Bioconductor-compatible readers (SummarizedExperiment, MultiAssayExperiment).
 License: MIT + file LICENSE
