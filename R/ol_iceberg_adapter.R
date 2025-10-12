@@ -50,7 +50,7 @@
 .ol_ensure_refs_table <- function(state) {
   conn <- state$conn
   sql <- sprintf(
-    "CREATE TABLE %s USING ICEBERG AS SELECT * FROM (SELECT CAST('' AS TEXT) AS table_name, CAST('' AS TEXT) AS tag, CAST('' AS TEXT) AS snapshot, CAST(NULL AS TIMESTAMP) AS as_of) WHERE 1=0",
+    "CREATE TABLE IF NOT EXISTS %s (table_name TEXT, tag TEXT, snapshot TEXT, as_of TIMESTAMP)",
     .ol_iceberg_sql_ident(conn, state, "__ol_refs")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
@@ -62,7 +62,7 @@
 .ol_ensure_objects_table <- function(state) {
   conn <- state$conn
   sql <- sprintf(
-    "CREATE TABLE %s USING ICEBERG AS SELECT * FROM (SELECT CAST('' AS TEXT) AS name, CURRENT_TIMESTAMP AS version_ts, CAST('' AS TEXT) AS mime, CAST('' AS BLOB) AS bytes) WHERE 1=0",
+    "CREATE TABLE IF NOT EXISTS %s (name TEXT, version_ts TIMESTAMP, mime TEXT, bytes BLOB)",
     .ol_iceberg_sql_ident(conn, state, "__ol_objects")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
@@ -74,7 +74,7 @@
 .ol_ensure_commits_table <- function(state) {
   conn <- state$conn
   sql <- sprintf(
-    "CREATE TABLE %s USING ICEBERG AS SELECT * FROM (SELECT CAST('' AS TEXT) AS commit_id, CAST('' AS TEXT) AS note, CAST('' AS TEXT) AS params_json, CURRENT_TIMESTAMP AS created_at) WHERE 1=0",
+    "CREATE TABLE IF NOT EXISTS %s (commit_id TEXT, note TEXT, params_json TEXT, created_at TIMESTAMP)",
     .ol_iceberg_sql_ident(conn, state, "__ol_commits")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
@@ -83,42 +83,6 @@
   })
 }
 
-.ol_register_catalog <- function(conn, catalog_name, catalog_path) {
-  escaped <- gsub("'", "''", catalog_path)
-  statements <- c(
-    sprintf("ATTACH '%s' AS %s (TYPE ICEBERG)", escaped, DBI::dbQuoteIdentifier(conn, catalog_name)),
-    sprintf("CALL create_iceberg_catalog('%s', 'duckdb', map_value(['type','path'], ['duckdb','%s']))", catalog_name, escaped),
-    sprintf("CALL create_iceberg_catalog('%s', 'duckdb', {'type':'duckdb','path':'%s'})", catalog_name, escaped)
-  )
-  success <- FALSE
-  errors <- list()
-  
-  for (i in seq_along(statements)) {
-    stmt <- statements[i]
-    success <- tryCatch({
-      DBI::dbExecute(conn, stmt)
-      TRUE
-    }, error = function(e) {
-      msg <- conditionMessage(e)
-      errors[[i]] <<- msg
-      if (grepl("already", msg, ignore.case = TRUE)) return(TRUE)
-      FALSE
-    })
-    if (isTRUE(success)) break
-  }
-  
-  if (!isTRUE(success)) {
-    error_details <- paste(sprintf("Attempt %d: %s\n  Error: %s", 
-                                   seq_along(errors), 
-                                   statements[seq_along(errors)], 
-                                   unlist(errors)), 
-                          collapse = "\n")
-    stop("Failed to register Iceberg catalog '", catalog_name, "' at path '", catalog_path, "'.\n",
-         "All registration attempts failed:\n", error_details, call. = FALSE)
-  }
-  
-  invisible(TRUE)
-}
 
 #' Initialize DuckDB + Iceberg backend
 #' @export
@@ -140,18 +104,6 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
   }
   dbfile <- file.path(pr, "duckdb.db")
   conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = dbfile, read_only = FALSE)
-  for (stmt in c("INSTALL avro", "LOAD avro")) {
-    tryCatch(DBI::dbExecute(conn, stmt), error = function(e) {
-      msg <- conditionMessage(e)
-      if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
-    })
-  }
-  for (stmt in c("INSTALL iceberg", "LOAD iceberg")) {
-    tryCatch(DBI::dbExecute(conn, stmt), error = function(e) {
-      msg <- conditionMessage(e)
-      if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
-    })
-  }
   catalog_name <- ""
   schema_sql <- DBI::dbQuoteIdentifier(conn, namespace)
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
@@ -172,18 +124,10 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
 
 .ol_ref_parse <- function(ref) {
   if (is.null(ref) || identical(ref, "@latest")) return(list(type = "latest"))
-  if (!is.character(ref) || !length(ref)) return(list(type = "snapshot", value = as.character(ref)))
+  if (!is.character(ref) || !length(ref)) return(list(type = "latest"))
   ref <- ref[[1]]
-  if (!startsWith(ref, "@")) return(list(type = "snapshot", value = ref))
+  if (!startsWith(ref, "@")) return(list(type = "tag", value = ref))
   inner <- substring(ref, 2L)
-  if (startsWith(inner, "version(") && endsWith(inner, ")")) {
-    value <- substring(inner, 9L, nchar(inner) - 1L)
-    if (!nzchar(value)) return(list(type = "latest"))
-    if (!is.na(as.POSIXct(value, tz = "UTC", tryFormats = c("%Y%m%d-%H%M%S", "%Y-%m-%d %H:%M:%S")))) {
-      return(list(type = "as_of", value = value))
-    }
-    return(list(type = "snapshot", value = value))
-  }
   if (startsWith(inner, "tag(") && endsWith(inner, ")")) {
     value <- substring(inner, 5L, nchar(inner) - 1L)
     return(list(type = "tag", value = value))
@@ -191,71 +135,66 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
   list(type = "tag", value = inner)
 }
 
-.ol_iceberg_latest_snapshot <- function(state, name) {
-  conn <- state$conn
-  ident <- .ol_iceberg_qualified_name(state, name)
-  sql <- sprintf("SELECT snapshot_id, committed_at FROM iceberg_snapshots('%s') ORDER BY committed_at DESC LIMIT 1", ident)
-  res <- tryCatch(DBI::dbGetQuery(conn, sql), error = function(e) data.frame())
-  if (nrow(res)) return(res$snapshot_id[[1]])
-  NULL
+.ol_get_backup_table_name <- function(table_name, tag) {
+  paste0("__ol_backup_", gsub("[^a-zA-Z0-9_]", "_", table_name), "_", gsub("[^a-zA-Z0-9_]", "_", tag))
 }
 
 .ol_iceberg_resolve_reference <- function(state, name, ref) {
   parsed <- .ol_ref_parse(ref)
   if (identical(parsed$type, "latest")) {
-    return(list(snapshot = NULL, as_of = NULL))
-  }
-  if (identical(parsed$type, "snapshot")) {
-    return(list(snapshot = parsed$value, as_of = NULL))
-  }
-  if (identical(parsed$type, "as_of")) {
-    return(list(snapshot = NULL, as_of = parsed$value))
+    return(list(backup_table = NULL))
   }
   if (identical(parsed$type, "tag")) {
     .ol_ensure_refs_table(state)
     conn <- state$conn
     ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
     sql <- sprintf(
-      "SELECT snapshot, as_of FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",
+      "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",
       ident,
       DBI::dbQuoteString(conn, name),
       DBI::dbQuoteString(conn, parsed$value)
     )
     res <- DBI::dbGetQuery(conn, sql)
     if (!nrow(res)) stop("Unknown tag: ", parsed$value, call. = FALSE)
-    as_of <- res$as_of[[1]]
-    if (length(as_of) && is.na(as_of)) as_of <- NULL
-    return(list(snapshot = res$snapshot[[1]], as_of = as_of))
+    return(list(backup_table = res$snapshot[[1]]))
   }
-  list(snapshot = NULL, as_of = NULL)
+  list(backup_table = NULL)
 }
 
-.ol_iceberg_scan_sql <- function(state, name, resolved) {
-  ident <- .ol_iceberg_qualified_name(state, name)
-  args <- sprintf("table => '%s'", ident)
-  if (!is.null(resolved$snapshot)) {
-    args <- paste(args, sprintf(", snapshot_id => '%s'", resolved$snapshot), sep = "")
-  } else if (!is.null(resolved$as_of)) {
-    args <- paste(args, sprintf(", as_of => '%s'", resolved$as_of), sep = "")
+.ol_get_table_sql <- function(state, name, resolved) {
+  conn <- state$conn
+  if (is.null(resolved$backup_table)) {
+    ident <- .ol_iceberg_sql_ident(conn, state, name)
+    sprintf("SELECT * FROM %s", ident)
+  } else {
+    backup_ident <- .ol_iceberg_sql_ident(conn, state, resolved$backup_table)
+    sprintf("SELECT * FROM %s", backup_ident)
   }
-  sprintf("SELECT * FROM iceberg_scan(%s)", args)
 }
 
-#' Tag an Iceberg snapshot
+#' Tag a table by creating a backup
 #' @export
 ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
   if (missing(name) || !nzchar(name)) stop("name must be provided", call. = FALSE)
   if (missing(tag) || !nzchar(tag)) stop("tag must be provided", call. = FALSE)
   state <- .ol_get_iceberg_state(project)
-  resolved <- .ol_iceberg_resolve_reference(state, name, ref)
-  snapshot <- resolved$snapshot
-  if (is.null(snapshot)) {
-    snapshot <- .ol_iceberg_latest_snapshot(state, name)
-  }
-  if (is.null(snapshot)) stop("No snapshot found for table: ", name, call. = FALSE)
-  .ol_ensure_refs_table(state)
   conn <- state$conn
+  
+  backup_table <- .ol_get_backup_table_name(name, tag)
+  source_ident <- .ol_iceberg_sql_ident(conn, state, name)
+  backup_ident <- .ol_iceberg_sql_ident(conn, state, backup_table)
+  
+  create_backup_sql <- sprintf(
+    "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
+    backup_ident,
+    source_ident
+  )
+  tryCatch(DBI::dbExecute(conn, create_backup_sql), error = function(e) {
+    stop("Failed to create backup for table '", name, "': ", conditionMessage(e), call. = FALSE)
+  })
+  
+  .ol_ensure_refs_table(state)
   ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
   delete_sql <- sprintf(
     "DELETE FROM %s WHERE table_name = %s AND tag = %s",
@@ -265,15 +204,14 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   )
   DBI::dbExecute(conn, delete_sql)
   insert_sql <- sprintf(
-    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, %s)",
+    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
     ident,
     DBI::dbQuoteString(conn, name),
     DBI::dbQuoteString(conn, tag),
-    DBI::dbQuoteString(conn, snapshot),
-    if (is.null(resolved$as_of)) "NULL" else DBI::dbQuoteString(conn, as.character(resolved$as_of))
+    DBI::dbQuoteString(conn, backup_table)
   )
   DBI::dbExecute(conn, insert_sql)
-  invisible(snapshot)
+  invisible(backup_table)
 }
 
 #' Restore entire project to a labeled state
@@ -304,14 +242,15 @@ ol_checkout <- function(label, project = getOption("ol.project")) {
   
   for (i in seq_len(nrow(ref_entries))) {
     tbl <- ref_entries$table_name[[i]]
-    snap <- ref_entries$snapshot[[i]]
+    backup_table <- ref_entries$snapshot[[i]]
     
     tryCatch({
+      backup_ident <- .ol_iceberg_sql_ident(conn, state, backup_table)
+      target_ident <- .ol_iceberg_sql_ident(conn, state, tbl)
       restore_sql <- sprintf(
-        "CREATE OR REPLACE TABLE %s USING ICEBERG AS SELECT * FROM iceberg_scan(table => '%s', snapshot_id => '%s')",
-        .ol_iceberg_sql_ident(conn, state, tbl),
-        .ol_iceberg_qualified_name(state, tbl),
-        snap
+        "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
+        target_ident,
+        backup_ident
       )
       DBI::dbExecute(conn, restore_sql)
     }, error = function(e) {

@@ -38,12 +38,14 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) 
   
   tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
   tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits"))
+  tables <- grep("^__ol_backup_", tables, value = TRUE, invert = TRUE)
   
   for (name in tables) {
-    snapshot_id <- .ol_iceberg_latest_snapshot(state, name)
-    if (!is.null(snapshot_id)) {
-      ol_tag(name, label, project = project, ref = snapshot_id)
-    }
+    tryCatch({
+      ol_tag(name, label, project = project, ref = "@latest")
+    }, error = function(e) {
+      warning("Failed to tag table '", name, "': ", conditionMessage(e), call. = FALSE)
+    })
   }
   
   invisible(TRUE)
