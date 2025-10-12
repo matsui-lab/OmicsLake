@@ -2,10 +2,17 @@
 % Please edit documentation in R/io.R
 \name{ol_commit}
 \alias{ol_commit}
-\title{Commit is a no-op under Iceberg (snapshots are implicit)}
+\title{Commit with metadata (note and parameters)}
 \usage{
 ol_commit(note = "", params = list(), project = getOption("ol.project"))
 }
+\arguments{
+\item{note}{Commit message describing the changes}
+
+\item{params}{Named list of parameters to store with the commit}
+
+\item{project}{Project name}
+}
 \description{
-Commit is a no-op under Iceberg (snapshots are implicit)
+Commit with metadata (note and parameters)
 }

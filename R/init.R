@@ -10,11 +10,13 @@ ol_init <- function(project, root = NULL, ...) {
 #' Label current state with a human-friendly alias
 #' @export
 ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) {
+  .ol_validate_name(label, "label")
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
   state <- try(.ol_get_iceberg_state(project), silent = TRUE)
   if (inherits(state, "try-error")) return(invisible(TRUE))
   .ol_ensure_refs_table(state)
   conn <- state$conn
+  
   ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
   delete_sql <- sprintf(
     "DELETE FROM %s WHERE table_name = %s AND tag = %s",
@@ -23,6 +25,7 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) 
     DBI::dbQuoteString(conn, label)
   )
   DBI::dbExecute(conn, delete_sql)
+  
   insert_sql <- sprintf(
     "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, %s)",
     ident,
@@ -32,5 +35,16 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) 
     "NULL"
   )
   DBI::dbExecute(conn, insert_sql)
+  
+  tables <- DBI::dbListTables(conn, DBI::Id(catalog = state$catalog_name, schema = state$namespace))
+  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits"))
+  
+  for (name in tables) {
+    snapshot_id <- .ol_iceberg_latest_snapshot(state, name)
+    if (!is.null(snapshot_id)) {
+      ol_tag(name, label, project = project, ref = snapshot_id)
+    }
+  }
+  
   invisible(TRUE)
 }
