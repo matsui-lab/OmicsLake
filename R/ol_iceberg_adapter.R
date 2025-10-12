@@ -63,6 +63,18 @@
   })
 }
 
+.ol_ensure_commits_table <- function(state) {
+  conn <- state$conn
+  sql <- sprintf(
+    "CREATE TABLE %s USING ICEBERG AS SELECT * FROM (SELECT CAST('' AS TEXT) AS commit_id, CAST('' AS TEXT) AS note, CAST('' AS TEXT) AS params_json, CURRENT_TIMESTAMP AS created_at) WHERE 1=0",
+    .ol_iceberg_sql_ident(conn, state, "__ol_commits")
+  )
+  tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
+    msg <- conditionMessage(e)
+    if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
+  })
+}
+
 .ol_register_catalog <- function(conn, catalog_name, catalog_path) {
   escaped <- gsub("'", "''", catalog_path)
   statements <- c(
@@ -234,6 +246,52 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   )
   DBI::dbExecute(conn, insert_sql)
   invisible(snapshot)
+}
+
+#' Restore entire project to a labeled state
+#'
+#' @param label The label name to restore to
+#' @param project The project name
+#' @return Invisible TRUE on success, FALSE if no tables found
+#' @export
+ol_checkout <- function(label, project = getOption("ol.project")) {
+  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  state <- .ol_get_iceberg_state(project)
+  .ol_ensure_refs_table(state)
+  conn <- state$conn
+  
+  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  query <- sprintf(
+    "SELECT table_name, snapshot FROM %s WHERE tag = %s AND table_name != %s",
+    ident,
+    DBI::dbQuoteString(conn, label),
+    DBI::dbQuoteString(conn, "__project__")
+  )
+  ref_entries <- DBI::dbGetQuery(conn, query)
+  
+  if (nrow(ref_entries) == 0) {
+    warning("No tables found with label: ", label, call. = FALSE)
+    return(invisible(FALSE))
+  }
+  
+  for (i in seq_len(nrow(ref_entries))) {
+    tbl <- ref_entries$table_name[[i]]
+    snap <- ref_entries$snapshot[[i]]
+    
+    tryCatch({
+      restore_sql <- sprintf(
+        "CREATE OR REPLACE TABLE %s USING ICEBERG AS SELECT * FROM iceberg_scan(table => '%s', snapshot_id => '%s')",
+        .ol_iceberg_sql_ident(conn, state, tbl),
+        .ol_iceberg_qualified_name(state, tbl),
+        snap
+      )
+      DBI::dbExecute(conn, restore_sql)
+    }, error = function(e) {
+      warning("Failed to restore table '", tbl, "': ", conditionMessage(e), call. = FALSE)
+    })
+  }
+  
+  invisible(TRUE)
 }
 
 #' Read a stored object
