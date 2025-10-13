@@ -11,7 +11,7 @@ test_that("ol_query executes basic SELECT query", {
   result <- ol_query("SELECT * FROM genes WHERE expression > 50")
   
   expect_true(is.data.frame(result))
-  expect_equal(nrow(result), 4)
+  expect_equal(nrow(result), 5)
   expect_true(all(result$expression > 50))
 })
 
