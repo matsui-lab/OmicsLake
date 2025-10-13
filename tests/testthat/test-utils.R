@@ -1,4 +1,8 @@
 test_that(".ol_root returns correct default path", {
+  old_opt <- getOption("ol.root")
+  on.exit(options(ol.root = old_opt))
+  
+  options(ol.root = NULL)
   expect_equal(.ol_root(), file.path(path.expand("~"), ".omicslake"))
 })
 
