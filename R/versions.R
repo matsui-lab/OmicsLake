@@ -69,13 +69,33 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   )
   deps_data <- DBI::dbGetQuery(conn, deps_query)
   
+  # Use nearest-neighbor matching: assign each dependency to the version with closest timestamp (important-comment)
+  # This prevents dependencies from being incorrectly matched to multiple versions when saves happen quickly (important-comment)
+  version_deps <- list()
+  for (i in 1:nrow(versions)) {
+    version_deps[[as.character(versions$version_ts[i])]] <- character(0)
+  }
+  
+  # For each dependency record, assign it to the closest version (important-comment)
+  if (nrow(deps_data) > 0) {
+    for (i in 1:nrow(deps_data)) {
+      dep_time <- as.POSIXct(deps_data$created_at[i])
+      
+      # Find the version with the closest timestamp (important-comment)
+      distances <- abs(as.numeric(difftime(as.POSIXct(versions$version_ts), dep_time, units = "secs")))
+      closest_version_idx <- which.min(distances)
+      closest_version_ts <- as.character(versions$version_ts[closest_version_idx])
+      
+      # Add this parent to that version's dependencies (important-comment)
+      version_deps[[closest_version_ts]] <- c(version_deps[[closest_version_ts]], deps_data$parent_name[i])
+    }
+  }
+  
+  # Fill in the dependencies column (important-comment)
   versions$dependencies <- sapply(versions$version_ts, function(vts) {
-    vts_time <- as.POSIXct(vts)
-    matching_deps <- deps_data$parent_name[
-      abs(as.numeric(difftime(as.POSIXct(deps_data$created_at), vts_time, units = "secs"))) <= 1
-    ]
-    if (length(matching_deps) == 0) return("")
-    paste(unique(matching_deps), collapse = ", ")
+    deps <- unique(version_deps[[as.character(vts)]])
+    if (length(deps) == 0) return("")
+    paste(deps, collapse = ", ")
   })
   
   versions
@@ -164,9 +184,10 @@ ol_compare_versions <- function(name, versions = NULL, project = getOption("ol.p
   all_versions$deps_added <- ""
   all_versions$deps_removed <- ""
   
-  for (i in 2:nrow(all_versions)) {
+  # Compare each version to the next older version (i+1) to calculate deps_added/removed (important-comment)
+  for (i in 1:(nrow(all_versions)-1)) {
     curr_deps <- strsplit(all_versions$dependencies[i], ", ")[[1]]
-    prev_deps <- strsplit(all_versions$dependencies[i-1], ", ")[[1]]
+    prev_deps <- strsplit(all_versions$dependencies[i+1], ", ")[[1]]
     
     curr_deps <- curr_deps[nzchar(curr_deps)]
     prev_deps <- prev_deps[nzchar(prev_deps)]
