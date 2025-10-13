@@ -70,7 +70,66 @@ ol_list_tables()
 
 **出力の見方**: `ol_list_tables()` は現在のプロジェクトに保存されているすべてのテーブル名を返します。
 
-## 1.3 Rオブジェクトの保存と読み込み
+## 1.3 SQLクエリによる高度な分析 (ol_query)
+
+`ol_query()` を使用すると、DuckDBの全機能（JOIN、集計、ウィンドウ関数など）を活用した高度なデータ分析が可能です。
+
+```{r query_basic}
+# 基本的なクエリ
+result <- ol_query("SELECT * FROM raw_counts WHERE sample1 > 100")
+head(result)
+
+# 集計クエリ
+summary <- ol_query("
+  SELECT 
+    COUNT(*) as total_genes,
+    AVG(sample1) as avg_sample1,
+    MAX(sample1) as max_sample1
+  FROM raw_counts
+")
+print(summary)
+```
+
+### JOINとサブクエリ
+
+```{r query_join}
+# テーブルのJOIN（例：遺伝子情報との結合）
+ol_write("gene_annotations", data.frame(
+  gene_id = paste0("gene", 1:5),
+  name = paste0("GeneA", 1:5),
+  chromosome = c("chr1", "chr2", "chr1", "chr3", "chr2")
+))
+
+joined <- ol_query("
+  SELECT r.gene_id, r.sample1, a.name, a.chromosome
+  FROM raw_counts r
+  JOIN gene_annotations a ON r.gene_id = a.gene_id
+  WHERE r.sample1 > 50
+")
+head(joined)
+```
+
+### 遅延評価とdplyrとの統合
+
+```{r query_lazy}
+# collect=FALSE で遅延評価
+if (requireNamespace("dplyr", quietly = TRUE)) {
+  lazy_tbl <- ol_query("SELECT * FROM raw_counts", collect = FALSE)
+  
+  # dplyrパイプラインで処理
+  result <- lazy_tbl %>%
+    dplyr::filter(sample1 > 100) %>%
+    dplyr::select(gene_id, sample1, sample2) %>%
+    dplyr::arrange(dplyr::desc(sample1)) %>%
+    dplyr::collect()
+  
+  head(result)
+}
+```
+
+**注意**: テーブル名は `ol.` プレフィックスなしで参照できます（例: `genes` でOK、`ol.genes` も使用可能）。
+
+## 1.4 Rオブジェクトの保存と読み込み
 
 ```{r objects}
 # 正規化係数を計算（例）

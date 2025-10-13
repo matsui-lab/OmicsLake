@@ -195,3 +195,55 @@ test_that("ol_query works with window functions", {
   expect_true("row_num" %in% colnames(result))
   expect_true("avg_by_category" %in% colnames(result))
 })
+
+test_that("ol_query works without schema prefix", {
+  ol_init("test_query_no_prefix")
+  
+  test_data <- data.frame(
+    gene_id = paste0("GENE", 1:10),
+    expression = seq(10, 100, by = 10),
+    stringsAsFactors = FALSE
+  )
+  ol_write("genes", test_data)
+  
+  result <- ol_query("SELECT * FROM genes WHERE expression > 50")
+  expect_equal(nrow(result), 5)
+  expect_true(all(result$expression > 50))
+})
+
+test_that("ol_query still works with explicit schema prefix", {
+  ol_init("test_query_with_prefix")
+  
+  test_data <- data.frame(
+    gene_id = paste0("GENE", 1:10),
+    expression = seq(10, 100, by = 10),
+    stringsAsFactors = FALSE
+  )
+  ol_write("genes", test_data)
+  
+  result <- ol_query("SELECT * FROM ol.genes WHERE expression > 50")
+  expect_equal(nrow(result), 5)
+  expect_true(all(result$expression > 50))
+})
+
+test_that("ol_query schema handling works with lazy evaluation", {
+  skip_if_not_installed("dplyr")
+  skip_if_not_installed("dbplyr")
+  
+  ol_init("test_query_lazy_schema")
+  
+  test_data <- data.frame(
+    id = 1:20,
+    value = seq(10, 200, by = 10),
+    stringsAsFactors = FALSE
+  )
+  ol_write("data", test_data)
+  
+  lazy_tbl <- ol_query("SELECT * FROM data", collect = FALSE)
+  result <- lazy_tbl %>%
+    dplyr::filter(value > 100) %>%
+    dplyr::collect()
+  
+  expect_equal(nrow(result), 10)
+  expect_true(all(result$value > 100))
+})

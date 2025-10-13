@@ -2,7 +2,8 @@
 #'
 #' This function allows you to run arbitrary SQL queries against the tables
 #' in your OmicsLake project. It provides full access to DuckDB's SQL capabilities
-#' including JOINs, aggregations, window functions, and more.
+#' including JOINs, aggregations, window functions, and more. Table names can be
+#' referenced without the schema prefix (e.g., 'genes' instead of 'ol.genes').
 #'
 #' @param sql Character string containing the SQL query to execute
 #' @param project Project name (default: current project from options)
@@ -41,6 +42,8 @@ ol_query <- function(sql, project = getOption("ol.project"), collect = TRUE, par
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_iceberg_state(project)
   conn <- state$conn
+  
+  DBI::dbExecute(conn, sprintf("SET search_path TO %s", state$namespace))
   
   if (!is.null(params)) {
     if (!is.list(params) || is.null(names(params)) || any(!nzchar(names(params)))) {
