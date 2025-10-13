@@ -83,6 +83,44 @@
   })
 }
 
+.ol_ensure_dependencies_table <- function(state) {
+  conn <- state$conn
+  sql <- sprintf(
+    "CREATE TABLE IF NOT EXISTS %s (child_name TEXT, child_type TEXT, parent_name TEXT, parent_type TEXT, relationship_type TEXT, created_at TIMESTAMP)",
+    .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+  )
+  tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
+    msg <- conditionMessage(e)
+    if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
+  })
+}
+
+.ol_record_dependency <- function(state, child_name, child_type, parent_name, parent_type, relationship_type = "derived_from") {
+  .ol_ensure_dependencies_table(state)
+  conn <- state$conn
+  
+  dep_data <- data.frame(
+    child_name = child_name,
+    child_type = child_type,
+    parent_name = parent_name,
+    parent_type = parent_type,
+    relationship_type = relationship_type,
+    created_at = as.POSIXct(Sys.time(), tz = "UTC"),
+    stringsAsFactors = FALSE
+  )
+  
+  DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_dependencies"), dep_data)
+}
+.ol_is_object <- function(state, name) {
+  .ol_ensure_objects_table(state)
+  conn <- state$conn
+  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  query <- sprintf("SELECT COUNT(*) as cnt FROM %s WHERE name = %s", ident, DBI::dbQuoteString(conn, name))
+  res <- DBI::dbGetQuery(conn, query)
+  res$cnt[1] > 0
+}
+
+
 
 #' Initialize DuckDB + Iceberg backend
 #' @export
