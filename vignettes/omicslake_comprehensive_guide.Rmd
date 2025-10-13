@@ -1,0 +1,576 @@
+---
+title: "OmicsLake 総合ガイド"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OmicsLake 総合ガイド}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# はじめに
+
+OmicsLakeは、バイオインフォマティクスデータ解析のための包括的なバージョン管理・依存関係追跡システムを提供するRパッケージです。このビニエットでは、全ての主要機能を実例とともに紹介します。
+
+## パッケージの主な機能
+
+- **プロジェクト管理**: DuckDBベースのプロジェクト初期化と管理
+- **データ保存**: テーブルとRオブジェクトの保存
+- **バージョン管理**: タグ付け、履歴管理、バージョン比較
+- **依存関係追跡**: データ解析フローの依存関係を自動追跡
+- **可視化**: 依存関係グラフの視覚化
+- **Bioconductor統合**: SummarizedExperiment、MultiAssayExperimentのサポート
+
+# 1. 基本操作
+
+## 1.1 プロジェクトの初期化
+
+```{r init}
+library(OmicsLake)
+
+# プロジェクトを初期化
+ol_init("de_analysis")
+```
+
+`ol_init()` は指定した名前でプロジェクトを作成し、DuckDBデータベースを初期化します。
+
+## 1.2 テーブルの書き込みと読み込み
+
+```{r tables}
+# サンプルデータの作成
+set.seed(123)
+raw_counts <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  sample1 = rpois(100, 100),
+  sample2 = rpois(100, 100),
+  sample3 = rpois(100, 120),
+  sample4 = rpois(100, 120)
+)
+
+# テーブルとして保存
+ol_write("raw_counts", raw_counts, mode = "create")
+
+# テーブルの読み込み
+counts <- ol_read("raw_counts")
+head(counts)
+
+# テーブル一覧の確認
+ol_list_tables()
+```
+
+**出力の見方**: `ol_list_tables()` は現在のプロジェクトに保存されているすべてのテーブル名を返します。
+
+## 1.3 Rオブジェクトの保存と読み込み
+
+```{r objects}
+# 正規化係数を計算（例）
+norm_factors <- list(
+  method = "TMM",
+  factors = runif(100, 0.8, 1.2)
+)
+
+# Rオブジェクトとして保存
+ol_save("norm_factors", norm_factors)
+
+# オブジェクトの読み込み
+loaded_factors <- ol_read_object("norm_factors")
+str(loaded_factors)
+
+# オブジェクト一覧の確認
+ol_list_objects()
+```
+
+**出力の見方**: `ol_list_objects()` は保存されているすべてのRオブジェクト名を返します。
+
+# 2. 依存関係の追跡
+
+## 2.1 依存関係を指定してデータを保存
+
+```{r dependencies}
+# 正規化されたカウントを計算（depends_on で依存関係を指定）
+normalized_counts <- raw_counts
+for (i in 2:5) {
+  normalized_counts[[i]] <- normalized_counts[[i]] * norm_factors$factors
+}
+
+# 依存関係を指定して保存
+ol_write("normalized_counts", normalized_counts, 
+         depends_on = c("raw_counts", "norm_factors"))
+
+# DEパラメータを保存
+de_params <- list(
+  method = "DESeq2",
+  alpha = 0.05,
+  lfc_threshold = 1.0
+)
+ol_save("de_params", de_params)
+
+# DE結果を計算（簡略化した例）
+de_results <- data.frame(
+  gene_id = paste0("GENE", 1:20),
+  log2FC = rnorm(20, 0, 2),
+  pvalue = runif(20, 0, 0.1),
+  padj = runif(20, 0, 0.1)
+)
+
+# DE結果を依存関係付きで保存
+ol_save("de_results", de_results, 
+        depends_on = c("normalized_counts", "de_params"))
+```
+
+## 2.2 依存関係の確認
+
+```{r view_dependencies}
+# 上流の依存関係（このオブジェクトが依存しているもの）
+upstream <- ol_get_dependencies("de_results", direction = "upstream")
+print(upstream)
+
+# 下流の依存関係（このオブジェクトに依存しているもの）
+downstream <- ol_get_dependencies("raw_counts", direction = "downstream")
+print(downstream)
+
+# 完全な系統樹を表示
+lineage <- ol_show_lineage("de_results", direction = "upstream")
+print(lineage)
+```
+
+**出力の見方**:
+
+- `ol_get_dependencies()`: 直接の依存関係をdata.frameで返します
+- `ol_show_lineage()`: 再帰的に全ての祖先/子孫を探索し、完全な系統樹を返します
+
+# 3. バージョン管理
+
+## 3.1 タグ付けとラベル付け
+
+```{r tagging}
+# オブジェクトにタグを付ける
+ol_tag_object("de_results", "baseline_analysis")
+
+# プロジェクト全体にラベルを付ける（全テーブル・オブジェクトにタグが付く）
+ol_label("experiment_v1")
+
+# タグ一覧の確認
+ol_list_tags()
+
+# プロジェクトラベル一覧
+ol_list_labels()
+```
+
+## 3.2 複数バージョンの作成
+
+```{r multiple_versions}
+# パラメータを変更して再解析
+de_params_v2 <- list(
+  method = "DESeq2",
+  alpha = 0.01,
+  lfc_threshold = 1.5
+)
+ol_save("de_params", de_params_v2)
+
+# 新しいパラメータでDE結果を再計算
+de_results_v2 <- data.frame(
+  gene_id = paste0("GENE", 1:10),
+  log2FC = rnorm(10, 0, 2.5),
+  pvalue = runif(10, 0, 0.01),
+  padj = runif(10, 0, 0.01)
+)
+ol_save("de_results", de_results_v2, 
+        depends_on = c("normalized_counts", "de_params"))
+
+# 新バージョンにタグ付け
+ol_tag_object("de_results", "strict_analysis")
+
+# 別の解析手法を試す
+de_params_edger <- list(
+  method = "edgeR",
+  alpha = 0.05,
+  lfc_threshold = 1.0
+)
+ol_save("de_params", de_params_edger)
+
+de_results_edger <- data.frame(
+  gene_id = paste0("GENE", c(1:12, 25:30)),
+  log2FC = rnorm(18, 0, 2),
+  pvalue = runif(18, 0, 0.1),
+  padj = runif(18, 0, 0.1)
+)
+ol_save("de_results", de_results_edger, 
+        depends_on = c("normalized_counts", "de_params"))
+ol_tag_object("de_results", "edger_analysis")
+```
+
+## 3.3 バージョン一覧と比較
+
+```{r version_comparison}
+# 全バージョンをリスト表示
+versions <- ol_list_object_versions("de_results")
+print(versions)
+
+# バージョン間の比較
+comparison <- ol_compare_versions("de_results")
+print(comparison)
+
+# 特定のタグ間の比較
+tag_comparison <- ol_compare_versions("de_results", 
+                                      versions = c("baseline_analysis", "strict_analysis"))
+print(tag_comparison)
+```
+
+**出力の見方**:
+
+- `version_ts`: バージョンのタイムスタンプ
+- `tags`: そのバージョンに付けられたタグ
+- `size_bytes`: オブジェクトのサイズ（バイト）
+- `dependencies`: そのバージョンの依存関係
+- `size_change`: 前のバージョンからのサイズ変化
+- `time_since_previous`: 前のバージョンからの経過時間
+- `deps_added`: 新しく追加された依存関係
+- `deps_removed`: 削除された依存関係
+
+## 3.4 特定バージョンの読み込み
+
+```{r load_versions}
+# タグを指定して読み込み
+baseline_results <- ol_read_object("de_results", ref = "@tag(baseline_analysis)")
+strict_results <- ol_read_object("de_results", ref = "@tag(strict_analysis)")
+
+cat("Baseline analysis:", nrow(baseline_results), "genes\n")
+cat("Strict analysis:", nrow(strict_results), "genes\n")
+```
+
+# 4. コミットと履歴管理
+
+## 4.1 コミットの作成
+
+```{r commits}
+# 解析の節目でコミットを作成
+commit_id <- ol_commit(
+  note = "Completed initial DE analysis with three methods",
+  params = list(
+    methods = c("DESeq2_baseline", "DESeq2_strict", "edgeR"),
+    date = as.character(Sys.Date())
+  )
+)
+
+cat("Commit ID:", commit_id, "\n")
+```
+
+## 4.2 履歴の確認
+
+```{r history}
+# コミット履歴を表示
+commits <- ol_log_commits(n = 10)
+print(commits)
+
+# 特定のテーブルの履歴
+table_log <- ol_log("raw_counts")
+print(table_log)
+```
+
+# 5. 依存関係の可視化
+
+## 5.1 依存関係グラフの作成
+
+```{r visualization, fig.width=8, fig.height=6}
+# igraphパッケージが必要
+if (requireNamespace("igraph", quietly = TRUE)) {
+  # 上流の依存関係を可視化
+  ol_plot_lineage("de_results", 
+                  direction = "upstream",
+                  layout = "sugiyama",
+                  main = "DE Results - Upstream Dependencies")
+  
+  # 双方向の依存関係を可視化
+  ol_plot_lineage("normalized_counts", 
+                  direction = "both",
+                  layout = "tree",
+                  main = "Normalized Counts - Full Lineage")
+}
+```
+
+**可視化の見方**:
+
+- 青色のノード: テーブル
+- オレンジ色のノード: Rオブジェクト  
+- 赤色のノード: 指定したフォーカルノード
+- 矢印: 依存関係の方向（親→子）
+
+# 6. プロジェクトの復元
+
+## 6.1 ラベルを使った状態の復元
+
+```{r checkout}
+# 新しいテーブルを追加
+filtered_results <- de_results[de_results$padj < 0.05, ]
+ol_write("filtered_de", filtered_results)
+
+# 以前のラベル状態に戻る
+ol_checkout("experiment_v1")
+
+# filtered_deテーブルは存在しなくなる
+current_tables <- ol_list_tables()
+cat("Tables after checkout:", paste(current_tables$table_name, collapse = ", "), "\n")
+```
+
+`ol_checkout()` は指定したラベル時点の全テーブルとオブジェクトの状態を復元します。
+
+# 7. 高度な機能
+
+## 7.1 データのフィルタリング読み込み
+
+```{r fread}
+# 再度raw_countsを作成（checkoutで消えた可能性があるため）
+ol_write("raw_counts", raw_counts, mode = "overwrite")
+
+# 特定の列のみを選択して読み込み
+selected <- ol_fread("raw_counts", 
+                     select = c("gene_id", "sample1", "sample2"),
+                     nrows = 10)
+head(selected)
+
+# 条件でフィルタリング
+filtered <- ol_fread("raw_counts",
+                     filter = "sample1 > 100")
+head(filtered)
+```
+
+## 7.2 遅延評価での読み込み
+
+```{r lazy_eval}
+if (requireNamespace("dplyr", quietly = TRUE)) {
+  # collect = FALSE で遅延評価
+  lazy_tbl <- ol_read("raw_counts", collect = FALSE)
+  
+  # dplyrで処理
+  result <- lazy_tbl %>%
+    dplyr::filter(sample1 > 100) %>%
+    dplyr::select(gene_id, sample1) %>%
+    dplyr::collect()
+  
+  head(result)
+}
+```
+
+## 7.3 テーブルの削除
+
+```{r drop}
+# 不要なテーブルを削除
+ol_drop("filtered_de")
+```
+
+# 8. Bioconductor統合
+
+## 8.1 SummarizedExperimentの作成
+
+```{r bioc_se}
+if (requireNamespace("SummarizedExperiment", quietly = TRUE)) {
+  # ロングフォーマットのデータを作成
+  long_counts <- data.frame(
+    feature = rep(paste0("GENE", 1:100), each = 4),
+    sample = rep(paste0("sample", 1:4), times = 100),
+    value = rpois(400, 100)
+  )
+  ol_write("long_counts", long_counts, mode = "overwrite")
+  
+  # SummarizedExperimentとして読み込み
+  se <- ol_read_se("long_counts",
+                   feature_col = "feature",
+                   sample_col = "sample",
+                   value_col = "value",
+                   backing = "memory")
+  
+  print(se)
+}
+```
+
+## 8.2 MultiAssayExperimentの作成
+
+```{r bioc_mae}
+if (requireNamespace("MultiAssayExperiment", quietly = TRUE)) {
+  # 複数のアッセイデータを準備
+  rna_data <- data.frame(
+    feature = rep(paste0("GENE", 1:50), each = 4),
+    sample = rep(paste0("sample", 1:4), times = 50),
+    value = rpois(200, 100)
+  )
+  ol_write("rna_assay", rna_data, mode = "overwrite")
+  
+  protein_data <- data.frame(
+    feature = rep(paste0("PROT", 1:30), each = 4),
+    sample = rep(paste0("sample", 1:4), times = 30),
+    value = rnorm(120, 50, 10)
+  )
+  ol_write("protein_assay", protein_data, mode = "overwrite")
+  
+  # MultiAssayExperimentとして読み込み
+  mae <- ol_read_mae(
+    assays = list(
+      rna = list(name = "rna_assay"),
+      protein = list(name = "protein_assay")
+    ),
+    backing = "memory"
+  )
+  
+  print(mae)
+}
+```
+
+# 9. 実践的なワークフロー例
+
+## 9.1 完全な差次発現解析ワークフロー
+
+```{r complete_workflow}
+# 1. プロジェクト初期化
+ol_init("rnaseq_project")
+
+# 2. 生データの保存
+set.seed(456)
+raw_data <- data.frame(
+  gene_id = paste0("GENE", 1:200),
+  control_1 = rpois(200, 100),
+  control_2 = rpois(200, 100),
+  control_3 = rpois(200, 100),
+  treated_1 = rpois(200, 120),
+  treated_2 = rpois(200, 120),
+  treated_3 = rpois(200, 120)
+)
+ol_write("raw_expression", raw_data)
+
+# 3. QCパラメータの保存
+qc_params <- list(
+  min_counts = 10,
+  min_samples = 3,
+  method = "standard"
+)
+ol_save("qc_parameters", qc_params)
+
+# 4. QC後のデータ
+qc_data <- raw_data[rowSums(raw_data[, -1] > 10) >= 3, ]
+ol_write("qc_filtered", qc_data, depends_on = c("raw_expression", "qc_parameters"))
+
+# 5. 正規化パラメータ
+norm_params <- list(
+  method = "TMM",
+  log_transform = TRUE
+)
+ol_save("norm_parameters", norm_params)
+
+# 6. 正規化データ
+norm_data <- qc_data
+for (i in 2:ncol(norm_data)) {
+  norm_data[[i]] <- log2(norm_data[[i]] + 1)
+}
+ol_write("normalized", norm_data, 
+         depends_on = c("qc_filtered", "norm_parameters"))
+
+# 7. 統計解析パラメータ
+stats_params <- list(
+  test = "t-test",
+  alpha = 0.05,
+  correction = "BH"
+)
+ol_save("stats_parameters", stats_params)
+
+# 8. 統計解析結果
+set.seed(789)
+de_final <- data.frame(
+  gene_id = sample(qc_data$gene_id, 30),
+  log2fc = rnorm(30, 1, 0.5),
+  pvalue = runif(30, 0, 0.05),
+  padj = runif(30, 0, 0.05)
+)
+ol_save("final_de_results", de_final,
+        depends_on = c("normalized", "stats_parameters"))
+
+# 9. 解析をコミット
+ol_commit(
+  note = "Complete RNA-seq differential expression analysis",
+  params = list(
+    samples = 6,
+    genes_tested = nrow(qc_data),
+    significant = nrow(de_final),
+    date = as.character(Sys.Date())
+  )
+)
+
+# 10. ラベルを作成
+ol_label("final_analysis_v1")
+
+# 11. 完全な系統を確認
+full_lineage <- ol_show_lineage("final_de_results", direction = "upstream")
+print(full_lineage)
+
+# 12. 依存関係を可視化
+if (requireNamespace("igraph", quietly = TRUE)) {
+  ol_plot_lineage("final_de_results", 
+                  direction = "upstream",
+                  layout = "sugiyama",
+                  main = "RNA-seq Analysis Pipeline")
+}
+```
+
+# 10. まとめ
+
+## 主要な関数一覧
+
+### プロジェクト管理
+- `ol_init()`: プロジェクト初期化
+- `ol_label()`: プロジェクト全体のラベル付け
+- `ol_checkout()`: ラベル状態への復元
+
+### データ保存・読み込み
+- `ol_write()`: テーブルの保存
+- `ol_read()`: テーブルの読み込み
+- `ol_save()`: Rオブジェクトの保存
+- `ol_read_object()`: Rオブジェクトの読み込み
+- `ol_load()`: ol_read()のエイリアス
+- `ol_fread()`: フィルタリング付き読み込み
+
+### バージョン管理
+- `ol_tag()`: テーブルのタグ付け
+- `ol_tag_object()`: オブジェクトのタグ付け
+- `ol_list_object_versions()`: バージョン一覧
+- `ol_compare_versions()`: バージョン比較
+
+### 履歴管理
+- `ol_commit()`: コミットの作成
+- `ol_log()`: テーブル履歴の表示
+- `ol_log_commits()`: コミット履歴の表示
+
+### 依存関係
+- `ol_get_dependencies()`: 依存関係の取得
+- `ol_show_lineage()`: 完全な系統樹の表示
+- `ol_plot_lineage()`: 依存関係グラフの可視化
+
+### 一覧表示
+- `ol_list_tables()`: テーブル一覧
+- `ol_list_objects()`: オブジェクト一覧
+- `ol_list_tags()`: タグ一覧
+- `ol_list_labels()`: ラベル一覧
+
+### Bioconductor
+- `ol_read_se()`: SummarizedExperiment作成
+- `ol_read_mae()`: MultiAssayExperiment作成
+
+### その他
+- `ol_drop()`: テーブル削除
+
+## ベストプラクティス
+
+1. **依存関係を明示的に指定**: `depends_on` パラメータを使って解析フローを記録
+2. **重要な節目でラベル作成**: 再現可能性のため、重要な時点で `ol_label()` を実行
+3. **タグを活用**: 異なる解析方法やパラメータには明確なタグを付ける
+4. **コミットメッセージを詳細に**: 解析の内容と結果を `ol_commit()` に記録
+5. **可視化で確認**: 複雑な解析フローは `ol_plot_lineage()` で視覚化
+6. **バージョン比較を活用**: `ol_compare_versions()` でパラメータ変更の影響を追跡
