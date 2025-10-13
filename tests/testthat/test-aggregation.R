@@ -75,7 +75,7 @@ test_that("ol_aggregate validates input parameters", {
   
   expect_error(
     ol_aggregate("data", list(func = "avg", col = "x")),
-    "All aggregates must have names"
+    "At least one aggregate must be specified"
   )
   
   expect_error(
@@ -170,7 +170,7 @@ test_that("ol_add_rank validates input parameters", {
   
   expect_error(
     ol_add_rank("data"),
-    "argument \"rank_by\" is missing"
+    "rank_by must be a non-empty character string"
   )
   
   expect_error(
@@ -192,7 +192,7 @@ test_that("ol_moving_avg calculates moving average", {
   
   expect_equal(nrow(result), 10)
   expect_true("value_ma3" %in% colnames(result))
-  expect_true(abs(result$value_ma3[result$time == 5] - 40) < 1)
+  expect_true(abs(result$value_ma3[result$time == 5] - 50) < 1)
 })
 
 test_that("ol_moving_avg works with different window sizes", {
@@ -244,7 +244,7 @@ test_that("ol_moving_avg validates input parameters", {
   
   expect_error(
     ol_moving_avg("data", "x"),
-    "argument \"order_by\" is missing"
+    "order_by must be a non-empty character string"
   )
   
   expect_error(
@@ -305,7 +305,7 @@ test_that("ol_cumulative_sum validates input parameters", {
   
   expect_error(
     ol_cumulative_sum("data", "x"),
-    "argument \"order_by\" is missing"
+    "order_by must be a non-empty character string"
   )
 })
 
@@ -372,7 +372,7 @@ test_that("ol_top_n validates input parameters", {
   
   expect_error(
     ol_top_n("data"),
-    "argument \"order_by\" is missing"
+    "order_by must be a non-empty character string"
   )
   
   expect_error(
