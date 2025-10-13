@@ -26,7 +26,7 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   
   ident_objects <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
   query <- sprintf(
-    "SELECT version_ts, LENGTH(bytes) as size_bytes FROM %s WHERE name = %s ORDER BY version_ts DESC",
+    "SELECT version_ts, OCTET_LENGTH(bytes) as size_bytes FROM %s WHERE name = %s ORDER BY version_ts DESC",
     ident_objects,
     DBI::dbQuoteString(conn, name)
   )
