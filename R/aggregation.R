@@ -52,7 +52,7 @@ ol_aggregate <- function(table, group_by = NULL, ..., project = getOption("ol.pr
   
   select_parts <- character(0)
   if (!is.null(group_by)) {
-    select_parts <- paste(sprintf("`%s`", group_by), collapse = ", ")
+    select_parts <- paste(sprintf('"%s"', group_by), collapse = ", ")
   }
   
   agg_parts <- character(0)
@@ -62,9 +62,9 @@ ol_aggregate <- function(table, group_by = NULL, ..., project = getOption("ol.pr
     col <- agg$col
     
     if (col == "*") {
-      agg_sql <- sprintf("%s(*) AS `%s`", func, name)
+      agg_sql <- sprintf('%s(*) AS "%s"', func, name)
     } else {
-      agg_sql <- sprintf("%s(`%s`) AS `%s`", func, col, name)
+      agg_sql <- sprintf('%s("%s") AS "%s"', func, col, name)
     }
     agg_parts <- c(agg_parts, agg_sql)
   }
@@ -72,10 +72,10 @@ ol_aggregate <- function(table, group_by = NULL, ..., project = getOption("ol.pr
   all_selects <- c(select_parts, agg_parts)
   select_clause <- paste(all_selects, collapse = ", ")
   
-  sql <- sprintf("SELECT %s FROM `%s`", select_clause, table)
+  sql <- sprintf('SELECT %s FROM "%s"', select_clause, table)
   
   if (!is.null(group_by)) {
-    group_clause <- paste(sprintf("`%s`", group_by), collapse = ", ")
+    group_clause <- paste(sprintf('"%s"', group_by), collapse = ", ")
     sql <- paste(sql, "GROUP BY", group_clause)
   }
   
@@ -135,13 +135,13 @@ ol_add_rank <- function(table, rank_by, partition_by = NULL, method = "row_numbe
   rank_func <- toupper(method)
   order_dir <- if (descending) "DESC" else "ASC"
   
-  over_clause <- sprintf("ORDER BY `%s` %s", rank_by, order_dir)
+  over_clause <- sprintf('ORDER BY "%s" %s', rank_by, order_dir)
   if (!is.null(partition_by)) {
-    partition_clause <- paste(sprintf("`%s`", partition_by), collapse = ", ")
+    partition_clause <- paste(sprintf('"%s"', partition_by), collapse = ", ")
     over_clause <- sprintf("PARTITION BY %s %s", partition_clause, over_clause)
   }
   
-  sql <- sprintf("SELECT *, %s() OVER (%s) AS `%s` FROM `%s`", 
+  sql <- sprintf('SELECT *, %s() OVER (%s) AS "%s" FROM "%s"', 
                  rank_func, over_clause, as_column, table)
   
   ol_query(sql, project = project, collect = collect)
@@ -208,13 +208,13 @@ ol_moving_avg <- function(table, column, window_size = 3, partition_by = NULL, o
   frame_clause <- sprintf("ROWS BETWEEN %d PRECEDING AND %d FOLLOWING", 
                           half_window, window_size - 1 - half_window)
   
-  over_clause <- sprintf("ORDER BY `%s` %s", order_by, frame_clause)
+  over_clause <- sprintf('ORDER BY "%s" %s', order_by, frame_clause)
   if (!is.null(partition_by)) {
-    partition_clause <- paste(sprintf("`%s`", partition_by), collapse = ", ")
+    partition_clause <- paste(sprintf('"%s"', partition_by), collapse = ", ")
     over_clause <- sprintf("PARTITION BY %s %s", partition_clause, over_clause)
   }
   
-  sql <- sprintf("SELECT *, AVG(`%s`) OVER (%s) AS `%s` FROM `%s`", 
+  sql <- sprintf('SELECT *, AVG("%s") OVER (%s) AS "%s" FROM "%s"', 
                  column, over_clause, as_column, table)
   
   ol_query(sql, project = project, collect = collect)
@@ -271,14 +271,14 @@ ol_cumulative_sum <- function(table, column, partition_by = NULL, order_by,
   }
   
   frame_clause <- "ROWS UNBOUNDED PRECEDING"
-  over_clause <- sprintf("ORDER BY `%s` %s", order_by, frame_clause)
+  over_clause <- sprintf('ORDER BY "%s" %s', order_by, frame_clause)
   
   if (!is.null(partition_by)) {
-    partition_clause <- paste(sprintf("`%s`", partition_by), collapse = ", ")
+    partition_clause <- paste(sprintf('"%s"', partition_by), collapse = ", ")
     over_clause <- sprintf("PARTITION BY %s %s", partition_clause, over_clause)
   }
   
-  sql <- sprintf("SELECT *, SUM(`%s`) OVER (%s) AS `%s` FROM `%s`", 
+  sql <- sprintf('SELECT *, SUM("%s") OVER (%s) AS "%s" FROM "%s"', 
                  column, over_clause, as_column, table)
   
   ol_query(sql, project = project, collect = collect)
@@ -328,15 +328,15 @@ ol_top_n <- function(table, n = 10, order_by, partition_by = NULL, descending = 
   }
   
   order_dir <- if (descending) "DESC" else "ASC"
-  over_clause <- sprintf("ORDER BY `%s` %s", order_by, order_dir)
+  over_clause <- sprintf('ORDER BY "%s" %s', order_by, order_dir)
   
   if (!is.null(partition_by)) {
-    partition_clause <- paste(sprintf("`%s`", partition_by), collapse = ", ")
+    partition_clause <- paste(sprintf('"%s"', partition_by), collapse = ", ")
     over_clause <- sprintf("PARTITION BY %s %s", partition_clause, over_clause)
   }
   
   sql <- sprintf(
-    "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (%s) AS __rank FROM `%s`) WHERE __rank <= %d",
+    'SELECT * FROM (SELECT *, ROW_NUMBER() OVER (%s) AS __rank FROM "%s") WHERE __rank <= %d',
     over_clause, table, n
   )
   
