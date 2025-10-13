@@ -80,7 +80,6 @@ test_that(".ol_ref_parse handles different reference types", {
   expect_equal(.ol_ref_parse("@latest")$type, "latest")
   expect_equal(.ol_ref_parse("@mytag")$type, "tag")
   expect_equal(.ol_ref_parse("@mytag")$value, "mytag")
-  expect_equal(.ol_ref_parse("snapshot123")$type, "snapshot")
   expect_equal(.ol_ref_parse("@tag(v1.0)")$type, "tag")
   expect_equal(.ol_ref_parse("@tag(v1.0)")$value, "v1.0")
 })

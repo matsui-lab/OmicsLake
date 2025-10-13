@@ -11,13 +11,13 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
   schema_sql <- .ol_iceberg_schema_sql(conn, state)
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
   tbl <- arrow::arrow_table(data)
-  tmp_name <- paste0("ol_tmp_", as.integer(as.numeric(Sys.time()) * 1e6))
+  tmp_name <- paste0("ol_tmp_", gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6")))
   duckdb::duckdb_register_arrow(conn, tmp_name, tbl)
   on.exit(duckdb::duckdb_unregister_arrow(conn, tmp_name), add = TRUE)
   ident <- .ol_iceberg_sql_ident(conn, state, name)
   sql <- switch(mode,
-    create = sprintf("CREATE TABLE %s USING ICEBERG AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
-    overwrite = sprintf("CREATE OR REPLACE TABLE %s USING ICEBERG AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
+    create = sprintf("CREATE TABLE %s AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
+    overwrite = sprintf("CREATE OR REPLACE TABLE %s AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
     append = sprintf("INSERT INTO %s SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name))
   )
   DBI::dbExecute(conn, sql)
@@ -89,7 +89,7 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
   state <- .ol_get_iceberg_state(project)
   resolved <- .ol_iceberg_resolve_reference(state, name, ref)
-  sql <- .ol_iceberg_scan_sql(state, name, resolved)
+  sql <- .ol_get_table_sql(state, name, resolved)
   if (!isTRUE(collect)) {
     .ol_require("dplyr")
     return(dplyr::tbl(state$conn, DBI::sql(sql)))
@@ -110,22 +110,29 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
 #' @export
 ol_load <- function(name, ref = "@latest", project = getOption("ol.project")) ol_read(name, ref, project)
 
-#' Return Iceberg snapshot log for a table
+#' Return version log for a table
 #' @export
 ol_log <- function(name = NULL, project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  if (is.null(name)) return(utils::head(data.frame()))
-  state <- .ol_get_iceberg_state(project)
-  ident <- .ol_iceberg_qualified_name(state, name)
-  queries <- c(
-    sprintf("SELECT * FROM iceberg_snapshots('%s') ORDER BY committed_at DESC", ident),
-    sprintf("SELECT snapshot_id, committed_at FROM iceberg_snapshots('%s') ORDER BY committed_at DESC", ident)
-  )
-  for (q in queries) {
-    res <- tryCatch(DBI::dbGetQuery(state$conn, q), error = function(e) NULL)
-    if (!is.null(res)) return(res)
+  state <- try(.ol_get_iceberg_state(project), silent = TRUE)
+  if (inherits(state, "try-error")) return(utils::head(data.frame()))
+  
+  if (is.null(name)) {
+    return(ol_log_commits(project = project))
   }
-  utils::head(data.frame())
+  
+  .ol_ensure_refs_table(state)
+  conn <- state$conn
+  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  
+  query <- sprintf(
+    "SELECT tag, as_of FROM %s WHERE table_name = %s ORDER BY as_of DESC",
+    ident,
+    DBI::dbQuoteString(conn, name)
+  )
+  res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
+  
+  res
 }
 
 #' List all tables in the project
