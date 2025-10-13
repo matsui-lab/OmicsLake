@@ -1,6 +1,7 @@
 #' Write a table using the Iceberg backend
+#' @param depends_on Optional character vector of table/object names that this table depends on
 #' @export
-ol_write <- function(name, data, project = getOption("ol.project"), mode = c("create", "overwrite", "append")) {
+ol_write <- function(name, data, project = getOption("ol.project"), mode = c("create", "overwrite", "append"), depends_on = NULL) {
   .ol_require(c("arrow", "duckdb"))
   .ol_validate_name(name, "table name")
   .ol_validate_data_frame(data)
@@ -21,12 +22,21 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
     append = sprintf("INSERT INTO %s SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name))
   )
   DBI::dbExecute(conn, sql)
+  
+  if (!is.null(depends_on) && length(depends_on) > 0) {
+    for (parent in depends_on) {
+      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
+      .ol_record_dependency(state, name, "table", parent, parent_type)
+    }
+  }
+  
   invisible(.ol_iceberg_qualified_name(state, name))
 }
 
 #' Save an R object via the Iceberg metadata table
+#' @param depends_on Optional character vector of table/object names that this object depends on
 #' @export
-ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL) {
+ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL, depends_on = NULL) {
   .ol_validate_name(name, "object name")
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
   state <- .ol_get_iceberg_state(project)
@@ -52,6 +62,14 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
     stringsAsFactors = FALSE
   )
   DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_objects"), payload)
+  
+  if (!is.null(depends_on) && length(depends_on) > 0) {
+    for (parent in depends_on) {
+      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
+      .ol_record_dependency(state, name, "object", parent, parent_type)
+    }
+  }
+  
   invisible(TRUE)
 }
 
@@ -249,4 +267,124 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
   res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
   
   res
+}
+
+#' Get dependencies for a table or object
+#' @param name Name of the table or object
+#' @param direction Direction to query: "upstream" (parents), "downstream" (children), or "both"
+#' @param project Project name
+#' @export
+ol_get_dependencies <- function(name, direction = c("upstream", "downstream", "both"), project = getOption("ol.project")) {
+  direction <- match.arg(direction)
+  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  state <- .ol_get_iceberg_state(project)
+  
+  .ol_ensure_dependencies_table(state)
+  conn <- state$conn
+  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+  
+  if (direction == "upstream") {
+    query <- sprintf(
+      "SELECT parent_name, parent_type, relationship_type, created_at FROM %s WHERE child_name = %s ORDER BY created_at DESC",
+      ident,
+      DBI::dbQuoteString(conn, name)
+    )
+  } else if (direction == "downstream") {
+    query <- sprintf(
+      "SELECT child_name, child_type, relationship_type, created_at FROM %s WHERE parent_name = %s ORDER BY created_at DESC",
+      ident,
+      DBI::dbQuoteString(conn, name)
+    )
+  } else {
+    upstream_query <- sprintf(
+      "SELECT parent_name AS name, parent_type AS type, 'upstream' AS direction, relationship_type, created_at FROM %s WHERE child_name = %s",
+      ident,
+      DBI::dbQuoteString(conn, name)
+    )
+    downstream_query <- sprintf(
+      "SELECT child_name AS name, child_type AS type, 'downstream' AS direction, relationship_type, created_at FROM %s WHERE parent_name = %s",
+      ident,
+      DBI::dbQuoteString(conn, name)
+    )
+    query <- sprintf("(%s) UNION ALL (%s) ORDER BY created_at DESC", upstream_query, downstream_query)
+  }
+  
+  DBI::dbGetQuery(conn, query)
+}
+
+#' Show lineage (full dependency tree) for a table or object
+#' @param name Name of the table or object
+#' @param direction Direction to traverse: "upstream" (all ancestors) or "downstream" (all descendants)
+#' @param max_depth Maximum depth to traverse (default: 10)
+#' @param project Project name
+#' @export
+ol_show_lineage <- function(name, direction = c("upstream", "downstream"), max_depth = 10, project = getOption("ol.project")) {
+  direction <- match.arg(direction)
+  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  state <- .ol_get_iceberg_state(project)
+  
+  .ol_ensure_dependencies_table(state)
+  conn <- state$conn
+  
+  visited <- character(0)
+  to_visit <- data.frame(
+    name = name,
+    depth = 0,
+    stringsAsFactors = FALSE
+  )
+  result <- list()
+  
+  while (nrow(to_visit) > 0 && min(to_visit$depth) < max_depth) {
+    current_row <- to_visit[1, ]
+    to_visit <- to_visit[-1, , drop = FALSE]
+    current_name <- current_row$name
+    current_depth <- current_row$depth
+    
+    if (current_name %in% visited) next
+    visited <- c(visited, current_name)
+    
+    deps <- ol_get_dependencies(current_name, direction = direction, project = project)
+    
+    if (nrow(deps) > 0) {
+      if (direction == "upstream") {
+        result[[length(result) + 1]] <- data.frame(
+          child = current_name,
+          parent = deps$parent_name,
+          parent_type = deps$parent_type,
+          relationship = deps$relationship_type,
+          depth = current_depth,
+          stringsAsFactors = FALSE
+        )
+        new_to_visit <- data.frame(
+          name = deps$parent_name[!deps$parent_name %in% visited],
+          depth = current_depth + 1,
+          stringsAsFactors = FALSE
+        )
+      } else {
+        result[[length(result) + 1]] <- data.frame(
+          parent = current_name,
+          child = deps$child_name,
+          child_type = deps$child_type,
+          relationship = deps$relationship_type,
+          depth = current_depth,
+          stringsAsFactors = FALSE
+        )
+        new_to_visit <- data.frame(
+          name = deps$child_name[!deps$child_name %in% visited],
+          depth = current_depth + 1,
+          stringsAsFactors = FALSE
+        )
+      }
+      
+      if (nrow(new_to_visit) > 0) {
+        to_visit <- rbind(to_visit, new_to_visit)
+      }
+    }
+  }
+  
+  if (length(result) == 0) {
+    return(data.frame())
+  }
+  
+  do.call(rbind, result)
 }
