@@ -168,8 +168,10 @@ test_that("ol_query validates params format", {
     "params must be a named list"
   )
   
+  bad_params <- list(a = 1, b = 2)
+  names(bad_params)[2] <- ""
   expect_error(
-    ol_query("SELECT * FROM data", params = list(a = 1, "" = 2)),
+    ol_query("SELECT * FROM data", params = bad_params),
     "params must be a named list with non-empty names"
   )
 })
