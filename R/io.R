@@ -355,11 +355,15 @@ ol_show_lineage <- function(name, direction = c("upstream", "downstream"), max_d
           depth = current_depth,
           stringsAsFactors = FALSE
         )
-        new_to_visit <- data.frame(
-          name = deps$parent_name[!deps$parent_name %in% visited],
-          depth = current_depth + 1,
-          stringsAsFactors = FALSE
-        )
+        new_names <- deps$parent_name[!deps$parent_name %in% visited]
+        if (length(new_names) > 0) {
+          new_to_visit <- data.frame(
+            name = new_names,
+            depth = current_depth + 1,
+            stringsAsFactors = FALSE
+          )
+          to_visit <- rbind(to_visit, new_to_visit)
+        }
       } else {
         result[[length(result) + 1]] <- data.frame(
           parent = current_name,
@@ -369,15 +373,15 @@ ol_show_lineage <- function(name, direction = c("upstream", "downstream"), max_d
           depth = current_depth,
           stringsAsFactors = FALSE
         )
-        new_to_visit <- data.frame(
-          name = deps$child_name[!deps$child_name %in% visited],
-          depth = current_depth + 1,
-          stringsAsFactors = FALSE
-        )
-      }
-      
-      if (nrow(new_to_visit) > 0) {
-        to_visit <- rbind(to_visit, new_to_visit)
+        new_names <- deps$child_name[!deps$child_name %in% visited]
+        if (length(new_names) > 0) {
+          new_to_visit <- data.frame(
+            name = new_names,
+            depth = current_depth + 1,
+            stringsAsFactors = FALSE
+          )
+          to_visit <- rbind(to_visit, new_to_visit)
+        }
       }
     }
   }
