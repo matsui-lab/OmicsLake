@@ -109,8 +109,8 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
   resolved <- .ol_iceberg_resolve_reference(state, name, ref)
   sql <- .ol_get_table_sql(state, name, resolved)
   if (!isTRUE(collect)) {
-    .ol_require("dplyr")
-    return(dplyr::tbl(state$conn, DBI::sql(sql)))
+    .ol_require(c("dplyr", "dbplyr"))
+    return(dplyr::tbl(state$conn, dbplyr::sql(sql)))
   }
   res <- tryCatch(DBI::dbGetQuery(state$conn, sql), error = function(e) {
     tryCatch({
