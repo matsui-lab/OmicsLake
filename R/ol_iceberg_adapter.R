@@ -214,6 +214,60 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   invisible(backup_table)
 }
 
+#' Tag a stored object version
+#' @param name Name of the object to tag
+#' @param tag Tag name to assign
+#' @param when Which version to tag: "latest" (default) or "first", or a specific version_ts timestamp
+#' @param project Project name
+#' @export
+ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project")) {
+  .ol_validate_name(name, "object name")
+  .ol_validate_name(tag, "tag")
+  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  state <- .ol_get_iceberg_state(project)
+  .ol_ensure_objects_table(state)
+  conn <- state$conn
+  
+  ident_objects <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  if (is.character(when) && when %in% c("latest", "first")) {
+    order_dir <- if (identical(when, "latest")) "DESC" else "ASC"
+    query <- sprintf(
+      "SELECT version_ts FROM %s WHERE name = %s ORDER BY version_ts %s LIMIT 1",
+      ident_objects,
+      DBI::dbQuoteString(conn, name),
+      order_dir
+    )
+    res <- DBI::dbGetQuery(conn, query)
+    if (!nrow(res)) stop("Object not found: ", name, call. = FALSE)
+    version_ts <- res$version_ts[[1]]
+  } else {
+    version_ts <- when
+  }
+  
+  .ol_ensure_refs_table(state)
+  ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ref_name <- paste0("__object__", name)
+  
+  delete_sql <- sprintf(
+    "DELETE FROM %s WHERE table_name = %s AND tag = %s",
+    ident_refs,
+    DBI::dbQuoteString(conn, ref_name),
+    DBI::dbQuoteString(conn, tag)
+  )
+  DBI::dbExecute(conn, delete_sql)
+  
+  insert_sql <- sprintf(
+    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
+    ident_refs,
+    DBI::dbQuoteString(conn, ref_name),
+    DBI::dbQuoteString(conn, tag),
+    DBI::dbQuoteString(conn, as.character(version_ts))
+  )
+  DBI::dbExecute(conn, insert_sql)
+  
+  invisible(version_ts)
+}
+
 #' Restore entire project to a labeled state
 #'
 #' @param label The label name to restore to
@@ -262,21 +316,64 @@ ol_checkout <- function(label, project = getOption("ol.project")) {
 }
 
 #' Read a stored object
+#' @param name Name of the object to read
+#' @param ref Reference to read from (e.g., "@latest", "@tag", "v1.0"). Defaults to "@latest"
+#' @param when Deprecated. Use ref parameter instead. If provided, "latest" or "first"
+#' @param project Project name
 #' @export
-ol_read_object <- function(name, when = c("latest", "first"), project = getOption("ol.project")) {
-  when <- match.arg(when)
+ol_read_object <- function(name, ref = "@latest", when = NULL, project = getOption("ol.project")) {
+  .ol_validate_name(name, "object name")
   project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
   state <- .ol_get_iceberg_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
   ident <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
-  order_dir <- if (identical(when, "latest")) "DESC" else "ASC"
-  sql <- sprintf(
-    "SELECT name, version_ts, mime, bytes FROM %s WHERE name = %s ORDER BY version_ts %s LIMIT 1",
-    ident,
-    DBI::dbQuoteString(conn, name),
-    order_dir
-  )
+  
+  if (!is.null(when)) {
+    when <- match.arg(when, c("latest", "first"))
+    ref <- if (identical(when, "latest")) "@latest" else "@first"
+  }
+  
+  parsed <- .ol_ref_parse(ref)
+  
+  version_ts_filter <- NULL
+  if (identical(parsed$type, "latest")) {
+    order_dir <- "DESC"
+  } else if (identical(ref, "@first")) {
+    order_dir <- "ASC"
+  } else if (identical(parsed$type, "tag")) {
+    .ol_ensure_refs_table(state)
+    ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+    ref_name <- paste0("__object__", name)
+    query <- sprintf(
+      "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",
+      ident_refs,
+      DBI::dbQuoteString(conn, ref_name),
+      DBI::dbQuoteString(conn, parsed$value)
+    )
+    res <- DBI::dbGetQuery(conn, query)
+    if (!nrow(res)) stop("Tag not found for object '", name, "': ", parsed$value, call. = FALSE)
+    version_ts_filter <- res$snapshot[[1]]
+  } else {
+    stop("Unsupported reference type for objects: ", parsed$type, call. = FALSE)
+  }
+  
+  if (is.null(version_ts_filter)) {
+    sql <- sprintf(
+      "SELECT name, version_ts, mime, bytes FROM %s WHERE name = %s ORDER BY version_ts %s LIMIT 1",
+      ident,
+      DBI::dbQuoteString(conn, name),
+      order_dir
+    )
+  } else {
+    sql <- sprintf(
+      "SELECT name, version_ts, mime, bytes FROM %s WHERE name = %s AND version_ts = %s LIMIT 1",
+      ident,
+      DBI::dbQuoteString(conn, name),
+      DBI::dbQuoteString(conn, version_ts_filter)
+    )
+  }
+  
   res <- DBI::dbGetQuery(conn, sql)
   if (!nrow(res)) stop("Object not found: ", name, call. = FALSE)
   payload <- res$bytes[[1]]

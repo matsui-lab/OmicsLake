@@ -48,5 +48,17 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) 
     })
   }
   
+  objects <- tryCatch({
+    ol_list_objects(project = project)
+  }, error = function(e) data.frame(name = character(0)))
+  
+  for (obj_name in objects$name) {
+    tryCatch({
+      ol_tag_object(obj_name, label, when = "latest", project = project)
+    }, error = function(e) {
+      warning("Failed to tag object '", obj_name, "': ", conditionMessage(e), call. = FALSE)
+    })
+  }
+  
   invisible(TRUE)
 }
