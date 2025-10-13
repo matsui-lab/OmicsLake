@@ -128,6 +128,157 @@ if (requireNamespace("dplyr", quietly = TRUE)) {
 ```
 
 **注意**: テーブル名は `ol.` プレフィックスなしで参照できます（例: `genes` でOK、`ol.genes` も使用可能）。
+## 1.4 集計・ウィンドウ関数による高度な分析
+
+フェーズ2の関数を使用すると、一般的な集計やウィンドウ関数の操作がより簡単になります。これらの関数は、DuckDBの高度な分析機能を活用して、遺伝子発現データの統計処理を効率化します。
+
+### 遺伝子発現統計の計算
+
+```{r aggregate_stats}
+# サンプル全体の統計
+overall_stats <- ol_aggregate("raw_counts",
+  mean_sample1 = list(func = "avg", col = "sample1"),
+  median_sample1 = list(func = "median", col = "sample1"),
+  sd_sample1 = list(func = "stddev", col = "sample1")
+)
+print(overall_stats)
+
+# グループごとの統計（例：サンプル1が高発現 vs 低発現）
+# まず高発現/低発現のカテゴリを追加
+ol_query("
+  CREATE OR REPLACE TABLE raw_counts_categorized AS
+  SELECT *, 
+    CASE WHEN sample1 > 100 THEN 'high' ELSE 'low' END as expr_category
+  FROM raw_counts
+")
+
+grouped_stats <- ol_aggregate("raw_counts_categorized",
+  group_by = "expr_category",
+  count = list(func = "count", col = "*"),
+  mean_s1 = list(func = "avg", col = "sample1"),
+  mean_s2 = list(func = "avg", col = "sample2")
+)
+print(grouped_stats)
+```
+
+### 遺伝子のランキング
+
+```{r ranking}
+# 発現量で遺伝子をランク付け
+ranked_genes <- ol_add_rank("raw_counts",
+  rank_by = "sample1",
+  method = "row_number",
+  descending = TRUE,
+  as_column = "expression_rank"
+)
+head(ranked_genes)
+
+# トップ10遺伝子を取得
+top_genes <- ol_top_n("raw_counts",
+  n = 10,
+  order_by = "sample1",
+  descending = TRUE
+)
+print(top_genes)
+
+# サンプルごとのトップ5遺伝子
+# まずデータを縦型に変換
+ol_query("
+  CREATE OR REPLACE TABLE raw_counts_long AS
+  SELECT gene_id, 'sample1' as sample, sample1 as expression FROM raw_counts
+  UNION ALL
+  SELECT gene_id, 'sample2' as sample, sample2 as expression FROM raw_counts
+  UNION ALL
+  SELECT gene_id, 'sample3' as sample, sample3 as expression FROM raw_counts
+  UNION ALL
+  SELECT gene_id, 'sample4' as sample, sample4 as expression FROM raw_counts
+")
+
+top_per_sample <- ol_top_n("raw_counts_long",
+  n = 5,
+  order_by = "expression",
+  partition_by = "sample",
+  descending = TRUE
+)
+print(top_per_sample)
+```
+
+### 移動平均と累積和
+
+```{r moving_cumulative}
+# 移動平均（スムージング）
+# 遺伝子IDでソートして3遺伝子の移動平均を計算
+smoothed <- ol_moving_avg("raw_counts",
+  column = "sample1",
+  window_size = 3,
+  order_by = "gene_id",
+  as_column = "sample1_smoothed"
+)
+head(smoothed, 10)
+
+# より大きなウィンドウサイズ
+smoothed_5 <- ol_moving_avg("raw_counts",
+  column = "sample1",
+  window_size = 5,
+  order_by = "gene_id",
+  as_column = "sample1_ma5"
+)
+head(smoothed_5, 10)
+
+# 累積和（遺伝子IDでソートして累積カウント）
+cumulative <- ol_cumulative_sum("raw_counts",
+  column = "sample1",
+  order_by = "gene_id",
+  as_column = "sample1_cumsum"
+)
+head(cumulative, 10)
+tail(cumulative)
+
+# サンプルごとの累積和（縦型データを使用）
+cumulative_per_sample <- ol_cumulative_sum("raw_counts_long",
+  column = "expression",
+  partition_by = "sample",
+  order_by = "gene_id",
+  as_column = "cumulative_expr"
+)
+head(cumulative_per_sample, 20)
+```
+
+### 遅延評価との組み合わせ
+
+```{r lazy_aggregation}
+# 集計関数も遅延評価をサポート
+if (requireNamespace("dplyr", quietly = TRUE)) {
+  # 遅延評価で統計を計算
+  lazy_stats <- ol_aggregate("raw_counts",
+    mean_s1 = list(func = "avg", col = "sample1"),
+    collect = FALSE
+  )
+  
+  # さらにdplyrで処理
+  result <- lazy_stats %>%
+    dplyr::collect()
+  print(result)
+  
+  # ランキングと組み合わせ
+  lazy_ranked <- ol_add_rank("raw_counts",
+    rank_by = "sample1",
+    as_column = "rank",
+    collect = FALSE
+  )
+  
+  top_ranked <- lazy_ranked %>%
+    dplyr::filter(rank <= 10) %>%
+    dplyr::select(gene_id, sample1, rank) %>%
+    dplyr::arrange(rank) %>%
+    dplyr::collect()
+  print(top_ranked)
+}
+```
+
+これらの関数を使用することで、複雑なSQLを書かずに一般的な分析パターンを簡単に実行できます。
+
+
 
 ## 1.4 Rオブジェクトの保存と読み込み
 
