@@ -359,6 +359,79 @@ print(lineage)
 - `ol_get_dependencies()`: 直接の依存関係をdata.frameで返します
 - `ol_show_lineage()`: 再帰的に全ての祖先/子孫を探索し、完全な系統樹を返します
 
+## 2.3 Parquet ファイルのインポート・エクスポート
+
+OmicsLakeは、DuckDBの高性能Parquetサポートを活用して、テーブルを効率的にParquetファイルにエクスポートしたり、Parquetファイルからインポートしたりできます。
+
+### Parquetエクスポート
+
+```{r parquet_export, eval=FALSE}
+# 基本的なエクスポート（デフォルトはSnappy圧縮）
+ol_export_parquet("genes", "genes.parquet")
+
+# zstd圧縮でエクスポート（高圧縮率）
+ol_export_parquet("genes", "genes_zstd.parquet", 
+                 compression = "zstd",
+                 compression_level = 3)
+
+# 行グループサイズを指定してエクスポート
+ol_export_parquet("genes", "genes_optimized.parquet",
+                 compression = "zstd",
+                 row_group_size = 50000)
+
+# 圧縮なしでエクスポート（最速）
+ol_export_parquet("genes", "genes_uncompressed.parquet",
+                 compression = "uncompressed")
+```
+
+### Parquetインポート
+
+```{r parquet_import, eval=FALSE}
+# Parquetファイルからテーブルを作成
+ol_import_parquet("genes.parquet", "imported_genes", mode = "create")
+
+# 既存のテーブルを上書き
+ol_import_parquet("genes_new.parquet", "genes", mode = "overwrite")
+
+# 既存のテーブルにデータを追加
+ol_import_parquet("genes_batch2.parquet", "genes", mode = "append")
+
+# 複数のParquetファイルを一度にインポート
+ol_import_parquet(c("genes_part1.parquet", "genes_part2.parquet"),
+                 "all_genes",
+                 mode = "create")
+
+# 依存関係を記録してインポート
+ol_import_parquet("processed_genes.parquet",
+                 "final_genes",
+                 depends_on = "raw_genes",
+                 mode = "create")
+```
+
+### パフォーマンスのヒント
+
+**圧縮アルゴリズムの選択:**
+- `snappy`: バランスが良く、デフォルト推奨
+- `zstd`: 最高の圧縮率、読み書き速度も良好
+- `lz4`: 最速の圧縮・解凍
+- `brotli`: 最高の圧縮率だが遅い
+- `uncompressed`: 圧縮なし、最速だがファイルサイズ大
+
+**行グループサイズ:**
+- 小さい値(10,000-50,000): メモリ効率が良い、フィルタリングに有利
+- 大きい値(100,000-500,000): 圧縮率が高い、スキャン性能に有利
+- デフォルト(100,000): バランスが良い
+
+```{r parquet_performance, eval=FALSE}
+# 大規模データセットの最適化例
+ol_export_parquet("large_dataset",
+                 "large_dataset.parquet",
+                 compression = "zstd",
+                 compression_level = 1,  # 最速のzstd
+                 row_group_size = 250000)
+```
+
+
 # 3. バージョン管理
 
 ## 3.1 タグ付けとラベル付け
