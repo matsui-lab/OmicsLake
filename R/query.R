@@ -40,7 +40,7 @@ ol_query <- function(sql, project = getOption("ol.project"), collect = TRUE, par
   }
   
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   DBI::dbExecute(conn, sprintf("SET search_path TO %s", state$namespace))

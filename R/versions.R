@@ -19,12 +19,12 @@
 #' }
 ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   .ol_validate_name(name, "object name")
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
   
-  ident_objects <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  ident_objects <- .ol_sql_ident(conn, state, "__ol_objects")
   query <- sprintf(
     "SELECT version_ts, OCTET_LENGTH(bytes) as size_bytes FROM %s WHERE name = %s ORDER BY version_ts DESC",
     ident_objects,
@@ -43,7 +43,7 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   }
   
   .ol_ensure_refs_table(state)
-  ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
   ref_name <- paste0("__object__", name)
   
   tags_query <- sprintf(
@@ -60,7 +60,7 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   })
   
   .ol_ensure_dependencies_table(state)
-  ident_deps <- .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+  ident_deps <- .ol_sql_ident(conn, state, "__ol_dependencies")
   
   deps_query <- sprintf(
     "SELECT parent_name, created_at FROM %s WHERE child_name = %s ORDER BY created_at",
@@ -127,7 +127,7 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
 #' }
 ol_compare_versions <- function(name, versions = NULL, project = getOption("ol.project")) {
   .ol_validate_name(name, "object name")
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   
   all_versions <- ol_list_object_versions(name, project = project)
   
@@ -136,13 +136,13 @@ ol_compare_versions <- function(name, versions = NULL, project = getOption("ol.p
   }
   
   if (!is.null(versions)) {
-    state <- .ol_get_iceberg_state(project)
+    state <- .ol_get_backend_state(project)
     .ol_ensure_refs_table(state)
     conn <- state$conn
     
     version_ts_list <- lapply(versions, function(v) {
       if (is.character(v) && !grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}", v)) {
-        ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+        ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
         ref_name <- paste0("__object__", name)
         query <- sprintf(
           "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s",

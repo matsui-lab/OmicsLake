@@ -129,7 +129,7 @@ test_that("ol_show_lineage handles cyclic dependencies gracefully", {
   ol_save("A", list(x = 1))
   ol_save("B", list(x = 2), depends_on = "A")
   
-  state <- OmicsLake:::.ol_get_iceberg_state("test_cycle")
+  state <- OmicsLake:::.ol_get_backend_state("test_cycle")
   OmicsLake:::.ol_record_dependency(state, "A", "object", "B", "object")
   
   lineage_up <- ol_show_lineage("A", direction = "upstream", max_depth = 5)

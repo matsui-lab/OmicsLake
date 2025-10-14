@@ -1,33 +1,33 @@
-# Internal registry for Iceberg-backed projects
-.ol_iceberg_registry <- new.env(parent = emptyenv())
+# Internal registry for backend projects
+.ol_backend_registry <- new.env(parent = emptyenv())
 
-.ol_iceberg_key <- function(project) {
-  .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+.ol_backend_key <- function(project) {
+  .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
 }
 
-.ol_get_iceberg_state <- function(project) {
-  key <- .ol_iceberg_key(project)
-  state <- .ol_iceberg_registry[[key]]
-  if (is.null(state)) stop("Iceberg backend not initialized for project: ", project, call. = FALSE)
+.ol_get_backend_state <- function(project) {
+  key <- .ol_backend_key(project)
+  state <- .ol_backend_registry[[key]]
+  if (is.null(state)) stop("Backend not initialized for project: ", project, call. = FALSE)
   state
 }
 
-.ol_store_iceberg_state <- function(project, state) {
-  assign(.ol_iceberg_key(project), state, envir = .ol_iceberg_registry)
+.ol_store_backend_state <- function(project, state) {
+  assign(.ol_backend_key(project), state, envir = .ol_backend_registry)
   invisible(state)
 }
 
-.ol_disconnect_iceberg <- function(project) {
-  key <- .ol_iceberg_key(project)
-  state <- .ol_iceberg_registry[[key]]
+.ol_disconnect_backend <- function(project) {
+  key <- .ol_backend_key(project)
+  state <- .ol_backend_registry[[key]]
   if (!is.null(state) && inherits(state$conn, "duckdb_connection")) {
     try(DBI::dbDisconnect(state$conn, shutdown = FALSE), silent = TRUE)
   }
-  rm(list = key, envir = .ol_iceberg_registry)
+  rm(list = key, envir = .ol_backend_registry)
   invisible(TRUE)
 }
 
-.ol_iceberg_schema_sql <- function(conn, state) {
+.ol_schema_sql <- function(conn, state) {
   if (nzchar(state$catalog_name)) {
     paste(DBI::dbQuoteIdentifier(conn, c(state$catalog_name, state$namespace)), collapse = ".")
   } else {
@@ -35,11 +35,11 @@
   }
 }
 
-.ol_iceberg_sql_ident <- function(conn, state, name) {
-  paste0(.ol_iceberg_schema_sql(conn, state), ".", DBI::dbQuoteIdentifier(conn, name))
+.ol_sql_ident <- function(conn, state, name) {
+  paste0(.ol_schema_sql(conn, state), ".", DBI::dbQuoteIdentifier(conn, name))
 }
 
-.ol_iceberg_qualified_name <- function(state, name) {
+.ol_qualified_name <- function(state, name) {
   if (nzchar(state$catalog_name)) {
     paste(state$catalog_name, state$namespace, name, sep = ".")
   } else {
@@ -51,7 +51,7 @@
   conn <- state$conn
   sql <- sprintf(
     "CREATE TABLE IF NOT EXISTS %s (table_name TEXT, tag TEXT, snapshot TEXT, as_of TIMESTAMP)",
-    .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+    .ol_sql_ident(conn, state, "__ol_refs")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
@@ -63,7 +63,7 @@
   conn <- state$conn
   sql <- sprintf(
     "CREATE TABLE IF NOT EXISTS %s (name TEXT, version_ts TIMESTAMP, mime TEXT, bytes BLOB)",
-    .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+    .ol_sql_ident(conn, state, "__ol_objects")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
@@ -75,7 +75,7 @@
   conn <- state$conn
   sql <- sprintf(
     "CREATE TABLE IF NOT EXISTS %s (commit_id TEXT, note TEXT, params_json TEXT, created_at TIMESTAMP)",
-    .ol_iceberg_sql_ident(conn, state, "__ol_commits")
+    .ol_sql_ident(conn, state, "__ol_commits")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
@@ -87,7 +87,7 @@
   conn <- state$conn
   sql <- sprintf(
     "CREATE TABLE IF NOT EXISTS %s (child_name TEXT, child_type TEXT, parent_name TEXT, parent_type TEXT, relationship_type TEXT, created_at TIMESTAMP)",
-    .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+    .ol_sql_ident(conn, state, "__ol_dependencies")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
@@ -134,7 +134,7 @@
 .ol_is_object <- function(state, name) {
   .ol_ensure_objects_table(state)
   conn <- state$conn
-  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  ident <- .ol_sql_ident(conn, state, "__ol_objects")
   query <- sprintf("SELECT COUNT(*) as cnt FROM %s WHERE name = %s", ident, DBI::dbQuoteString(conn, name))
   res <- DBI::dbGetQuery(conn, query)
   res$cnt[1] > 0
@@ -142,11 +142,10 @@
 
 
 
-#' Initialize DuckDB + Iceberg backend
-#' @export
-ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespace = "ol", object_mode = c("blobs", "external"), object_root = NULL) {
+#' Initialize DuckDB backend (internal)
+.ol_init_backend <- function(project, engine = "duckdb", catalog = NULL, namespace = "ol", object_mode = c("blobs", "external"), object_root = NULL) {
   object_mode <- match.arg(object_mode)
-  if (!identical(engine, "duckdb")) stop("Unsupported Iceberg engine: ", engine, call. = FALSE)
+  if (!identical(engine, "duckdb")) stop("Unsupported engine: ", engine, call. = FALSE)
   .ol_require(c("DBI", "duckdb", "arrow"))
   project <- .ol_assert_project(project, "project must be specified")
   if (!is.null(object_root)) object_root <- .ol_norm(object_root)
@@ -175,7 +174,7 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
     object_mode = object_mode,
     object_root = if (identical(object_mode, "external")) object_root else NULL
   )
-  .ol_store_iceberg_state(project, state)
+  .ol_store_backend_state(project, state)
   options(ol.project = project)
   invisible(state)
 }
@@ -205,7 +204,7 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
   if (identical(parsed$type, "tag")) {
     .ol_ensure_refs_table(state)
     conn <- state$conn
-    ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+    ident <- .ol_sql_ident(conn, state, "__ol_refs")
     sql <- sprintf(
       "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",
       ident,
@@ -222,10 +221,10 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
 .ol_get_table_sql <- function(state, name, resolved) {
   conn <- state$conn
   if (is.null(resolved$backup_table)) {
-    ident <- .ol_iceberg_sql_ident(conn, state, name)
+    ident <- .ol_sql_ident(conn, state, name)
     sprintf("SELECT * FROM %s", ident)
   } else {
-    backup_ident <- .ol_iceberg_sql_ident(conn, state, resolved$backup_table)
+    backup_ident <- .ol_sql_ident(conn, state, resolved$backup_table)
     sprintf("SELECT * FROM %s", backup_ident)
   }
 }
@@ -233,15 +232,15 @@ ol_init_iceberg <- function(project, engine = "duckdb", catalog = NULL, namespac
 #' Tag a table by creating a backup
 #' @export
 ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   if (missing(name) || !nzchar(name)) stop("name must be provided", call. = FALSE)
   if (missing(tag) || !nzchar(tag)) stop("tag must be provided", call. = FALSE)
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   backup_table <- .ol_get_backup_table_name(name, tag)
-  source_ident <- .ol_iceberg_sql_ident(conn, state, name)
-  backup_ident <- .ol_iceberg_sql_ident(conn, state, backup_table)
+  source_ident <- .ol_sql_ident(conn, state, name)
+  backup_ident <- .ol_sql_ident(conn, state, backup_table)
   
   create_backup_sql <- sprintf(
     "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
@@ -253,7 +252,7 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   })
   
   .ol_ensure_refs_table(state)
-  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ident <- .ol_sql_ident(conn, state, "__ol_refs")
   delete_sql <- sprintf(
     "DELETE FROM %s WHERE table_name = %s AND tag = %s",
     ident,
@@ -281,12 +280,12 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
 ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project")) {
   .ol_validate_name(name, "object name")
   .ol_validate_name(tag, "tag")
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
   
-  ident_objects <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  ident_objects <- .ol_sql_ident(conn, state, "__ol_objects")
   if (is.character(when) && when %in% c("latest", "first")) {
     order_dir <- if (identical(when, "latest")) "DESC" else "ASC"
     query <- sprintf(
@@ -303,7 +302,7 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
   }
   
   .ol_ensure_refs_table(state)
-  ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
   ref_name <- paste0("__object__", name)
   
   delete_sql <- sprintf(
@@ -333,12 +332,12 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
 #' @return Invisible TRUE on success, FALSE if no tables found
 #' @export
 ol_checkout <- function(label, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- .ol_get_backend_state(project)
   .ol_ensure_refs_table(state)
   conn <- state$conn
   
-  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ident <- .ol_sql_ident(conn, state, "__ol_refs")
   query <- sprintf(
     "SELECT table_name, snapshot FROM %s WHERE tag = %s AND table_name != %s",
     ident,
@@ -381,11 +380,11 @@ ol_checkout <- function(label, project = getOption("ol.project")) {
 #' @export
 ol_read_object <- function(name, ref = "@latest", when = NULL, project = getOption("ol.project")) {
   .ol_validate_name(name, "object name")
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
-  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_objects")
+  ident <- .ol_sql_ident(conn, state, "__ol_objects")
   
   if (!is.null(when)) {
     when <- match.arg(when, c("latest", "first"))
@@ -401,7 +400,7 @@ ol_read_object <- function(name, ref = "@latest", when = NULL, project = getOpti
     order_dir <- "ASC"
   } else if (identical(parsed$type, "tag")) {
     .ol_ensure_refs_table(state)
-    ident_refs <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+    ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
     ref_name <- paste0("__object__", name)
     query <- sprintf(
       "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",

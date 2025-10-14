@@ -42,12 +42,12 @@ ol_create_view <- function(name, sql,
   }
   
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   DBI::dbExecute(conn, sprintf("SET search_path TO %s", state$namespace))
   
-  view_ident <- .ol_iceberg_sql_ident(conn, state, name)
+  view_ident <- .ol_sql_ident(conn, state, name)
   
   create_sql <- if (isTRUE(replace)) {
     sprintf("CREATE OR REPLACE VIEW %s AS %s", view_ident, sql)
@@ -64,7 +64,7 @@ ol_create_view <- function(name, sql,
   
   .ol_record_dependencies(state, name, "view", depends_on)
   
-  invisible(.ol_iceberg_qualified_name(state, name))
+  invisible(.ol_qualified_name(state, name))
 }
 
 #' Drop a database view
@@ -89,10 +89,10 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
   .ol_validate_name(name, "view name")
   
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
-  view_ident <- .ol_iceberg_sql_ident(conn, state, name)
+  view_ident <- .ol_sql_ident(conn, state, name)
   
   drop_sql <- sprintf("DROP VIEW IF EXISTS %s", view_ident)
   
@@ -104,7 +104,7 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
   })
   
   .ol_ensure_dependencies_table(state)
-  ident_deps <- .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+  ident_deps <- .ol_sql_ident(conn, state, "__ol_dependencies")
   
   delete_sql <- sprintf(
     "DELETE FROM %s WHERE child_name = %s AND child_type = 'view'",
@@ -140,7 +140,7 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
 #' }
 ol_list_views <- function(project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   views_query <- sprintf(
@@ -172,7 +172,7 @@ ol_list_views <- function(project = getOption("ol.project")) {
   }
   
   .ol_ensure_dependencies_table(state)
-  ident_deps <- .ol_iceberg_sql_ident(conn, state, "__ol_dependencies")
+  ident_deps <- .ol_sql_ident(conn, state, "__ol_dependencies")
   
   views$dependencies <- sapply(views$view_name, function(vname) {
     deps_query <- sprintf(

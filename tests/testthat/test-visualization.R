@@ -169,7 +169,7 @@ test_that("ol_plot_lineage handles cyclic dependencies", {
   ol_save("A", list(x = 1))
   ol_save("B", list(x = 2), depends_on = "A")
   
-  state <- OmicsLake:::.ol_get_iceberg_state("test_viz_cycle")
+  state <- OmicsLake:::.ol_get_backend_state("test_viz_cycle")
   OmicsLake:::.ol_record_dependency(state, "A", "object", "B", "object")
   
   pdf(NULL)

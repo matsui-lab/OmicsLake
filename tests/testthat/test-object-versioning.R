@@ -15,7 +15,7 @@ test_that("ol_tag_object creates references correctly", {
   ol_tag_object("my_obj", "v2", when = "first")
   ol_tag_object("my_obj", "latest", when = "latest")
   
-  state <- OmicsLake:::.ol_get_iceberg_state("test_obj_tag")
+  state <- OmicsLake:::.ol_get_backend_state("test_obj_tag")
   refs <- DBI::dbGetQuery(state$conn, "SELECT * FROM ol.__ol_refs WHERE table_name LIKE '__object__%'")
   
   expect_true(nrow(refs) >= 2)
@@ -56,7 +56,7 @@ test_that("ol_label tags both tables and objects", {
   
   ol_label("baseline")
   
-  state <- OmicsLake:::.ol_get_iceberg_state("test_label_all")
+  state <- OmicsLake:::.ol_get_backend_state("test_label_all")
   refs <- DBI::dbGetQuery(state$conn, "SELECT * FROM ol.__ol_refs WHERE tag = 'baseline'")
   
   expect_true("test_table" %in% refs$table_name)

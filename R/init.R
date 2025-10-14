@@ -3,7 +3,7 @@
 ol_init <- function(project, root = NULL, ...) {
   if (is.null(project) || !nzchar(project)) stop("project must be a non-empty string", call. = FALSE)
   if (!is.null(root)) options(ol.root = .ol_norm(root))
-  ol_init_iceberg(project = project, ...)
+  .ol_init_backend(project = project, ...)
   invisible(.ol_norm(.ol_proj_root(project)))
 }
 
@@ -11,13 +11,13 @@ ol_init <- function(project, root = NULL, ...) {
 #' @export
 ol_label <- function(label, state_id = NULL, project = getOption("ol.project")) {
   .ol_validate_name(label, "label")
-  project <- .ol_assert_project(project, "Call ol_init_iceberg() first or set options(ol.project=...).")
-  state <- try(.ol_get_iceberg_state(project), silent = TRUE)
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- try(.ol_get_backend_state(project), silent = TRUE)
   if (inherits(state, "try-error")) return(invisible(TRUE))
   .ol_ensure_refs_table(state)
   conn <- state$conn
   
-  ident <- .ol_iceberg_sql_ident(conn, state, "__ol_refs")
+  ident <- .ol_sql_ident(conn, state, "__ol_refs")
   delete_sql <- sprintf(
     "DELETE FROM %s WHERE table_name = %s AND tag = %s",
     ident,
