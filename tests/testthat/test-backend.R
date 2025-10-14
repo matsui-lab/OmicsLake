@@ -5,11 +5,11 @@ test_that(".ol_init_backend initializes DuckDB backend", {
   
   options(ol.root = tmpdir)
   
-  state <- .ol_init_backend("test_iceberg_project")
+  state <- .ol_init_backend("test_backend_project")
   expect_type(state, "list")
   expect_true("conn" %in% names(state))
   expect_true("catalog_name" %in% names(state))
-  expect_equal(state$project, "test_iceberg_project")
+  expect_equal(state$project, "test_backend_project")
 })
 
 test_that(".ol_init_backend errors on unsupported engine", {

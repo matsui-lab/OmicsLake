@@ -113,7 +113,7 @@
 }
 
 #' Record multiple dependencies for a child entity
-#' @param state Iceberg state object
+#' @param state Backend state object
 #' @param child_name Name of the child entity
 #' @param child_type Type of child entity ("table", "object", "view")
 #' @param depends_on Character vector of parent names
@@ -151,7 +151,7 @@
   if (!is.null(object_root)) object_root <- .ol_norm(object_root)
   pr <- .ol_proj_root(project)
   dir.create(pr, recursive = TRUE, showWarnings = FALSE)
-  if (is.null(catalog)) catalog <- file.path(pr, "iceberg")
+  if (is.null(catalog)) catalog <- file.path(pr, "catalog")
   catalog <- .ol_norm(catalog)
   dir.create(catalog, recursive = TRUE, showWarnings = FALSE)
   if (identical(object_mode, "external")) {
@@ -196,7 +196,7 @@
   paste0("__ol_backup_", gsub("[^a-zA-Z0-9_]", "_", table_name), "_", gsub("[^a-zA-Z0-9_]", "_", tag))
 }
 
-.ol_iceberg_resolve_reference <- function(state, name, ref) {
+.ol_resolve_reference <- function(state, name, ref) {
   parsed <- .ol_ref_parse(ref)
   if (identical(parsed$type, "latest")) {
     return(list(backup_table = NULL))
@@ -356,8 +356,8 @@ ol_checkout <- function(label, project = getOption("ol.project")) {
     backup_table <- ref_entries$snapshot[[i]]
     
     tryCatch({
-      backup_ident <- .ol_iceberg_sql_ident(conn, state, backup_table)
-      target_ident <- .ol_iceberg_sql_ident(conn, state, tbl)
+      backup_ident <- .ol_sql_ident(conn, state, backup_table)
+      target_ident <- .ol_sql_ident(conn, state, tbl)
       restore_sql <- sprintf(
         "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
         target_ident,

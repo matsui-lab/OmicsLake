@@ -1,4 +1,4 @@
-#' Write a table using the Iceberg backend
+#' Write a table using the DuckDB backend
 #' @param depends_on Optional character vector of table/object names that this table depends on
 #' @export
 ol_write <- function(name, data, project = getOption("ol.project"), mode = c("create", "overwrite", "append"), depends_on = NULL) {
@@ -28,7 +28,7 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
   invisible(.ol_qualified_name(state, name))
 }
 
-#' Save an R object via the Iceberg metadata table
+#' Save an R object via the backend metadata table
 #' @param depends_on Optional character vector of table/object names that this object depends on
 #' @export
 ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL, depends_on = NULL) {
