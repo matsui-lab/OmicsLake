@@ -151,12 +151,7 @@ ol_import_parquet <- function(path, name,
   
   DBI::dbExecute(conn, sql)
   
-  if (!is.null(depends_on) && length(depends_on) > 0) {
-    for (parent in depends_on) {
-      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
-      .ol_record_dependency(state, name, "table", parent, parent_type)
-    }
-  }
+  .ol_record_dependencies(state, name, "table", depends_on)
   
   invisible(.ol_iceberg_qualified_name(state, name))
 }
