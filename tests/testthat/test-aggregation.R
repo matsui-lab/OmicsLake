@@ -25,6 +25,7 @@ test_that("ol_aggregate works with GROUP BY", {
     sample = rep(c("A", "B"), each = 50),
     expression = c(rnorm(50, 40, 5), rnorm(50, 60, 5))
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_aggregate("data",
@@ -46,6 +47,7 @@ test_that("ol_aggregate supports multiple aggregate functions", {
     category = rep(c("X", "Y"), each = 20),
     value = c(1:20, 21:40)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_aggregate("data",
@@ -62,6 +64,7 @@ test_that("ol_aggregate supports multiple aggregate functions", {
 test_that("ol_aggregate validates input parameters", {
   ol_init("test_agg_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10))
   
   expect_error(
@@ -166,6 +169,7 @@ test_that("ol_add_rank supports ascending order", {
 test_that("ol_add_rank validates input parameters", {
   ol_init("test_rank_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10))
   
   expect_error(
@@ -191,6 +195,7 @@ test_that("ol_moving_avg calculates moving average", {
     time = 1:10,
     value = c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_moving_avg("data", "value", window_size = 3, order_by = "time")
@@ -207,6 +212,7 @@ test_that("ol_moving_avg works with different window sizes", {
     id = 1:20,
     value = rnorm(20, 50, 10)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result3 <- ol_moving_avg("data", "value", window_size = 3, order_by = "id")
@@ -226,6 +232,7 @@ test_that("ol_moving_avg works with partitioning", {
     time = rep(1:10, 2),
     value = rnorm(20, 50, 10)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_moving_avg("data", "value", 
@@ -240,6 +247,7 @@ test_that("ol_moving_avg works with partitioning", {
 test_that("ol_moving_avg validates input parameters", {
   ol_init("test_ma_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10, y = 1:10))
   
   expect_error(
@@ -265,6 +273,7 @@ test_that("ol_cumulative_sum calculates cumulative sum", {
     time = 1:10,
     value = rep(10, 10)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_cumulative_sum("data", "value", order_by = "time")
@@ -283,6 +292,7 @@ test_that("ol_cumulative_sum works with partitioning", {
     time = rep(1:5, 2),
     value = rep(1, 10)
   )
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", test_data)
   
   result <- ol_cumulative_sum("data", "value",
@@ -301,6 +311,7 @@ test_that("ol_cumulative_sum works with partitioning", {
 test_that("ol_cumulative_sum validates input parameters", {
   ol_init("test_cumsum_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10, y = 1:10))
   
   expect_error(
@@ -371,6 +382,7 @@ test_that("ol_top_n supports ascending order", {
 test_that("ol_top_n validates input parameters", {
   ol_init("test_topn_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10))
   
   expect_error(
