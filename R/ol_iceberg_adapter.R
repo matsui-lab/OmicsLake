@@ -129,7 +129,6 @@
   }
 }
 
-}
 .ol_is_object <- function(state, name) {
   .ol_ensure_objects_table(state)
   conn <- state$conn
