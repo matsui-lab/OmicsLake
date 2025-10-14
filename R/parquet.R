@@ -106,6 +106,10 @@ ol_import_parquet <- function(path, name,
     stop("path must be a non-empty character vector", call. = FALSE)
   }
   
+  if (any(nchar(path) == 0)) {
+    stop("path must be a non-empty character vector", call. = FALSE)
+  }
+  
   mode <- match.arg(mode)
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_iceberg_state(project)

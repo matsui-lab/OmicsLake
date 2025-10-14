@@ -189,7 +189,7 @@ test_that("ol_export_parquet validates input parameters", {
   
   expect_error(
     ol_export_parquet("", tempfile()),
-    "must be a non-empty character string"
+    "table/object name must be a non-empty string"
   )
 })
 
@@ -203,7 +203,7 @@ test_that("ol_import_parquet validates input parameters", {
   
   expect_error(
     ol_import_parquet(tempfile(), ""),
-    "must be a non-empty character string"
+    "table name must be a non-empty string"
   )
   
   expect_error(
