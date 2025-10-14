@@ -23,12 +23,7 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
   )
   DBI::dbExecute(conn, sql)
   
-  if (!is.null(depends_on) && length(depends_on) > 0) {
-    for (parent in depends_on) {
-      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
-      .ol_record_dependency(state, name, "table", parent, parent_type)
-    }
-  }
+  .ol_record_dependencies(state, name, "table", depends_on)
   
   invisible(.ol_iceberg_qualified_name(state, name))
 }
@@ -63,12 +58,7 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
   )
   DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_objects"), payload)
   
-  if (!is.null(depends_on) && length(depends_on) > 0) {
-    for (parent in depends_on) {
-      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
-      .ol_record_dependency(state, name, "object", parent, parent_type)
-    }
-  }
+  .ol_record_dependencies(state, name, "object", depends_on)
   
   invisible(TRUE)
 }

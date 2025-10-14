@@ -110,6 +110,25 @@
   )
   
   DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_dependencies"), dep_data)
+#' Record multiple dependencies for a child entity
+#' @param state Iceberg state object
+#' @param child_name Name of the child entity
+#' @param child_type Type of child entity ("table", "object", "view")
+#' @param depends_on Character vector of parent names
+#' @keywords internal
+.ol_record_dependencies <- function(state, child_name, child_type, depends_on) {
+  if (!is.null(depends_on) && length(depends_on) > 0) {
+    if (!is.character(depends_on)) {
+      stop("depends_on must be a character vector", call. = FALSE)
+    }
+    
+    for (parent in depends_on) {
+      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
+      .ol_record_dependency(state, child_name, child_type, parent, parent_type)
+    }
+  }
+}
+
 }
 .ol_is_object <- function(state, name) {
   .ol_ensure_objects_table(state)

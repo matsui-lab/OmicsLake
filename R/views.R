@@ -62,16 +62,7 @@ ol_create_view <- function(name, sql,
     stop("Failed to create view: ", msg, call. = FALSE)
   })
   
-  if (!is.null(depends_on) && length(depends_on) > 0) {
-    if (!is.character(depends_on)) {
-      stop("depends_on must be a character vector", call. = FALSE)
-    }
-    
-    for (parent in depends_on) {
-      parent_type <- if (.ol_is_object(state, parent)) "object" else "table"
-      .ol_record_dependency(state, name, "view", parent, parent_type)
-    }
-  }
+  .ol_record_dependencies(state, name, "view", depends_on)
   
   invisible(.ol_iceberg_qualified_name(state, name))
 }
