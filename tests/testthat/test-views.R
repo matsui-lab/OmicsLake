@@ -283,7 +283,7 @@ test_that("views can be queried with ol_query", {
 })
 
 test_that("views work with SQL queries", {
-  ol_init("test_view_query")
+  ol_init("test_view_sql")
   
   test_data <- data.frame(
     id = 1:100,
