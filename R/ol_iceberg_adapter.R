@@ -110,6 +110,8 @@
   )
   
   DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_dependencies"), dep_data)
+}
+
 #' Record multiple dependencies for a child entity
 #' @param state Iceberg state object
 #' @param child_name Name of the child entity
