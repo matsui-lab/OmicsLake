@@ -5,6 +5,7 @@ test_that("ol_aggregate calculates basic statistics", {
     gene_id = paste0("G", 1:100),
     expression = rnorm(100, mean = 50, sd = 10)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_aggregate("genes",
@@ -91,6 +92,7 @@ test_that("ol_add_rank adds ranking column", {
     gene_id = paste0("G", 1:10),
     expression = c(5, 15, 25, 35, 45, 55, 65, 75, 85, 95)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_add_rank("genes", rank_by = "expression", method = "row_number")
@@ -108,6 +110,7 @@ test_that("ol_add_rank supports different ranking methods", {
     gene_id = paste0("G", 1:10),
     expression = c(10, 20, 20, 30, 30, 30, 40, 50, 50, 60)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result_row <- ol_add_rank("genes", rank_by = "expression", method = "row_number", as_column = "rn")
@@ -127,6 +130,7 @@ test_that("ol_add_rank works with partitioning", {
     gene_id = paste0("G", 1:10),
     expression = c(10, 20, 30, 40, 50, 15, 25, 35, 45, 55)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_add_rank("genes", 
@@ -150,6 +154,7 @@ test_that("ol_add_rank supports ascending order", {
     gene_id = paste0("G", 1:5),
     expression = c(50, 40, 30, 20, 10)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_add_rank("genes", rank_by = "expression", descending = FALSE)
@@ -316,6 +321,7 @@ test_that("ol_top_n returns top N rows", {
     gene_id = paste0("G", 1:100),
     expression = rnorm(100, 50, 10)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_top_n("genes", n = 10, order_by = "expression")
@@ -332,6 +338,7 @@ test_that("ol_top_n works with partitioning", {
     gene_id = paste0("G", 1:60),
     expression = rnorm(60, 50, 10)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_top_n("genes", n = 5, 
@@ -352,6 +359,7 @@ test_that("ol_top_n supports ascending order", {
     gene_id = paste0("G", 1:20),
     expression = 1:20
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   result <- ol_top_n("genes", n = 5, order_by = "expression", descending = FALSE)
@@ -392,6 +400,7 @@ test_that("all aggregation functions support lazy evaluation", {
     expression = rnorm(20, 50, 10),
     sample = rep(c("A", "B"), each = 10)
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   lazy_agg <- ol_aggregate("genes",
