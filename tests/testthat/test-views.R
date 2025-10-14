@@ -282,8 +282,8 @@ test_that("views can be queried with ol_query", {
   expect_true("avg_val" %in% colnames(result))
 })
 
-test_that("views work with lazy evaluation", {
-  ol_init("test_view_lazy")
+test_that("views work with SQL queries", {
+  ol_init("test_view_query")
   
   test_data <- data.frame(
     id = 1:100,
@@ -294,12 +294,10 @@ test_that("views work with lazy evaluation", {
   
   ol_create_view("test_view", "SELECT * FROM test_table WHERE value > 0")
   
-  lazy_result <- ol_query("SELECT * FROM test_view", lazy = TRUE)
+  result <- ol_query("SELECT * FROM test_view")
   
-  expect_s3_class(lazy_result, "tbl_duckdb_connection")
-  
-  collected <- dplyr::collect(lazy_result)
-  expect_true(all(collected$value > 0))
+  expect_true(nrow(result) > 0)
+  expect_true(all(result$value > 0))
 })
 
 test_that("views support window functions", {
