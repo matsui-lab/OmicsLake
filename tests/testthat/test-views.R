@@ -6,6 +6,7 @@ test_that("ol_create_view creates a basic view", {
     expression = rnorm(100, mean = 50, sd = 20),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", test_data)
   
   ol_create_view("high_expr", "SELECT * FROM genes WHERE expression > 50")
@@ -21,6 +22,7 @@ test_that("ol_create_view creates a basic view", {
 test_that("ol_create_view replaces existing view by default", {
   ol_init("test_view_replace")
   
+  tryCatch(ol_drop("genes"), error = function(e) NULL)
   ol_write("genes", data.frame(id = 1:10, value = 1:10))
   
   ol_create_view("my_view", "SELECT * FROM genes WHERE value > 5")
@@ -41,6 +43,7 @@ test_that("ol_create_view works with JOINs for version comparison", {
     expression = rnorm(50, mean = 100, sd = 20),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("genes_v1"), error = function(e) NULL)
   ol_write("genes_v1", genes_v1)
   
   genes_v2 <- data.frame(
@@ -48,6 +51,7 @@ test_that("ol_create_view works with JOINs for version comparison", {
     expression = genes_v1$expression + rnorm(50, mean = 10, sd = 5),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("genes_v2"), error = function(e) NULL)
   ol_write("genes_v2", genes_v2)
   
   ol_create_view("version_comparison",
@@ -77,6 +81,7 @@ test_that("ol_create_view works with aggregations", {
     expression = rnorm(50, mean = 100, sd = 20),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("expr_data"), error = function(e) NULL)
   ol_write("expr_data", test_data)
   
   ol_create_view("gene_summary",
@@ -101,7 +106,9 @@ test_that("ol_create_view works with aggregations", {
 test_that("ol_create_view tracks dependencies correctly", {
   ol_init("test_view_deps")
   
+  tryCatch(ol_drop("source1"), error = function(e) NULL)
   ol_write("source1", data.frame(id = 1:10, value = 1:10))
+  tryCatch(ol_drop("source2"), error = function(e) NULL)
   ol_write("source2", data.frame(id = 1:10, value = 11:20))
   
   ol_create_view("combined",
@@ -120,7 +127,9 @@ test_that("ol_create_view tracks dependencies correctly", {
 test_that("ol_list_views returns all views with their definitions", {
   ol_init("test_list_views")
   
+  tryCatch(ol_drop("data1"), error = function(e) NULL)
   ol_write("data1", data.frame(x = 1:10))
+  tryCatch(ol_drop("data2"), error = function(e) NULL)
   ol_write("data2", data.frame(x = 11:20))
   
   ol_create_view("view1", "SELECT * FROM data1 WHERE x > 5")
@@ -151,6 +160,7 @@ test_that("ol_list_views returns empty data frame when no views exist", {
 test_that("ol_drop_view removes a view", {
   ol_init("test_drop_view")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10))
   ol_create_view("my_view", "SELECT * FROM data WHERE x > 5")
   
@@ -167,6 +177,7 @@ test_that("ol_drop_view removes a view", {
 test_that("ol_drop_view removes view dependencies", {
   ol_init("test_drop_view_deps")
   
+  tryCatch(ol_drop("source"), error = function(e) NULL)
   ol_write("source", data.frame(x = 1:10))
   ol_create_view("my_view", "SELECT * FROM source", depends_on = "source")
   
@@ -182,6 +193,7 @@ test_that("ol_drop_view removes view dependencies", {
 test_that("ol_create_view validates input parameters", {
   ol_init("test_view_validation")
   
+  tryCatch(ol_drop("data"), error = function(e) NULL)
   ol_write("data", data.frame(x = 1:10))
   
   expect_error(
@@ -223,6 +235,7 @@ test_that("complete workflow: compare expression across conditions", {
     condition = "baseline",
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("baseline_expr"), error = function(e) NULL)
   ol_write("baseline_expr", baseline)
   
   treatment <- data.frame(
@@ -231,6 +244,7 @@ test_that("complete workflow: compare expression across conditions", {
     condition = "treatment",
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("treatment_expr"), error = function(e) NULL)
   ol_write("treatment_expr", treatment)
   
   ol_create_view("de_analysis",
@@ -270,6 +284,7 @@ test_that("views can be queried with ol_query", {
     category = sample(c("A", "B", "C"), 100, replace = TRUE),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("test_table"), error = function(e) NULL)
   ol_write("test_table", test_data)
   
   ol_create_view("filtered_view", "SELECT * FROM test_table WHERE value > 50")
@@ -290,6 +305,7 @@ test_that("views work with SQL queries", {
     value = rnorm(100),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("test_table"), error = function(e) NULL)
   ol_write("test_table", test_data)
   
   ol_create_view("test_view", "SELECT * FROM test_table WHERE value > 0")
@@ -308,6 +324,7 @@ test_that("views support window functions", {
     value = rnorm(100, mean = 100, sd = 20),
     stringsAsFactors = FALSE
   )
+  tryCatch(ol_drop("test_data"), error = function(e) NULL)
   ol_write("test_data", test_data)
   
   ol_create_view("ranked_view",
@@ -330,6 +347,7 @@ test_that("views support window functions", {
 test_that("multiple views can reference each other", {
   ol_init("test_view_chain")
   
+  tryCatch(ol_drop("base_data"), error = function(e) NULL)
   ol_write("base_data", data.frame(id = 1:100, value = rnorm(100)))
   
   ol_create_view("view1", "SELECT * FROM base_data WHERE value > 0")
