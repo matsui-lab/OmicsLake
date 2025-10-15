@@ -81,7 +81,7 @@ OmicsLake では書き込みのたびにスナップショットが作成され�
 snapshot_id <- ol_commit("counts import")
 ```
 
-ヒューマンリーダブルなラベルを付けたい場合は `ol_label()` を使います。内部でメタデータテーブルにタグ情報が保存されます。【F:R/init.R†L10-L65】0-L34】【F:R/backend.R†L142-L173】
+ヒューマンリーダブルなラベルを付けたい場合は `ol_label()` を使います。内部でメタデータテーブルにタグ情報が保存されます。【F:R/init.R†L10-L65】【F:R/backend.R†L50-L84】
 
 ```r
 ol_label("baseline")
