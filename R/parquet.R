@@ -27,16 +27,16 @@ ol_export_parquet <- function(name, path, ref = "@latest",
   
   compression <- match.arg(compression)
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   is_table <- tryCatch({
-    ident <- .ol_iceberg_sql_ident(conn, state, name)
+    ident <- .ol_sql_ident(conn, state, name)
     DBI::dbExistsTable(conn, DBI::Id(schema = state$namespace, table = name))
   }, error = function(e) FALSE)
   
   if (is_table) {
-    ident <- .ol_iceberg_sql_ident(conn, state, name)
+    ident <- .ol_sql_ident(conn, state, name)
     
     copy_sql <- sprintf("COPY %s TO %s (FORMAT parquet, COMPRESSION %s",
                        ident,
@@ -112,7 +112,7 @@ ol_import_parquet <- function(path, name,
   
   mode <- match.arg(mode)
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
-  state <- .ol_get_iceberg_state(project)
+  state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   read_opts <- list()
@@ -138,10 +138,10 @@ ol_import_parquet <- function(path, name,
   }
   read_expr <- paste0(read_expr, ")")
   
-  schema_sql <- .ol_iceberg_schema_sql(conn, state)
+  schema_sql <- .ol_schema_sql(conn, state)
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
   
-  ident <- .ol_iceberg_sql_ident(conn, state, name)
+  ident <- .ol_sql_ident(conn, state, name)
   
   sql <- switch(mode,
     create = sprintf("CREATE TABLE %s AS SELECT * FROM %s", ident, read_expr),
@@ -153,5 +153,5 @@ ol_import_parquet <- function(path, name,
   
   .ol_record_dependencies(state, name, "table", depends_on)
   
-  invisible(.ol_iceberg_qualified_name(state, name))
+  invisible(.ol_qualified_name(state, name))
 }
