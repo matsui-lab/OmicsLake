@@ -34,7 +34,7 @@ remotes::install_local("path/to/OmicsLake")
 
 ## 2. プロジェクトの初期化
 
-OmicsLake ではプロジェクトごとに DuckDB のカタログを管理します。`ol_init()` を実行すると、プロジェクト固有の作業ディレクトリと DuckDB データベースが作成され、以降の操作がそのプロジェクトに紐付きます。【F:R/init.R†L1-L8】
+OmicsLake ではプロジェクトごとに DuckDB のカタログを管理します。`ol_init()` を実行すると、プロジェクト固有の作業ディレクトリと DuckDB データベースが作成され、以降の操作がそのプロジェクトに紐付きます。
 
 ```r
 library(OmicsLake)
@@ -45,7 +45,7 @@ ol_init("atlas")
 
 内部的には DuckDB に接続し、カタログとスキーマを準備しています。【F:R/backend.R†L146-L180】
 
-> **ヒント:** プロジェクトのルートパスは `options(ol.root = "/path/to/root")` で変更できます。【F:R/utils.R†L1-L5】
+> **ヒント:** プロジェクトのルートパスは `options(ol.root = "/path/to/root")` で変更できます。
 
 ## 3. デモデータの生成
 
@@ -81,7 +81,7 @@ OmicsLake では書き込みのたびにスナップショットが作成され�
 snapshot_id <- ol_commit("counts import")
 ```
 
-ヒューマンリーダブルなラベルを付けたい場合は `ol_label()` を使います。内部でメタデータテーブルにタグ情報が保存されます。【F:R/init.R†L10-L65】【F:R/backend.R†L50-L84】
+ヒューマンリーダブルなラベルを付けたい場合は `ol_label()` を使います。内部でメタデータテーブルにタグ情報が保存されます。
 
 ```r
 ol_label("baseline")
@@ -95,16 +95,16 @@ ol_tag("counts", tag = "qc-passed", ref = snapshot_id)
 
 ## 6. テーブルの読み出し
 
-最新スナップショットを取得する場合は `ol_read()` を利用します。参照構文 (`@latest`, `@tag(name)`, `@version(timestamp)` など) を解釈し、該当するスナップショットの SQL を生成して結果を返します。【F:R/io.R†L96-L116】【F:R/backend.R†L199-L230】
+最新スナップショットを取得する場合は `ol_read()` を利用します。参照構文 (`@latest`, `@tag(name)`, `@version(timestamp)` など) を解釈し、該当するスナップショットの SQL を生成して結果を返します。
 
 ```r
 counts_latest <- ol_read("counts")                 # 最新
 counts_tagged <- ol_read("counts", ref = "@tag(qc-passed)")  # タグ経由
 ```
 
-`collect = FALSE` を指定すると DB 接続越しの `dplyr::tbl` として返るので、遅延評価でのクエリも可能です。【F:R/io.R†L70-L78】
+`collect = FALSE` を指定すると DB 接続越しの `dplyr::tbl` として返るので、遅延評価でのクエリも可能です。
 
-スナップショット履歴は `ol_log()` で確認できます。【F:R/io.R†L123-L144】
+スナップショット履歴は `ol_log()` で確認できます。
 
 ```r
 ol_log("counts")
@@ -112,7 +112,7 @@ ol_log("counts")
 
 ## 7. R オブジェクトの保存と読み込み
 
-テーブルではなく R オブジェクトを管理したい場合は `ol_save()` と `ol_read_object()` を利用します。既定ではデータベーステーブル内にシリアライズされたバイト列として保存されますが、外部ストレージモードの場合は RDS ファイルとして保存し、そのパスを記録します。【F:R/io.R†L31-L64】【F:R/backend.R†L381-L444】
+テーブルではなく R オブジェクトを管理したい場合は `ol_save()` と `ol_read_object()` を利用します。既定ではデータベーステーブル内にシリアライズされたバイト列として保存されますが、外部ストレージモードの場合は RDS ファイルとして保存し、そのパスを記録します。
 
 ```r
 metadata <- list(species = "human", build = "GRCh38")
@@ -120,7 +120,7 @@ ol_save("counts_metadata", metadata)
 restored <- ol_read_object("counts_metadata")
 ```
 
-保存済みオブジェクトの最初のバージョンを取得したい場合は `when = "first"` を指定します。【F:R/backend.R†L381-L444】
+保存済みオブジェクトの最初のバージョンを取得したい場合は `when = "first"` を指定します。
 
 ```r
 initial_copy <- ol_read_object("counts_metadata", when = "first")
@@ -138,7 +138,7 @@ ol_disconnect <- function(project = getOption("ol.project")) {
 ol_disconnect()
 ```
 
-`.ol_disconnect_backend()` は内部関数ですが、DuckDB 接続を安全にクローズしレジストリから状態を削除します。【F:R/backend.R†L20-L28】
+`.ol_disconnect_backend()` は内部関数ですが、DuckDB 接続を安全にクローズしレジストリから状態を削除します。
 
 ---
 

@@ -1,0 +1,421 @@
+---
+title: "OmicsLake Practical Workflow: Integrating Phase 1-4 Functions"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OmicsLake Practical Workflow: Integrating Phase 1-4 Functions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Introduction
+
+This vignette introduces a practical workflow that integrates the features implemented in Phases 1-4 of OmicsLake.  Using RNA-seq differential expression analysis as an example, we demonstrate how the following features work together:
+
+- **Phase 1**: SQL query interface (`ol_query()`)
+- **Phase 2**: aggregation and window functions (`ol_aggregate()`, `ol_add_rank()`, `ol_top_n()`, etc.)
+- **Phase 3**: Parquet import/export (`ol_import_parquet()`, `ol_export_parquet()`)
+- **Phase 4**: database views (`ol_create_view()`, `ol_drop_view()`, `ol_list_views()`)
+
+## Project setup
+
+```{r init}
+library(OmicsLake)
+
+ol_init("rnaseq_analysis")
+```
+
+## Preparing the data
+
+First, prepare sample RNA-seq count data:
+
+```{r prepare_data}
+set.seed(123)
+
+raw_counts <- data.frame(
+  gene_id = paste0("GENE", 1:1000),
+  control_1 = rpois(1000, lambda = 50),
+  control_2 = rpois(1000, lambda = 50),
+  control_3 = rpois(1000, lambda = 50),
+  treated_1 = rpois(1000, lambda = 80),
+  treated_2 = rpois(1000, lambda = 80),
+  treated_3 = rpois(1000, lambda = 80)
+)
+
+ol_write("raw_counts", raw_counts)
+ol_commit("Import raw count data")
+ol_label("data_import")
+```
+
+## Phase 1: Filtering data with SQL queries
+
+Use an SQL query to filter out low-expressed genes.  This is a common preprocessing step in RNA-seq analysis.
+
+```{r phase1_filtering}
+filtered_counts <- ol_query("\
+  SELECT 
+    gene_id,
+    control_1, control_2, control_3,
+    treated_1, treated_2, treated_3
+  FROM raw_counts
+  WHERE (control_1 + control_2 + control_3 + treated_1 + treated_2 + treated_3) >= 30
+")
+
+cat("Original genes:", nrow(raw_counts), "\n")
+cat("After filtering:", nrow(filtered_counts), "\n")
+
+ol_write("filtered_counts", filtered_counts)
+ol_commit("Filter low-expression genes using SQL")
+```
+
+Using an SQL query, you can also calculate the average expression and difference between treated and control means for each gene:
+
+```{r phase1_stats}
+gene_stats <- ol_query("\
+  SELECT 
+    gene_id,
+    (control_1 + control_2 + control_3) / 3.0 AS control_mean,
+    (treated_1 + treated_2 + treated_3) / 3.0 AS treated_mean,
+    (treated_1 + treated_2 + treated_3) / 3.0 - (control_1 + control_2 + control_3) / 3.0 AS mean_diff
+  FROM filtered_counts
+  ORDER BY mean_diff DESC
+")
+
+head(gene_stats, 10)
+```
+
+## Phase 2: Statistical analysis with aggregation functions
+
+Use the Phase 2 aggregation functions to perform more advanced statistical analyses.
+
+### Calculate statistics for each gene
+
+```{r phase2_aggregate}
+gene_summary <- ol_aggregate("filtered_counts",
+  group_by = "gene_id",
+  control_mean = list(func = "avg", col = "control_1, control_2, control_3"),
+  treated_mean = list(func = "avg", col = "treated_1, treated_2, treated_3"),
+  control_sd = list(func = "stddev", col = "control_1, control_2, control_3"),
+  treated_sd = list(func = "stddev", col = "treated_1, treated_2, treated_3")
+)
+
+ol_write("gene_summary", gene_summary)
+```
+
+### Extract top expressed genes
+
+```{r phase2_top_genes}
+top_control <- ol_top_n("filtered_counts", 
+                        n = 20, 
+                        order_by = "control_1", 
+                        descending = TRUE)
+
+cat("Top 20 genes in control samples:\n")
+print(head(top_control, 10))
+```
+
+### Add rankings
+
+Assign a rank to each gene based on expression:
+
+```{r phase2_ranking}
+ranked_genes <- ol_add_rank("filtered_counts",
+                            order_by = "treated_1",
+                            rank_col = "expression_rank",
+                            descending = TRUE)
+
+ol_write("ranked_genes", ranked_genes)
+```
+
+### Compute cumulative statistics
+
+```{r phase2_cumulative}
+cumulative_expr <- ol_cumulative_sum("ranked_genes",
+                                     value_col = "treated_1",
+                                     order_by = "expression_rank",
+                                     cumsum_col = "cumulative_expression")
+
+ol_write("cumulative_expr", cumulative_expr)
+```
+
+## Phase 3: Sharing results with Parquet
+
+Export analysis results in Parquet format so that you can share them with collaborators or use them in other tools.
+
+### Exporting results
+
+```{r phase3_export}
+ol_export_parquet("gene_summary", 
+                  "gene_summary_results.parquet",
+                  compression = "zstd",
+                  compression_level = 3)
+
+ol_export_parquet("ranked_genes",
+                  "ranked_genes.parquet", 
+                  compression = "snappy")
+
+cat("Exported results to Parquet files\n")
+```
+
+### Importing external data
+
+Example of importing data provided by collaborators:
+
+```{r phase3_import, eval=FALSE}
+external_results <- data.frame(
+  gene_id = paste0("GENE", sample(1:1000, 50)),
+  log2fc = rnorm(50, 0, 2),
+  pvalue = runif(50, 0, 0.1),
+  padj = runif(50, 0, 0.1)
+)
+write.csv(external_results, "external_de_results.csv", row.names = FALSE)
+
+library(arrow)
+write_parquet(external_results, "external_de_results.parquet")
+
+ol_import_parquet("external_de_results.parquet", 
+                  "external_de_results",
+                  mode = "create")
+
+imported <- ol_read("external_de_results")
+cat("Imported", nrow(imported), "genes from external analysis\n")
+```
+
+## Phase 4: Compare multiple versions with database views
+
+Database views are a powerful feature for comparing multiple analysis results or reusing complex queries.
+
+### Scenario: Compare two different analysis methods
+
+```{r phase4_setup_methods}
+set.seed(456)
+deseq2_results <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  log2fc = rnorm(100, 0, 1.5),
+  pvalue = runif(100, 0, 0.1),
+  padj = runif(100, 0, 0.1),
+  baseMean = runif(100, 10, 1000)
+)
+
+ol_write("de_results_deseq2", deseq2_results)
+ol_tag_object("de_results_deseq2", "deseq2_method")
+
+set.seed(789)
+edger_results <- data.frame(
+  gene_id = paste0("GENE", 1:120),
+  log2fc = rnorm(120, 0, 1.8),
+  pvalue = runif(120, 0, 0.1),
+  padj = runif(120, 0, 0.1),
+  logCPM = runif(120, 2, 10)
+)
+
+ol_write("de_results_edger", edger_results)
+ol_tag_object("de_results_edger", "edger_method")
+
+ol_commit("Complete DE analysis with DESeq2 and edgeR")
+ol_label("de_analysis_complete")
+```
+
+### Create a view: Compare methods
+
+```{r phase4_create_view}
+ol_create_view("method_comparison",
+  "SELECT 
+    d.gene_id,
+    d.log2fc AS deseq2_lfc,
+    e.log2fc AS edger_lfc,
+    ABS(d.log2fc - e.log2fc) AS lfc_difference,
+    d.padj AS deseq2_padj,
+    e.padj AS edger_padj,
+    CASE 
+      WHEN d.padj < 0.05 AND e.padj < 0.05 THEN 'both_significant'
+      WHEN d.padj < 0.05 THEN 'deseq2_only'
+      WHEN e.padj < 0.05 THEN 'edger_only'
+      ELSE 'neither'
+    END AS significance_status
+   FROM de_results_deseq2 d
+   INNER JOIN de_results_edger e ON d.gene_id = e.gene_id
+   ORDER BY lfc_difference DESC",
+  depends_on = c("de_results_deseq2", "de_results_edger")
+)
+
+comparison <- ol_read("method_comparison")
+cat("Comparing", nrow(comparison), "genes detected by both methods\n")
+```
+
+### Using the view: Check concordance
+
+```{r phase4_use_view}
+table(comparison$significance_status)
+
+high_discordance <- comparison[comparison$lfc_difference > 1, ]
+cat("\nGenes with high log2FC discordance (>1):", nrow(high_discordance), "\n")
+```
+
+### Create multiple views
+
+```{r phase4_multiple_views}
+ol_create_view("significant_genes_deseq2",
+  "SELECT * FROM de_results_deseq2 WHERE padj < 0.05 ORDER BY log2fc DESC",
+  depends_on = "de_results_deseq2"
+)
+
+ol_create_view("significant_genes_edger",
+  "SELECT * FROM de_results_edger WHERE padj < 0.05 ORDER BY log2fc DESC",
+  depends_on = "de_results_edger"
+)
+
+ol_create_view("consensus_significant",
+  "SELECT 
+    d.gene_id,
+    (d.log2fc + e.log2fc) / 2 AS avg_log2fc,
+    d.padj AS deseq2_padj,
+    e.padj AS edger_padj
+   FROM de_results_deseq2 d
+   INNER JOIN de_results_edger e ON d.gene_id = e.gene_id
+   WHERE d.padj < 0.05 AND e.padj < 0.05
+   ORDER BY avg_log2fc DESC",
+  depends_on = c("de_results_deseq2", "de_results_edger")
+)
+
+consensus <- ol_read("consensus_significant")
+cat("Consensus significant genes:", nrow(consensus), "\n")
+```
+
+### List views
+
+```{r phase4_list_views}
+views <- ol_list_views()
+print(views)
+```
+
+### Deleting views
+
+You can delete a view when it is no longer needed:
+
+```{r phase4_drop_view, eval=FALSE}
+ol_drop_view("significant_genes_edger")
+
+views_after <- ol_list_views()
+cat("Remaining views:", nrow(views_after), "\n")
+```
+
+## Integrated workflow example: Combine all features
+
+Here is a complete workflow example combining the features described so far:
+
+```{r integrated_workflow}
+ol_init("complete_analysis")
+
+set.seed(999)
+counts <- data.frame(
+  gene_id = paste0("GENE", 1:500),
+  ctrl1 = rpois(500, 40),
+  ctrl2 = rpois(500, 40),
+  trt1 = rpois(500, 60),
+  trt2 = rpois(500, 60)
+)
+
+ol_write("raw_data", counts)
+
+filtered <- ol_query("\
+  SELECT * FROM raw_data 
+  WHERE (ctrl1 + ctrl2 + trt1 + trt2) >= 20
+")
+ol_write("filtered_data", filtered)
+
+stats <- ol_aggregate("filtered_data",
+  group_by = "gene_id",
+  ctrl_mean = list(func = "avg", col = "ctrl1, ctrl2"),
+  trt_mean = list(func = "avg", col = "trt1, trt2")
+)
+ol_write("gene_stats", stats)
+
+ol_export_parquet("gene_stats", "analysis_stats.parquet")
+
+set.seed(111)
+de_final <- data.frame(
+  gene_id = paste0("GENE", sample(1:500, 80)),
+  log2fc = rnorm(80, 0, 2),
+  padj = runif(80, 0, 0.05)
+)
+ol_write("de_final", de_final)
+
+ol_create_view("enriched_results",
+  "SELECT 
+    d.gene_id,
+    d.log2fc,
+    d.padj,
+    s.ctrl_mean,
+    s.trt_mean,
+    s.trt_mean - s.ctrl_mean AS mean_change
+   FROM de_final d
+   LEFT JOIN gene_stats s ON d.gene_id = s.gene_id
+   WHERE d.padj < 0.05
+   ORDER BY ABS(d.log2fc) DESC",
+  depends_on = c("de_final", "gene_stats")
+)
+
+enriched <- ol_read("enriched_results")
+cat("Enriched analysis results:", nrow(enriched), "genes\n")
+
+top_results <- ol_top_n("enriched_results", n = 10, order_by = "log2fc", descending = TRUE)
+print(top_results)
+
+ol_commit("Complete integrated analysis workflow")
+ol_label("final_results")
+```
+
+## Practical tips and best practices
+
+### Use cases for Phase 1 (SQL queries)
+
+- Applying complex filtering conditions
+- Joining multiple tables
+- Shaping data before aggregation
+- Classification using conditional statements (CASE expressions)
+
+### Use cases for Phase 2 (aggregation functions)
+
+- Calculate statistics for each group
+- Moving averages and cumulative sums using window functions
+- Calculate rankings or percentiles
+- Simultaneous aggregation of multiple columns
+
+### Use cases for Phase 3 (Parquet)
+
+- Efficient storage of large datasets
+- Data sharing with other tools (Python, Spark, etc.)
+- Long-term archiving of analysis results
+- Transferring data to cloud storage
+
+### Use cases for Phase 4 (views)
+
+- Comparing multiple analysis versions
+- Reusing complex queries
+- Logical abstraction of data
+- Analysis flows with explicit dependencies
+
+### Combination patterns
+
+1. **Query → Aggregate → Export**: data preprocessing, statistical analysis, and saving results
+2. **View → Query → Aggregate**: integrated analysis of multiple data sources
+3. **Import → View → Export**: integrate external data and re-export
+4. **Aggregate → View → Query**: stepwise data transformation pipeline
+
+## Summary
+
+This vignette showed a practical RNA-seq analysis workflow using the Phase 1-4 features of OmicsLake.  Each phase’s functions can be used independently, but combining them allows you to construct a more powerful and flexible analysis pipeline.
+
+In particular, the database view feature of Phase 4 is very useful when comparing multiple analysis methods or parameter sets.  By using views, you can make complex SQL queries reusable and explicitly manage analysis dependencies.
+
+For detailed API specifications, please refer to the comprehensive guide (`omicslake_comprehensive_guide.Rmd`).
