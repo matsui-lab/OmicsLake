@@ -1,5 +1,5 @@
 ---
-title: "OmicsLake Practical Workflow: Integrating Phase 1-4 Functions"
+title: "OmicsLake Practical Workflow"
 author: "OmicsLake Development Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This vignette introduces a practical workflow that integrates the features implemented in Phases 1-4 of OmicsLake.  Using RNA-seq differential expression analysis as an example, we demonstrate how the following features work together:
+This vignette introduces a practical workflow that integrates the features implemented in OmicsLake.  Using RNA-seq differential expression analysis as an example, we demonstrate how the following features work together:
 
 - **Phase 1**: SQL query interface (`ol_query()`)
 - **Phase 2**: aggregation and window functions (`ol_aggregate()`, `ol_add_rank()`, `ol_top_n()`, etc.)

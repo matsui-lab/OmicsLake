@@ -1,5 +1,5 @@
 ---
-title: "OmicsLake 実践ワークフロー: フェーズ1-4機能の統合活用"
+title: "OmicsLake 実践ワークフロー"
 author: "OmicsLake Development Team"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 # はじめに
 
-このビニエットでは、OmicsLakeのフェーズ1-4で実装された機能を統合的に活用する実践的なワークフローを紹介します。RNA-seq差次発現解析を例に、以下の機能がどのように連携して動作するかを示します：
+このビネットでは、OmicsLakeで実装された機能を統合的に活用する実践的なワークフローを紹介します。RNA-seq差次発現解析を例に、以下の機能がどのように連携して動作するかを示します：
 
 - **Phase 1**: SQLクエリインターフェース (`ol_query()`)
 - **Phase 2**: 集計・ウィンドウ関数 (`ol_aggregate()`, `ol_add_rank()`, `ol_top_n()`, etc.)
