@@ -1,0 +1,423 @@
+---
+title: "OmicsLake 実践ワークフロー: フェーズ1-4機能の統合活用"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OmicsLake 実践ワークフロー: フェーズ1-4機能の統合活用}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# はじめに
+
+このビニエットでは、OmicsLakeのフェーズ1-4で実装された機能を統合的に活用する実践的なワークフローを紹介します。RNA-seq差次発現解析を例に、以下の機能がどのように連携して動作するかを示します：
+
+- **Phase 1**: SQLクエリインターフェース (`ol_query()`)
+- **Phase 2**: 集計・ウィンドウ関数 (`ol_aggregate()`, `ol_add_rank()`, `ol_top_n()`, etc.)
+- **Phase 3**: Parquetインポート・エクスポート (`ol_import_parquet()`, `ol_export_parquet()`)
+- **Phase 4**: データベースビュー (`ol_create_view()`, `ol_drop_view()`, `ol_list_views()`)
+
+# プロジェクトのセットアップ
+
+```{r init}
+library(OmicsLake)
+
+ol_init("rnaseq_analysis")
+```
+
+# データの準備
+
+まず、サンプルのRNA-seqカウントデータを準備します：
+
+```{r prepare_data}
+set.seed(123)
+
+raw_counts <- data.frame(
+  gene_id = paste0("GENE", 1:1000),
+  control_1 = rpois(1000, lambda = 50),
+  control_2 = rpois(1000, lambda = 50),
+  control_3 = rpois(1000, lambda = 50),
+  treated_1 = rpois(1000, lambda = 80),
+  treated_2 = rpois(1000, lambda = 80),
+  treated_3 = rpois(1000, lambda = 80)
+)
+
+ol_write("raw_counts", raw_counts)
+ol_commit("Import raw count data")
+ol_label("data_import")
+```
+
+# Phase 1: SQLクエリによるデータフィルタリング
+
+SQLクエリを使用して、低発現遺伝子をフィルタリングします。これはRNA-seq解析における一般的な前処理ステップです。
+
+```{r phase1_filtering}
+filtered_counts <- ol_query("
+  SELECT 
+    gene_id,
+    control_1, control_2, control_3,
+    treated_1, treated_2, treated_3
+  FROM raw_counts
+  WHERE (control_1 + control_2 + control_3 + treated_1 + treated_2 + treated_3) >= 30
+")
+
+cat("Original genes:", nrow(raw_counts), "\n")
+cat("After filtering:", nrow(filtered_counts), "\n")
+
+ol_write("filtered_counts", filtered_counts)
+ol_commit("Filter low-expression genes using SQL")
+```
+
+SQLクエリを使用して、各遺伝子の平均発現量と変動係数を計算することもできます：
+
+```{r phase1_stats}
+gene_stats <- ol_query("
+  SELECT 
+    gene_id,
+    (control_1 + control_2 + control_3) / 3.0 AS control_mean,
+    (treated_1 + treated_2 + treated_3) / 3.0 AS treated_mean,
+    (treated_1 + treated_2 + treated_3) / 3.0 - (control_1 + control_2 + control_3) / 3.0 AS mean_diff
+  FROM filtered_counts
+  ORDER BY mean_diff DESC
+")
+
+head(gene_stats, 10)
+```
+
+# Phase 2: 集計関数による統計解析
+
+フェーズ2の集計関数を使用して、より高度な統計解析を実行します。
+
+## 遺伝子ごとの統計量を計算
+
+```{r phase2_aggregate}
+gene_summary <- ol_aggregate("filtered_counts",
+  group_by = "gene_id",
+  control_mean = list(func = "avg", col = "control_1, control_2, control_3"),
+  treated_mean = list(func = "avg", col = "treated_1, treated_2, treated_3"),
+  control_sd = list(func = "stddev", col = "control_1, control_2, control_3"),
+  treated_sd = list(func = "stddev", col = "treated_1, treated_2, treated_3")
+)
+
+ol_write("gene_summary", gene_summary)
+```
+
+## 発現量上位の遺伝子を抽出
+
+```{r phase2_top_genes}
+top_control <- ol_top_n("filtered_counts", 
+                        n = 20, 
+                        order_by = "control_1", 
+                        descending = TRUE)
+
+cat("Top 20 genes in control samples:\n")
+print(head(top_control, 10))
+```
+
+## ランキングを追加
+
+各遺伝子に発現量に基づくランクを付けます：
+
+```{r phase2_ranking}
+ranked_genes <- ol_add_rank("filtered_counts",
+                            order_by = "treated_1",
+                            rank_col = "expression_rank",
+                            descending = TRUE)
+
+ol_write("ranked_genes", ranked_genes)
+```
+
+## 累積統計の計算
+
+```{r phase2_cumulative}
+cumulative_expr <- ol_cumulative_sum("ranked_genes",
+                                     value_col = "treated_1",
+                                     order_by = "expression_rank",
+                                     cumsum_col = "cumulative_expression")
+
+ol_write("cumulative_expr", cumulative_expr)
+```
+
+# Phase 3: Parquetでの結果共有
+
+解析結果をParquet形式でエクスポートし、共同研究者と共有したり、他のツールで使用したりできます。
+
+## 結果のエクスポート
+
+```{r phase3_export}
+ol_export_parquet("gene_summary", 
+                  "gene_summary_results.parquet",
+                  compression = "zstd",
+                  compression_level = 3)
+
+ol_export_parquet("ranked_genes",
+                  "ranked_genes.parquet", 
+                  compression = "snappy")
+
+cat("Exported results to Parquet files\n")
+```
+
+## 外部データのインポート
+
+共同研究者から提供されたデータをインポートする例：
+
+```{r phase3_import, eval=FALSE}
+external_results <- data.frame(
+  gene_id = paste0("GENE", sample(1:1000, 50)),
+  log2fc = rnorm(50, 0, 2),
+  pvalue = runif(50, 0, 0.1),
+  padj = runif(50, 0, 0.1)
+)
+write.csv(external_results, "external_de_results.csv", row.names = FALSE)
+
+library(arrow)
+write_parquet(external_results, "external_de_results.parquet")
+
+ol_import_parquet("external_de_results.parquet", 
+                  "external_de_results",
+                  mode = "create")
+
+imported <- ol_read("external_de_results")
+cat("Imported", nrow(imported), "genes from external analysis\n")
+```
+
+# Phase 4: データベースビューで複数バージョンを比較
+
+データベースビューは、複数の解析結果を比較したり、複雑なクエリを再利用可能にするための強力な機能です。
+
+## シナリオ: 2つの異なる解析手法を比較
+
+DESeq2とedgeRの2つの異なる手法で差次発現解析を実行したとします：
+
+```{r phase4_setup_methods}
+set.seed(456)
+deseq2_results <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  log2fc = rnorm(100, 0, 1.5),
+  pvalue = runif(100, 0, 0.1),
+  padj = runif(100, 0, 0.1),
+  baseMean = runif(100, 10, 1000)
+)
+
+ol_write("de_results_deseq2", deseq2_results)
+ol_tag_object("de_results_deseq2", "deseq2_method")
+
+set.seed(789)
+edger_results <- data.frame(
+  gene_id = paste0("GENE", 1:120),
+  log2fc = rnorm(120, 0, 1.8),
+  pvalue = runif(120, 0, 0.1),
+  padj = runif(120, 0, 0.1),
+  logCPM = runif(120, 2, 10)
+)
+
+ol_write("de_results_edger", edger_results)
+ol_tag_object("de_results_edger", "edger_method")
+
+ol_commit("Complete DE analysis with DESeq2 and edgeR")
+ol_label("de_analysis_complete")
+```
+
+## ビューの作成: 手法間の比較
+
+```{r phase4_create_view}
+ol_create_view("method_comparison",
+  "SELECT 
+    d.gene_id,
+    d.log2fc AS deseq2_lfc,
+    e.log2fc AS edger_lfc,
+    ABS(d.log2fc - e.log2fc) AS lfc_difference,
+    d.padj AS deseq2_padj,
+    e.padj AS edger_padj,
+    CASE 
+      WHEN d.padj < 0.05 AND e.padj < 0.05 THEN 'both_significant'
+      WHEN d.padj < 0.05 THEN 'deseq2_only'
+      WHEN e.padj < 0.05 THEN 'edger_only'
+      ELSE 'neither'
+    END AS significance_status
+   FROM de_results_deseq2 d
+   INNER JOIN de_results_edger e ON d.gene_id = e.gene_id
+   ORDER BY lfc_difference DESC",
+  depends_on = c("de_results_deseq2", "de_results_edger")
+)
+
+comparison <- ol_read("method_comparison")
+cat("Comparing", nrow(comparison), "genes detected by both methods\n")
+```
+
+## ビューの活用: 一致度の確認
+
+```{r phase4_use_view}
+table(comparison$significance_status)
+
+high_discordance <- comparison[comparison$lfc_difference > 1, ]
+cat("\nGenes with high log2FC discordance (>1):", nrow(high_discordance), "\n")
+```
+
+## 複数のビューを作成
+
+```{r phase4_multiple_views}
+ol_create_view("significant_genes_deseq2",
+  "SELECT * FROM de_results_deseq2 WHERE padj < 0.05 ORDER BY log2fc DESC",
+  depends_on = "de_results_deseq2"
+)
+
+ol_create_view("significant_genes_edger",
+  "SELECT * FROM de_results_edger WHERE padj < 0.05 ORDER BY log2fc DESC",
+  depends_on = "de_results_edger"
+)
+
+ol_create_view("consensus_significant",
+  "SELECT 
+    d.gene_id,
+    (d.log2fc + e.log2fc) / 2 AS avg_log2fc,
+    d.padj AS deseq2_padj,
+    e.padj AS edger_padj
+   FROM de_results_deseq2 d
+   INNER JOIN de_results_edger e ON d.gene_id = e.gene_id
+   WHERE d.padj < 0.05 AND e.padj < 0.05
+   ORDER BY avg_log2fc DESC",
+  depends_on = c("de_results_deseq2", "de_results_edger")
+)
+
+consensus <- ol_read("consensus_significant")
+cat("Consensus significant genes:", nrow(consensus), "\n")
+```
+
+## ビューの一覧表示
+
+```{r phase4_list_views}
+views <- ol_list_views()
+print(views)
+```
+
+## ビューの削除
+
+不要になったビューは削除できます：
+
+```{r phase4_drop_view, eval=FALSE}
+ol_drop_view("significant_genes_edger")
+
+views_after <- ol_list_views()
+cat("Remaining views:", nrow(views_after), "\n")
+```
+
+# 統合ワークフロー例: 全機能を組み合わせる
+
+ここまでの機能を組み合わせた完全なワークフロー例を示します：
+
+```{r integrated_workflow}
+ol_init("complete_analysis")
+
+set.seed(999)
+counts <- data.frame(
+  gene_id = paste0("GENE", 1:500),
+  ctrl1 = rpois(500, 40),
+  ctrl2 = rpois(500, 40),
+  trt1 = rpois(500, 60),
+  trt2 = rpois(500, 60)
+)
+
+ol_write("raw_data", counts)
+
+filtered <- ol_query("
+  SELECT * FROM raw_data 
+  WHERE (ctrl1 + ctrl2 + trt1 + trt2) >= 20
+")
+ol_write("filtered_data", filtered)
+
+stats <- ol_aggregate("filtered_data",
+  group_by = "gene_id",
+  ctrl_mean = list(func = "avg", col = "ctrl1, ctrl2"),
+  trt_mean = list(func = "avg", col = "trt1, trt2")
+)
+ol_write("gene_stats", stats)
+
+ol_export_parquet("gene_stats", "analysis_stats.parquet")
+
+set.seed(111)
+de_final <- data.frame(
+  gene_id = paste0("GENE", sample(1:500, 80)),
+  log2fc = rnorm(80, 0, 2),
+  padj = runif(80, 0, 0.05)
+)
+ol_write("de_final", de_final)
+
+ol_create_view("enriched_results",
+  "SELECT 
+    d.gene_id,
+    d.log2fc,
+    d.padj,
+    s.ctrl_mean,
+    s.trt_mean,
+    s.trt_mean - s.ctrl_mean AS mean_change
+   FROM de_final d
+   LEFT JOIN gene_stats s ON d.gene_id = s.gene_id
+   WHERE d.padj < 0.05
+   ORDER BY ABS(d.log2fc) DESC",
+  depends_on = c("de_final", "gene_stats")
+)
+
+enriched <- ol_read("enriched_results")
+cat("Enriched analysis results:", nrow(enriched), "genes\n")
+
+top_results <- ol_top_n("enriched_results", n = 10, order_by = "log2fc", descending = TRUE)
+print(top_results)
+
+ol_commit("Complete integrated analysis workflow")
+ol_label("final_results")
+```
+
+# 実践的なヒントとベストプラクティス
+
+## Phase 1 (SQLクエリ) の活用場面
+
+- 複雑なフィルタリング条件の適用
+- 複数テーブルのJOIN操作
+- 集計前のデータ整形
+- 条件分岐（CASE文）を使った分類
+
+## Phase 2 (集計関数) の活用場面
+
+- グループごとの統計量計算
+- ウィンドウ関数を使った移動平均や累積和
+- ランキングやパーセンタイルの計算
+- 複数カラムの同時集計
+
+## Phase 3 (Parquet) の活用場面
+
+- 大規模データセットの効率的な保存
+- 他のツール（Python、Sparkなど）とのデータ共有
+- 解析結果の長期アーカイブ
+- クラウドストレージへのデータ転送
+
+## Phase 4 (ビュー) の活用場面
+
+- 複数の解析バージョンの比較
+- 複雑なクエリの再利用
+- データの論理的な抽象化
+- 依存関係を明示した解析フロー
+
+## 組み合わせのパターン
+
+1. **クエリ → 集計 → エクスポート**: データの前処理、統計解析、結果の保存
+2. **ビュー → クエリ → 集計**: 複数データソースの統合解析
+3. **インポート → ビュー → エクスポート**: 外部データとの統合と再エクスポート
+4. **集計 → ビュー → クエリ**: 段階的なデータ変換パイプライン
+
+# まとめ
+
+このビニエットでは、OmicsLakeのフェーズ1-4機能を使用した実践的なRNA-seq解析ワークフローを示しました。各フェーズの機能は独立して使用できますが、組み合わせることでより強力で柔軟な解析パイプラインを構築できます。
+
+特にPhase 4のデータベースビュー機能は、複数の解析手法やパラメータセットを比較する際に非常に有用です。ビューを使用することで、複雑なSQLクエリを再利用可能にし、解析の依存関係を明示的に管理できます。
+
+詳細なAPI仕様については、包括的ガイド（`omicslake_comprehensive_guide.Rmd`）を参照してください。
