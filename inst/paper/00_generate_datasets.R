@@ -10,7 +10,8 @@ cat("Generating benchmark datasets...\n")
 set.seed(42)
 
 # Create output directory
-output_dir <- "inst/paper/benchmark_datasets"
+# Use relative path to work correctly when sourced from inst/paper/ directory
+output_dir <- "benchmark_datasets"
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
