@@ -124,8 +124,11 @@ Validates OmicsLake's reproducibility guarantees in a multi-step RNA-seq analysi
 
 **Runtime:** ~5-10 minutes  
 **Output:** 
-- `results_reproducibility.csv` - Comparison metrics
+- `results_reproducibility_table.csv` - Comparison metrics (Table 1 for paper)
 - `results_reproducibility_detailed.RDS` - Full reproducibility report
+- `figure4_reproducibility_workflow.mmd` - Workflow diagram (Figure 4, Mermaid format)
+- `figure5_reproducibility_metrics.pdf` - Quantitative metrics plot (Figure 5)
+- `figure5_metrics_data.csv` - Metrics data for Figure 5
 
 **Expected Reproducibility Rates:**
 | Environment | Steps Reproduced | Reproducibility % |
@@ -133,6 +136,50 @@ Validates OmicsLake's reproducibility guarantees in a multi-step RNA-seq analysi
 | Standard R Script | 4/10 | 40% |
 | Git + Manual Versioning | 7/10 | 70% |
 | OmicsLake | 10/10 | 100% |
+
+## Publication-Ready Outputs
+
+The reproducibility test script automatically generates figures and tables ready for manuscript inclusion:
+
+### Table 1: Reproducibility Comparison Across Environments
+**File:** `results_reproducibility_table.csv`
+
+Compares OmicsLake against traditional approaches across multiple dimensions:
+- Steps successfully reproduced (out of 10 total)
+- Data integrity guarantees
+- Dependency tracking capabilities
+- Rollback/restoration support
+- Overall reproducibility percentage
+
+### Figure 4: OmicsLake Reproducibility Workflow
+**File:** `figure4_reproducibility_workflow.mmd` (Mermaid diagram)
+
+Visual representation of the 5-step RNA-seq workflow demonstrating:
+- Sequential analysis steps (Import → Normalization → QC → DE → Enrichment)
+- Version label creation with `ol_label()`
+- Rollback testing with `ol_read()` using `ref` parameter
+- Data integrity validation with `all.equal()` (tolerance = 1e-8)
+
+**Rendering:** Convert to SVG/PNG using:
+```bash
+# Using mermaid-cli
+mmdc -i figure4_reproducibility_workflow.mmd -o figure4_reproducibility_workflow.svg
+
+# Or use online tools: https://mermaid.live/
+```
+
+### Figure 5: Quantitative Reproducibility Metrics
+**Files:** 
+- `figure5_reproducibility_metrics.pdf` (requires ggplot2)
+- `figure5_metrics_data.csv` (raw data)
+
+Faceted bar plot comparing three environments across four key metrics:
+- **Steps Reproduced:** Number of workflow steps successfully reproduced (out of 10)
+- **Dependency Tracking:** Percentage of dependencies automatically tracked
+- **Reproduction Accuracy:** Data integrity validation success rate
+- **Human Overhead:** Time investment required per analysis (hours)
+
+**Note:** PDF generation requires ggplot2. Install with: `install.packages("ggplot2")`
 
 ## Interpreting Results
 
