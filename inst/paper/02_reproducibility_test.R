@@ -21,7 +21,9 @@ cat("--- Mock RNA-seq Workflow Setup ---\n")
 cat("Simulating a multi-step analysis pipeline with versioning\n\n")
 
 # Initialize OmicsLake project
-ol_init("rnaseq_project", root = "benchmark_datasets")
+# Store project name for explicit passing to all ol_* functions
+project <- "rnaseq_project"
+ol_init(project, root = "benchmark_datasets")
 
 # Load mock RNA-seq data
 load("benchmark_datasets/rnaseq_mock_data.RData")
@@ -43,14 +45,14 @@ raw_counts_long <- data.frame(
 )
 
 cat("--- Step 1: Import Raw Data and Commit ---\n")
-ol_write("raw_counts", raw_counts_long, mode = "overwrite")
-ol_save("gene_info", gene_info)
-ol_save("sample_info", sample_info)
+ol_write("raw_counts", raw_counts_long, mode = "overwrite", project = project)
+ol_save("gene_info", gene_info, project = project)
+ol_save("sample_info", sample_info, project = project)
 commit1 <- ol_commit("Import raw data", params = list(
   n_genes = n_genes,
   n_samples = n_samples,
   data_source = "mock_rnaseq"
-))
+), project = project)
 cat("  Commit ID:", commit1, "\n\n")
 
 cat("--- Step 2: Normalization ---\n")
@@ -68,10 +70,12 @@ norm_counts_long <- raw_counts_long %>%
 # Save normalized data with dependency tracking
 ol_write("normalized_counts", norm_counts_long, 
          mode = "overwrite", 
-         depends_on = c("raw_counts"))
+         depends_on = c("raw_counts"),
+         project = project)
 ol_save("norm_params", norm_params, 
-        depends_on = c("gene_info", "sample_info"))
-commit2 <- ol_commit("Normalization complete", params = norm_params)
+        depends_on = c("gene_info", "sample_info"),
+        project = project)
+commit2 <- ol_commit("Normalization complete", params = norm_params, project = project)
 cat("  Commit ID:", commit2, "\n")
 cat("  Dependencies tracked: raw_counts -> normalized_counts\n\n")
 
@@ -91,9 +95,10 @@ qc_params <- list(
 
 ol_write("filtered_counts", filtered_counts, 
          mode = "overwrite",
-         depends_on = c("normalized_counts"))
-ol_save("qc_params", qc_params)
-commit3 <- ol_commit("QC filtering complete", params = qc_params)
+         depends_on = c("normalized_counts"),
+         project = project)
+ol_save("qc_params", qc_params, project = project)
+commit3 <- ol_commit("QC filtering complete", params = qc_params, project = project)
 cat("  Commit ID:", commit3, "\n")
 cat("  Genes before QC:", qc_params$genes_before, "\n")
 cat("  Genes after QC:", qc_params$genes_after, "\n\n")
@@ -121,9 +126,10 @@ de_params <- list(
 )
 
 ol_save("de_results", de_results, 
-        depends_on = c("filtered_counts", "sample_info"))
-ol_save("de_params", de_params)
-commit4 <- ol_commit("DE analysis complete", params = de_params)
+        depends_on = c("filtered_counts", "sample_info"),
+        project = project)
+ol_save("de_params", de_params, project = project)
+commit4 <- ol_commit("DE analysis complete", params = de_params, project = project)
 cat("  Commit ID:", commit4, "\n")
 cat("  Significant genes:", de_params$n_significant, "\n\n")
 
@@ -145,33 +151,37 @@ enrichment_params <- list(
 )
 
 ol_save("pathway_results", pathway_results,
-        depends_on = c("de_results"))
-ol_save("enrichment_params", enrichment_params)
-commit5 <- ol_commit("Pathway enrichment complete", params = enrichment_params)
+        depends_on = c("de_results"),
+        project = project)
+ol_save("enrichment_params", enrichment_params, project = project)
+commit5 <- ol_commit("Pathway enrichment complete", params = enrichment_params, project = project)
 cat("  Commit ID:", commit5, "\n")
 cat("  Pathways tested:", enrichment_params$n_pathways_tested, "\n\n")
 
 cat("--- Step 6: Create Version Label ---\n")
-ol_label("v1.0_complete")
+ol_label("v1.0_complete", project = project)
 cat("  Label created: v1.0_complete\n\n")
 
 cat("--- Reproducibility Test: Rollback and Verify ---\n")
 cat("Testing if we can reproduce the exact state at v1.0_complete\n\n")
 
 # Read data using the label
-reloaded_norm <- ol_read("normalized_counts", ref = "@v1.0_complete")
-reloaded_de <- ol_read("de_results", ref = "@v1.0_complete")
-reloaded_params <- ol_read("norm_params", ref = "@v1.0_complete")
+# Use ol_read for tables and ol_read_object for objects with ref parameter
+reloaded_norm <- ol_read("normalized_counts", ref = "@v1.0_complete", project = project)
+reloaded_de <- ol_read_object("de_results", ref = "@v1.0_complete", project = project)
+reloaded_params <- ol_read_object("norm_params", ref = "@v1.0_complete", project = project)
 
-# Verify data integrity
+# Verify data integrity with numerical tolerance
 identical_norm <- all.equal(
   norm_counts_long[order(norm_counts_long$gene_id, norm_counts_long$sample_id), ],
-  reloaded_norm[order(reloaded_norm$gene_id, reloaded_norm$sample_id), ]
+  reloaded_norm[order(reloaded_norm$gene_id, reloaded_norm$sample_id), ],
+  tolerance = 1e-8
 )
 
 identical_de <- all.equal(
   de_results[order(de_results$gene_id), ],
-  reloaded_de[order(reloaded_de$gene_id), ]
+  reloaded_de[order(reloaded_de$gene_id), ],
+  tolerance = 1e-8
 )
 
 identical_params <- all.equal(norm_params, reloaded_params)
@@ -190,7 +200,7 @@ cat("=== Reproducibility Check:", ifelse(reproducibility_test, "PASSED", "FAILED
 cat("--- Dependency Lineage Verification ---\n")
 cat("Checking dependency tracking for de_results:\n\n")
 
-de_deps <- ol_get_dependencies("de_results", direction = "upstream")
+de_deps <- ol_get_dependencies("de_results", direction = "upstream", project = project)
 if (nrow(de_deps) > 0) {
   cat("  Upstream dependencies:\n")
   print(de_deps[, c("parent_name", "parent_type", "relationship_type")])
@@ -200,7 +210,7 @@ if (nrow(de_deps) > 0) {
 cat("\n")
 
 cat("--- Commit History ---\n")
-commit_log <- ol_log_commits(n = 10)
+commit_log <- ol_log_commits(n = 10, project = project)
 cat("  Total commits:", nrow(commit_log), "\n")
 if (nrow(commit_log) > 0) {
   cat("\n  Recent commits:\n")
