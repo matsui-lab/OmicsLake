@@ -1,0 +1,395 @@
+---
+title: "OmicsLake v2.0 Quick Start Guide"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OmicsLake v2.0 Quick Start Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Introduction
+
+OmicsLake v2.0 is a modern, easy-to-use omics data management package with data lineage at its core. It integrates into existing analysis workflows with minimal changes and automatically tracks data dependencies.
+
+## Key Features
+
+- **Simple API**: Basic operations with just `put()`, `get()`, `snap()`, `tree()`
+- **Automatic Lineage Tracking**: Dependencies detected through dplyr pipes
+- **No SQL Required**: Formula syntax and QueryBuilder for R-native queries
+- **Existing Code Support**: observe/wrap modes for non-invasive tracking
+
+# Installation
+
+```{r install}
+# Install from GitHub
+remotes::install_github("matsui-lab/OmicsLake")
+```
+
+# Basic Usage
+
+## Initializing a Lake
+
+```{r init}
+library(OmicsLake)
+
+# Create/open a project
+lake <- Lake$new("my_analysis")
+
+# Or use global shortcuts
+use_lake("my_analysis")
+```
+
+## Storing and Reading Data
+
+```{r basic_io}
+# Store a data frame
+counts <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  sample_A = rpois(100, 50),
+  sample_B = rpois(100, 60)
+)
+lake$put("counts", counts)
+
+# R objects can also be stored
+params <- list(
+  method = "TMM",
+  log_transform = TRUE,
+  threshold = 0.05
+)
+lake$put("analysis_params", params)
+
+# Read data
+data <- lake$get("counts")
+my_params <- lake$get("analysis_params")
+```
+
+## Filtering with Formula Syntax
+
+```{r formula_filter}
+# No SQL needed! Filter with formula syntax
+high_expr <- lake$get("counts", where = ~ sample_A > 50)
+
+# Custom operators are also available
+mito_genes <- lake$get("counts", where = ~ gene_id %like% "MT-%")
+
+# Compound conditions
+filtered <- lake$get("counts",
+  where = ~ sample_A > 30 & sample_B %between% c(40, 80)
+)
+
+# Select columns simultaneously
+subset <- lake$get("counts",
+  where = ~ sample_A > 50,
+  select = c("gene_id", "sample_A")
+)
+```
+
+## dplyr Integration (Automatic Lineage Tracking)
+
+```{r dplyr_integration}
+# Get a lazy reference with lake$ref()
+# Dependencies in dplyr pipes are automatically tracked!
+library(dplyr)
+
+lake$ref("counts") |>
+  filter(sample_A > 30) |>
+  mutate(
+    mean_expr = (sample_A + sample_B) / 2,
+    log2_ratio = log2(sample_B / sample_A)
+  ) |>
+  arrange(desc(mean_expr)) |>
+  save_as("processed_counts", lake)
+
+# Check lineage
+lake$tree("processed_counts")
+# counts -> processed_counts
+```
+
+## Joining Multiple Tables
+
+```{r join_example}
+# Add metadata
+metadata <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  gene_name = paste0("Gene_", LETTERS[1:4])[rep(1:4, 25)],
+  biotype = sample(c("protein_coding", "lncRNA"), 100, replace = TRUE)
+)
+lake$put("gene_metadata", metadata)
+
+# JOIN with dplyr
+lake$ref("counts") |>
+  left_join(lake$ref("gene_metadata"), by = "gene_id") |>
+  filter(biotype == "protein_coding") |>
+  group_by(gene_name) |>
+  summarize(total_A = sum(sample_A), total_B = sum(sample_B)) |>
+  save_as("gene_summary", lake)
+
+# Dependencies are automatically tracked
+lake$tree("gene_summary")
+# counts -----> gene_summary
+# gene_metadata ↗
+```
+
+# QueryBuilder
+
+Build complex queries without writing SQL.
+
+```{r querybuilder}
+# Build queries with method chaining
+result <- lake$from("counts")$
+  join("gene_metadata", on = "gene_id")$
+  where(biotype == "protein_coding")$
+  where(sample_A > 40)$
+  select(gene_id, gene_name, sample_A, sample_B)$
+  order_by(desc(sample_A))$
+  top(20, by = sample_A)$
+  run()
+
+# Save results to Lake
+lake$from("counts")$
+  where(sample_A > 50)$
+  as("high_expression_genes")
+```
+
+# Version Control
+
+## Snapshots and Tags
+
+```{r versioning}
+# Snapshot current state
+lake$snap("v1.0_raw_data")
+
+# Update data
+normalized <- lake$get("counts")
+normalized$sample_A <- log2(normalized$sample_A + 1)
+normalized$sample_B <- log2(normalized$sample_B + 1)
+lake$put("counts", normalized)
+
+lake$snap("v1.1_normalized")
+
+# Tag individual data
+lake$tag("counts", "before_normalization")
+
+# Get past version
+original <- lake$get("counts", ref = "@tag(before_normalization)")
+
+# Restore to snapshot
+lake$restore("v1.0_raw_data")
+```
+
+## Viewing History
+
+```{r history}
+# Project history
+lake$log()
+
+# History of specific data
+lake$log("counts")
+
+# List snapshots
+lake$snaps()
+```
+
+# Lineage (Data Provenance)
+
+## Checking Dependencies
+
+```{r lineage}
+# Upstream dependencies (what was this data made from?)
+lake$deps("gene_summary", direction = "up")
+
+# Downstream dependencies (what uses this data?)
+lake$deps("counts", direction = "down")
+
+# Complete lineage tree
+lake$tree("gene_summary", direction = "up", depth = 10)
+
+# Impact analysis (what would be affected if this data changes?)
+lake$impact("counts")
+```
+
+## Lineage Visualization
+
+```{r plot_lineage}
+# Visualize as graph (requires igraph package)
+lake$plot("gene_summary", direction = "both")
+```
+
+# Lightweight Mode (Integrating with Existing Code)
+
+## observe: Track without Code Changes
+
+```{r observe_mode}
+# Run existing scripts in observation mode
+result <- observe({
+  data <- read.csv("input_data.csv")
+  processed <- data[data$value > 0, ]
+  write.csv(processed, "output_data.csv")
+})
+
+# Files read and written are recorded
+print(result$reads)
+print(result$writes)
+print(result$lineage)
+```
+
+## wrap: Wrap Functions for Tracking
+
+```{r wrap_mode}
+# Wrap an existing function
+normalize_data <- function(x) {
+  x$normalized <- scale(x$value)
+  x
+}
+
+tracked_normalize <- wrap_fn(normalize_data, lake, "normalized_result")
+
+# Use the wrapped function - lineage is automatically recorded
+result <- tracked_normalize(my_data)
+```
+
+## Defining Pipelines
+
+```{r pipeline}
+pipeline <- create_pipeline(lake, "preprocessing")
+
+pipeline$
+  step("load", function() read.csv("data.csv"))$
+  step("clean", function(data) na.omit(data))$
+  step("normalize", function(data) { data$value <- scale(data$value); data })$
+  step("filter", function(data) data[data$quality > 0.8, ])
+
+result <- pipeline$run()
+
+# Each step is recorded in the Lake
+lake$tree("preprocessing.filter")
+```
+
+# Custom Operators
+
+```{r operators}
+# %like% - SQL LIKE pattern matching
+genes[genes %like% "MT-%"]          # Genes starting with MT-
+genes[genes %like% "%kinase%"]      # Contains "kinase"
+
+# %ilike% - Case-insensitive
+names[names %ilike% "john%"]
+
+# %between% - Range filter
+values[values %between% c(10, 100)]
+
+# %regex% - Regular expression matching
+ids[ids %regex% "^ENSG\\d{11}$"]
+
+# %!in% - NOT IN
+letters[letters %!in% c("a", "e", "i", "o", "u")]
+
+# is_null / is_not_null
+data[is_not_null(data$value), ]
+```
+
+# Bracket Notation
+
+```{r bracket_notation}
+# Simple read/write
+lake["counts"]                      # Read all data
+lake["new_data"] <- df              # Write
+
+# Read with filter
+lake["counts", sample_A > 50]
+
+# Filter + column selection
+lake["counts", sample_A > 50, .(gene_id, sample_A)]
+```
+
+# Import/Export
+
+```{r import_export}
+# Parquet export
+lake$export("counts", "counts.parquet")
+
+# CSV export
+lake$export("counts", "counts.csv")
+
+# Import
+lake$import("external_data.parquet", "imported_data")
+lake$import("annotations.csv", "gene_annotations")
+```
+
+# Bioconductor Integration
+
+```{r bioconductor}
+library(SummarizedExperiment)
+
+# Store SummarizedExperiment directly
+# assays, colData, rowData, metadata are all preserved
+lake$put("rna_experiment", se_object)
+
+# Restore completely
+se_restored <- lake$get("rna_experiment")
+```
+
+# Global Shortcuts
+
+```{r shortcuts}
+# Set default Lake
+use_lake("my_project")
+
+# Operate without lake$ prefix
+put("data", df)
+data <- fetch("data")      # fetch() instead of get()
+snap("checkpoint1")
+tree("data")
+tables()
+history()
+```
+
+# Migration from Legacy API
+
+The v1.0 `ol_*` functions continue to work, but migration to the new API is recommended:
+
+```{r migration}
+# Show migration guide
+show_migration_guide()
+```
+
+| Legacy API | New API |
+|------------|---------|
+| `ol_init("proj")` | `Lake$new("proj")` |
+| `ol_write("t", df)` | `lake$put("t", df)` |
+| `ol_read("t")` | `lake$get("t")` |
+| `ol_label("v1")` | `lake$snap("v1")` |
+| `ol_tag("t", "v1")` | `lake$tag("t", "v1")` |
+| `ol_checkout("v1")` | `lake$restore("v1")` |
+| `ol_show_lineage("t")` | `lake$tree("t")` |
+| `ol_query("SQL")` | `lake$sql("SQL")` |
+
+# Summary
+
+Key features of OmicsLake v2.0:
+
+1. **Lake R6 Class** - Simple and intuitive API
+2. **Automatic Lineage Tracking** - Dependencies detected through dplyr pipes
+3. **QueryBuilder** - Query construction without SQL
+4. **Formula Syntax** - R-like filter notation
+5. **Lightweight Mode** - Non-invasive integration with existing code
+6. **Bioconductor Integration** - Full SE/MAE support
+
+See individual function help for details:
+
+```{r help}
+?Lake
+?QueryBuilder
+?observe
+?wrap_fn
+```

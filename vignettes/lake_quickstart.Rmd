@@ -1,0 +1,395 @@
+---
+title: "OmicsLake v2.0 クイックスタートガイド"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OmicsLake v2.0 クイックスタートガイド}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# はじめに
+
+OmicsLake v2.0は、データリネージ（データの系譜）を中核に据えた、モダンで使いやすいオミクスデータ管理パッケージです。既存の解析ワークフローに最小限の変更で導入でき、自動的にデータの依存関係を追跡します。
+
+## 主な特徴
+
+- **シンプルなAPI**: `put()`, `get()`, `snap()`, `tree()` だけで基本操作が完結
+- **自動リネージ追跡**: dplyrパイプを通じて依存関係を自動検出
+- **SQL不要**: Formula構文やQueryBuilderでRネイティブにクエリ
+- **既存コード対応**: observe/wrapモードで既存スクリプトを変更せず追跡
+
+# インストール
+
+```{r install}
+# GitHubからインストール
+remotes::install_github("matsui-lab/OmicsLake")
+```
+
+# 基本的な使い方
+
+## Lakeの初期化
+
+```{r init}
+library(OmicsLake)
+
+# プロジェクトを作成/開く
+lake <- Lake$new("my_analysis")
+
+# または、グローバルショートカットを使用
+use_lake("my_analysis")
+```
+
+## データの保存と読み込み
+
+```{r basic_io}
+# データフレームを保存
+counts <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  sample_A = rpois(100, 50),
+  sample_B = rpois(100, 60)
+)
+lake$put("counts", counts)
+
+# R オブジェクトも保存可能
+params <- list(
+  method = "TMM",
+  log_transform = TRUE,
+  threshold = 0.05
+)
+lake$put("analysis_params", params)
+
+# 読み込み
+data <- lake$get("counts")
+my_params <- lake$get("analysis_params")
+```
+
+## Formula構文でフィルタリング
+
+```{r formula_filter}
+# SQL不要！Formula構文でフィルタ
+high_expr <- lake$get("counts", where = ~ sample_A > 50)
+
+# カスタム演算子も使用可能
+mito_genes <- lake$get("counts", where = ~ gene_id %like% "MT-%")
+
+# 複合条件
+filtered <- lake$get("counts",
+  where = ~ sample_A > 30 & sample_B %between% c(40, 80)
+)
+
+# カラム選択も同時に
+subset <- lake$get("counts",
+  where = ~ sample_A > 50,
+  select = c("gene_id", "sample_A")
+)
+```
+
+## dplyr統合（自動リネージ追跡）
+
+```{r dplyr_integration}
+# lake$ref() で遅延参照を取得
+# dplyrパイプ中の依存関係は自動追跡される！
+library(dplyr)
+
+lake$ref("counts") |>
+  filter(sample_A > 30) |>
+  mutate(
+    mean_expr = (sample_A + sample_B) / 2,
+    log2_ratio = log2(sample_B / sample_A)
+  ) |>
+  arrange(desc(mean_expr)) |>
+  save_as("processed_counts", lake)
+
+# リネージを確認
+lake$tree("processed_counts")
+# counts -> processed_counts
+```
+
+## 複数テーブルのJOIN
+
+```{r join_example}
+# メタデータを追加
+metadata <- data.frame(
+  gene_id = paste0("GENE", 1:100),
+  gene_name = paste0("Gene_", LETTERS[1:4])[rep(1:4, 25)],
+  biotype = sample(c("protein_coding", "lncRNA"), 100, replace = TRUE)
+)
+lake$put("gene_metadata", metadata)
+
+# dplyrでJOIN
+lake$ref("counts") |>
+  left_join(lake$ref("gene_metadata"), by = "gene_id") |>
+  filter(biotype == "protein_coding") |>
+  group_by(gene_name) |>
+  summarize(total_A = sum(sample_A), total_B = sum(sample_B)) |>
+  save_as("gene_summary", lake)
+
+# 依存関係は自動追跡
+lake$tree("gene_summary")
+# counts -----> gene_summary
+# gene_metadata ↗
+```
+
+# QueryBuilder
+
+SQLを書かずに複雑なクエリを構築できます。
+
+```{r querybuilder}
+# メソッドチェーンでクエリを構築
+result <- lake$from("counts")$
+  join("gene_metadata", on = "gene_id")$
+  where(biotype == "protein_coding")$
+  where(sample_A > 40)$
+  select(gene_id, gene_name, sample_A, sample_B)$
+  order_by(desc(sample_A))$
+  top(20, by = sample_A)$
+  run()
+
+# 結果をLakeに保存
+lake$from("counts")$
+  where(sample_A > 50)$
+  as("high_expression_genes")
+```
+
+# バージョン管理
+
+## スナップショットとタグ
+
+```{r versioning}
+# 現在の状態をスナップショット
+lake$snap("v1.0_raw_data")
+
+# データを更新
+normalized <- lake$get("counts")
+normalized$sample_A <- log2(normalized$sample_A + 1)
+normalized$sample_B <- log2(normalized$sample_B + 1)
+lake$put("counts", normalized)
+
+lake$snap("v1.1_normalized")
+
+# 個別データにタグ付け
+lake$tag("counts", "before_normalization")
+
+# 過去バージョンを取得
+original <- lake$get("counts", ref = "@tag(before_normalization)")
+
+# スナップショットに復元
+lake$restore("v1.0_raw_data")
+```
+
+## 履歴の確認
+
+```{r history}
+# プロジェクト履歴
+lake$log()
+
+# 特定データの履歴
+lake$log("counts")
+
+# スナップショット一覧
+lake$snaps()
+```
+
+# リネージ（データ系譜）
+
+## 依存関係の確認
+
+```{r lineage}
+# 上流の依存関係（このデータは何から作られた？）
+lake$deps("gene_summary", direction = "up")
+
+# 下流の依存関係（このデータは何に使われている？）
+lake$deps("counts", direction = "down")
+
+# 完全なリネージツリー
+lake$tree("gene_summary", direction = "up", depth = 10)
+
+# 影響分析（このデータを変更すると何が影響を受ける？）
+lake$impact("counts")
+```
+
+## リネージの可視化
+
+```{r plot_lineage}
+# グラフとして可視化（igraphパッケージが必要）
+lake$plot("gene_summary", direction = "both")
+```
+
+# 軽量モード（既存コードへの導入）
+
+## observe: コード変更なしで追跡
+
+```{r observe_mode}
+# 既存のスクリプトを観察モードで実行
+result <- observe({
+  data <- read.csv("input_data.csv")
+  processed <- data[data$value > 0, ]
+  write.csv(processed, "output_data.csv")
+})
+
+# 読み書きされたファイルが記録される
+print(result$reads)
+print(result$writes)
+print(result$lineage)
+```
+
+## wrap: 関数をラップして追跡
+
+```{r wrap_mode}
+# 既存の関数をラップ
+normalize_data <- function(x) {
+  x$normalized <- scale(x$value)
+  x
+}
+
+tracked_normalize <- wrap_fn(normalize_data, lake, "normalized_result")
+
+# ラップされた関数を使用 - 自動的にリネージ記録
+result <- tracked_normalize(my_data)
+```
+
+## パイプラインの定義
+
+```{r pipeline}
+pipeline <- create_pipeline(lake, "preprocessing")
+
+pipeline$
+  step("load", function() read.csv("data.csv"))$
+  step("clean", function(data) na.omit(data))$
+  step("normalize", function(data) { data$value <- scale(data$value); data })$
+  step("filter", function(data) data[data$quality > 0.8, ])
+
+result <- pipeline$run()
+
+# 各ステップがLakeに記録される
+lake$tree("preprocessing.filter")
+```
+
+# カスタム演算子
+
+```{r operators}
+# %like% - SQLのLIKEパターンマッチング
+genes[genes %like% "MT-%"]          # MT-で始まる遺伝子
+genes[genes %like% "%kinase%"]      # kinaseを含む
+
+# %ilike% - 大文字小文字を区別しない
+names[names %ilike% "john%"]
+
+# %between% - 範囲フィルタ
+values[values %between% c(10, 100)]
+
+# %regex% - 正規表現マッチング
+ids[ids %regex% "^ENSG\\d{11}$"]
+
+# %!in% - NOT IN
+letters[letters %!in% c("a", "e", "i", "o", "u")]
+
+# is_null / is_not_null
+data[is_not_null(data$value), ]
+```
+
+# ブラケット記法
+
+```{r bracket_notation}
+# シンプルな読み書き
+lake["counts"]                      # 全データ読み込み
+lake["new_data"] <- df              # 書き込み
+
+# フィルタ付き読み込み
+lake["counts", sample_A > 50]
+
+# フィルタ + カラム選択
+lake["counts", sample_A > 50, .(gene_id, sample_A)]
+```
+
+# インポート/エクスポート
+
+```{r import_export}
+# Parquetエクスポート
+lake$export("counts", "counts.parquet")
+
+# CSVエクスポート
+lake$export("counts", "counts.csv")
+
+# インポート
+lake$import("external_data.parquet", "imported_data")
+lake$import("annotations.csv", "gene_annotations")
+```
+
+# Bioconductor統合
+
+```{r bioconductor}
+library(SummarizedExperiment)
+
+# SummarizedExperimentを直接保存
+# assays, colData, rowData, metadata すべて保存される
+lake$put("rna_experiment", se_object)
+
+# 完全に復元
+se_restored <- lake$get("rna_experiment")
+```
+
+# グローバルショートカット
+
+```{r shortcuts}
+# デフォルトLakeを設定
+use_lake("my_project")
+
+# 以降は lake$ なしで操作可能
+put("data", df)
+data <- fetch("data")      # get()の代わりにfetch()
+snap("checkpoint1")
+tree("data")
+tables()
+history()
+```
+
+# 旧APIからの移行
+
+v1.0の`ol_*`関数は引き続き動作しますが、新APIへの移行を推奨します：
+
+```{r migration}
+# 移行ガイドを表示
+show_migration_guide()
+```
+
+| 旧API | 新API |
+|-------|-------|
+| `ol_init("proj")` | `Lake$new("proj")` |
+| `ol_write("t", df)` | `lake$put("t", df)` |
+| `ol_read("t")` | `lake$get("t")` |
+| `ol_label("v1")` | `lake$snap("v1")` |
+| `ol_tag("t", "v1")` | `lake$tag("t", "v1")` |
+| `ol_checkout("v1")` | `lake$restore("v1")` |
+| `ol_show_lineage("t")` | `lake$tree("t")` |
+| `ol_query("SQL")` | `lake$sql("SQL")` |
+
+# まとめ
+
+OmicsLake v2.0の主要機能：
+
+1. **Lake R6クラス** - シンプルで直感的なAPI
+2. **自動リネージ追跡** - dplyrパイプで依存関係を自動検出
+3. **QueryBuilder** - SQL不要のクエリ構築
+4. **Formula構文** - Rらしいフィルタ記法
+5. **軽量モード** - 既存コードへの非侵入的導入
+6. **Bioconductor統合** - SE/MAEの完全サポート
+
+詳細は各関数のヘルプを参照してください：
+
+```{r help}
+?Lake
+?QueryBuilder
+?observe
+?wrap_fn
+```
