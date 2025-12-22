@@ -9,7 +9,7 @@ Description: A lightweight framework for versioned, on-disk omics data managemen
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.3)
-Imports: jsonlite, digest, arrow, dplyr, dbplyr, DBI, duckdb, Matrix, SummarizedExperiment, S4Vectors
+Imports: jsonlite, digest, arrow, dplyr, dbplyr, DBI, duckdb, Matrix, SummarizedExperiment, S4Vectors, R6, rlang, tools
 Suggests: qs, MultiAssayExperiment, HDF5Array, DelayedArray, knitr, rmarkdown, testthat (>= 3.0.0), igraph
 biocViews: Infrastructure, DataImport, DataRepresentation
 URL: https://github.com/your-org/OmicsLake
