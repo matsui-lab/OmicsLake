@@ -116,37 +116,36 @@ into <- function(lake) {
 # dplyr operations
 # ============================================================
 
+# Helper to preserve lineage attributes
+.preserve_lake_attrs <- function(result, source_data) {
+  attr(result, "lake_source") <- attr(source_data, "lake_source")
+  attr(result, "lake_source_ref") <- attr(source_data, "lake_source_ref")
+  class(result) <- unique(c("lake_tbl", class(result)))
+  result
+}
+
 #' @export
 filter.lake_tbl <- function(.data, ..., .preserve = FALSE) {
   result <- NextMethod()
-  # Preserve lineage metadata
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 select.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 mutate.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 summarise.lake_tbl <- function(.data, ..., .groups = NULL) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
@@ -157,120 +156,96 @@ summarize.lake_tbl <- function(.data, ..., .groups = NULL) {
 #' @export
 group_by.lake_tbl <- function(.data, ..., .add = FALSE, .drop = TRUE) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 ungroup.lake_tbl <- function(x, ...) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(x, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, x)
 }
 
 #' @export
 arrange.lake_tbl <- function(.data, ..., .by_group = FALSE) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 distinct.lake_tbl <- function(.data, ..., .keep_all = FALSE) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 slice.lake_tbl <- function(.data, ..., .preserve = FALSE) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 rename.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .preserve_lake_attrs(result, .data)
 }
 
 #' @export
 relocate.lake_tbl <- function(.data, ..., .before = NULL, .after = NULL) {
   result <- NextMethod()
-  attr(result, "lake_source") <- attr(.data, "lake_source")
+  .preserve_lake_attrs(result, .data)
+}
+
+# Join operations - merge sources from both sides
+# Helper to merge lineage from two tables
+.merge_lake_attrs <- function(result, x, y) {
+  x_source <- attr(x, "lake_source")
+  y_source <- attr(y, "lake_source")
+  x_ref <- attr(x, "lake_source_ref")
+  y_ref <- attr(y, "lake_source_ref")
+
+  attr(result, "lake_source") <- unique(c(x_source, y_source))
+  # For refs, keep both (may need more sophisticated merging later)
+  if (!is.null(x_ref) || !is.null(y_ref)) {
+    attr(result, "lake_source_ref") <- unique(c(x_ref, y_ref))
+  }
   class(result) <- unique(c("lake_tbl", class(result)))
   result
 }
 
-# Join operations - merge sources from both sides
-
 #' @export
 left_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
-  # Combine sources from both tables
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 #' @export
 inner_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 #' @export
 right_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 #' @export
 full_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 #' @export
 semi_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
   result <- NextMethod()
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 #' @export
 anti_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
   result <- NextMethod()
-  x_source <- attr(x, "lake_source")
-  y_source <- attr(y, "lake_source")
-  attr(result, "lake_source") <- unique(c(x_source, y_source))
-  class(result) <- unique(c("lake_tbl", class(result)))
-  result
+  .merge_lake_attrs(result, x, y)
 }
 
 # Collect preserves lineage info differently
@@ -280,8 +255,12 @@ collect.lake_tbl <- function(x, ...) {
   result <- NextMethod()
   # Transfer lake_source to lake_deps for collected data
   sources <- attr(x, "lake_source")
+  source_ref <- attr(x, "lake_source_ref")
   if (!is.null(sources)) {
     attr(result, "lake_deps") <- sources
+    if (!is.null(source_ref)) {
+      attr(result, "lake_source_ref") <- source_ref
+    }
   }
   result
 }
