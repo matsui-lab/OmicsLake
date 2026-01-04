@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # OmicsLake Evaluation Suite - Main Runner
-# Usage: Rscript run_eval.R [--config path/to/config.yml]
+# Usage: Rscript run_eval.R [--config path] [--out dir] [--only W0,W1] [--no-baseline]
 
 suppressPackageStartupMessages({
   library(OmicsLake)
@@ -10,10 +10,44 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly = TRUE)
 
 config_path <- NULL
-if (length(args) >= 2 && args[1] == "--config") {
-  config_path <- args[2]
-} else if (length(args) == 1) {
-  config_path <- args[1]
+output_dir <- NULL
+only_workloads <- NULL
+no_baseline <- FALSE
+do_render <- FALSE
+
+i <- 1
+while (i <= length(args)) {
+  if (args[i] == "--config" && i < length(args)) {
+    config_path <- args[i + 1]
+    i <- i + 2
+  } else if (args[i] == "--out" && i < length(args)) {
+    output_dir <- args[i + 1]
+    i <- i + 2
+  } else if (args[i] == "--only" && i < length(args)) {
+    only_workloads <- strsplit(args[i + 1], ",")[[1]]
+    i <- i + 2
+  } else if (args[i] == "--no-baseline") {
+    no_baseline <- TRUE
+    i <- i + 1
+  } else if (args[i] == "--render") {
+    do_render <- TRUE
+    i <- i + 1
+  } else if (args[i] == "--help" || args[i] == "-h") {
+    cat("Usage: Rscript run_eval.R [OPTIONS]\n\n")
+    cat("Options:\n")
+    cat("  --config PATH       Configuration file path\n")
+    cat("  --out DIR           Output directory\n")
+    cat("  --only W0,W1,W2,W3  Run only specified workloads\n")
+    cat("  --no-baseline       Skip baseline comparisons\n")
+    cat("  --render            Render case study Rmd to HTML\n")
+    cat("  --help, -h          Show this help message\n")
+    quit(status = 0)
+  } else if (!grepl("^--", args[i])) {
+    config_path <- args[i]
+    i <- i + 1
+  } else {
+    i <- i + 1
+  }
 }
 
 # Load configuration
@@ -27,9 +61,30 @@ if (!is.null(config_path)) {
   config <- ol_eval_load_config()
 }
 
+# Override output directory if specified
+if (!is.null(output_dir)) {
+  config$outputs$results_dir <- output_dir
+}
+
+# Apply --only filter
+if (!is.null(only_workloads)) {
+  config$workloads$W0_io <- "W0" %in% only_workloads
+  config$workloads$W1_queries <- "W1" %in% only_workloads
+  config$workloads$W2_lineage <- "W2" %in% only_workloads
+  config$workloads$W3_case_study <- "W3" %in% only_workloads
+}
+
+# Apply --no-baseline
+if (no_baseline) {
+  config$baselines$B1_duckdb_dbplyr <- FALSE
+  config$baselines$B2_file_based <- FALSE
+}
+
 cat("Project root:", config$project_root, "\n")
 cat("Seed:", config$seed, "\n")
-cat("Threads:", config$threads, "\n\n")
+cat("Threads:", config$threads, "\n")
+cat("Workloads:", paste(names(config$workloads)[unlist(config$workloads)], collapse = ", "), "\n")
+cat("Baselines:", paste(names(config$baselines)[unlist(config$baselines)], collapse = ", "), "\n\n")
 
 # Ensure output directory exists
 dir.create(config$outputs$results_dir, recursive = TRUE, showWarnings = FALSE)
@@ -61,6 +116,23 @@ if (isTRUE(config$workloads$W3_case_study)) {
     # Generate case study report
     ol_eval_case_study_report(case_results,
                               file.path(config$outputs$results_dir, "case_study_report.md"))
+
+    # Render Rmd if requested
+    if (do_render) {
+      cat("\n--- Rendering Case Study Rmd ---\n")
+      rmd_file <- system.file("eval/case_study/rnaseq_case_study.Rmd", package = "OmicsLake")
+
+      if (file.exists(rmd_file) && requireNamespace("rmarkdown", quietly = TRUE)) {
+        html_out <- file.path(config$outputs$results_dir, "rnaseq_case_study.html")
+        tryCatch({
+          rmarkdown::render(input = rmd_file, output_file = html_out, quiet = TRUE)
+          cat("Rendered to:", html_out, "\n")
+        }, error = function(e) {
+          cat("Render failed:", conditionMessage(e), "\n")
+        })
+      }
+    }
+
   }, error = function(e) {
     cat("ERROR in case study:", conditionMessage(e), "\n")
   })

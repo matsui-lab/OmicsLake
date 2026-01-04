@@ -13,21 +13,60 @@ The evaluation suite measures and validates OmicsLake's key claims:
 
 ## Quick Start
 
-```r
+```bash
 # Run full evaluation with default config
 Rscript inst/eval/scripts/run_eval.R
 
 # Run with specific config
 Rscript inst/eval/scripts/run_eval.R --config inst/eval/configs/eval_small.yml
 
-# Run benchmarks only
+# Run specific workloads only
+Rscript inst/eval/scripts/run_eval.R --only W0,W1,W3
+
+# Run benchmarks only (W0-W2)
 Rscript inst/eval/scripts/run_benchmarks.R --config inst/eval/configs/eval_medium.yml
 
-# Run case study only
-Rscript inst/eval/scripts/run_case_study.R
+# Run case study only (W3) with HTML rendering
+Rscript inst/eval/scripts/run_case_study.R --render
 
 # Generate plots from existing results
 Rscript inst/eval/scripts/plot_results.R inst/eval/results/benchmark_*.jsonl
+```
+
+## CLI Options
+
+### run_eval.R (Full Evaluation)
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--config PATH` | Configuration file | `--config configs/eval_small.yml` |
+| `--out DIR` | Output directory | `--out ./my_results` |
+| `--only W0,W1,...` | Run only specified workloads | `--only W0,W3` |
+| `--no-baseline` | Skip baseline comparisons | `--no-baseline` |
+| `--render` | Render case study Rmd to HTML | `--render` |
+| `--help` | Show help message | `--help` |
+
+### run_case_study.R (W3 Only)
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--config PATH` | Configuration file | `--config configs/eval_small.yml` |
+| `--out DIR` | Output directory | `--out ./case_results` |
+| `--render` | Render Rmd to HTML | `--render` |
+| `--help` | Show help message | `--help` |
+
+### run_benchmarks.R (W0-W2 Only)
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--config PATH` | Configuration file | `--config configs/eval_medium.yml` |
+| `--help` | Show help message | `--help` |
+
+### plot_results.R
+
+```bash
+Rscript inst/eval/scripts/plot_results.R <jsonl_file> [output_dir] [format]
+# format: png (default), pdf, or svg
 ```
 
 ## Configuration
@@ -97,15 +136,19 @@ RNA-seq reproducibility workflow:
 5. Compare versions with `diff()`
 6. Explore lineage with `deps/tree`
 
-## Output
+## Output Files
 
-Results are written to `results/`:
+Results are written to `results/` (or directory specified with `--out`):
 
-- `benchmark_*.jsonl` - Raw measurement records (JSONL)
-- `case_study_*.jsonl` - Case study timings
-- `summary_*.csv` - Aggregated statistics
-- `figures/` - Generated plots (PNG/PDF/SVG)
-- `*_report.md` - Markdown reports
+| File | Description | Content |
+|------|-------------|---------|
+| `benchmark_YYYYMMDD_HHMMSS.jsonl` | Raw measurement records | W0-W2 workload timings, metrics, evidence |
+| `case_study_YYYYMMDD_HHMMSS.jsonl` | Case study measurements | W3 step timings and validation |
+| `summary_YYYYMMDD_HHMMSS.csv` | Aggregated statistics | mean/sd/median per workload×variant×size |
+| `case_study_report.md` | Markdown report | W3 validation summary, lineage tree |
+| `rnaseq_case_study.html` | Rendered Rmd (with `--render`) | Interactive case study document |
+| `figures/` | Generated plots | fig1_io.png, fig2_query.png, fig3_storage.png, fig4_lineage.png |
+| `eval_report.md` | Full evaluation report | Summary of all workloads and claims |
 
 ### JSONL Record Schema
 
@@ -132,7 +175,53 @@ Results are written to `results/`:
 }
 ```
 
+## Claim Verification Matrix (C1-C4)
+
+The following table maps paper claims to workloads, measurements, and contract tests:
+
+| Claim | Description | Workloads | Contract Tests | Key Evidence |
+|-------|-------------|-----------|----------------|--------------|
+| **C1** | Overhead | W0-1, W0-2, W0-3 | `[C1] measurement records are complete`, `[C1] environment capture includes packages` | `time_sec`, `rss_mb` vs baseline |
+| **C2** | Storage | W0-3 | `[C2] storage breakdown returns all categories`, `[C2] storage delta tracks changes` | `bytes_db`, `bytes_backups`, `bytes_objects`, `bytes_meta` |
+| **C3** | Pushdown | W1-1, W1-2 | `[C3] SQL pushdown includes WHERE/SELECT`, `[C3] Pushdown validation helper` | `evidence.sql`, `pushdown_valid` |
+| **C4** | Reproducibility | W2-1, W2-2, W3 | `[C4] deps() returns parent_ref`, `[C4] multi-parent join preserves dependencies`, `[C4] diff() returns differences` | `parent_ref`, `parent_version_id`, lineage validation |
+
+### Running Contract Tests
+
+```bash
+# Run all contract tests linked to claims
+Rscript -e "devtools::test(filter = 'eval-contracts')"
+
+# Check specific claim (e.g., C3 pushdown)
+Rscript -e "testthat::test_file('tests/testthat/test-eval-contracts.R', filter = 'C3')"
+```
+
+## Cold/Warm Cache Definition
+
+**Critical for reproducible measurements:**
+
+- **Cold**: Fresh Lake project created immediately before measurement, OR new DuckDB connection opened immediately before the operation. No prior queries have been executed on the connection.
+
+- **Warm**: Same Lake instance and DuckDB connection. Query executed immediately after a previous execution of the same or similar query. The database engine may have cached query plans, data pages, or statistics.
+
+- **N/A**: Used for operations where cache state does not apply (e.g., object serialization).
+
+All benchmark records include a `cache` field (`cold`, `warm`, or `na`) to ensure reproducibility.
+
 ## Pass/Fail Criteria
+
+### Paper/Release Readiness Gates
+
+All of the following must pass for paper/release:
+
+| Gate | Criterion | Verification |
+|------|-----------|--------------|
+| **G1** | All `[C1]-[C4]` contract tests pass | `devtools::test(filter = 'eval-contracts')` returns 0 failures |
+| **G2** | Pushdown evidence in W1-1/W1-2 | JSONL records contain `evidence.sql` with WHERE/GROUP BY |
+| **G3** | Lineage completeness in W3 | `deps()` returns `parent_ref` and `parent_version_id` |
+| **G4** | Multi-parent tracking in W3 | 3-parent join shows all 3 dependencies |
+| **G5** | Diff functionality in W3 | `diff()` returns `lake_diff` class with ref1/ref2 |
+| **G6** | Storage breakdown available | W0-3 includes `bytes_db`, `bytes_backups`, etc. |
 
 ### Functional Gates
 

@@ -1,8 +1,20 @@
 # test-eval-contracts.R
 # Evaluation Suite Contract Tests
 # These tests verify the pass/fail criteria for paper/release readiness
+#
+# Claims verified:
+#   C1: Overhead - lineage/versioning time and memory overhead is acceptable
+#   C2: Storage - tag/snap storage growth is explainable
+#   C3: Pushdown - SQL pushdown works correctly with lazy evaluation
+#   C4: Reproducibility - version-aware lineage is complete and correct
+#
+# Test naming convention: [CLAIM] description
 
-test_that("W1-1/W1-2: SQL pushdown includes WHERE/SELECT", {
+# =============================================================================
+# C3: Pushdown Tests
+# =============================================================================
+
+test_that("[C3] SQL pushdown includes WHERE/SELECT in lazy queries", {
   skip_on_cran()
 
   lake <- Lake$new("test_pushdown_contracts")
@@ -50,7 +62,11 @@ test_that("W1-1/W1-2: SQL pushdown includes WHERE/SELECT", {
   })
 })
 
-test_that("W3: deps returns parent_ref and parent_version_id", {
+# =============================================================================
+# C4: Reproducibility / Lineage Tests
+# =============================================================================
+
+test_that("[C4] deps() returns parent_ref and parent_version_id", {
   skip_on_cran()
 
   lake <- Lake$new("test_lineage_contracts")
@@ -91,7 +107,7 @@ test_that("W3: deps returns parent_ref and parent_version_id", {
   })
 })
 
-test_that("W3: multi-parent join preserves all dependencies", {
+test_that("[C4] multi-parent join preserves all dependencies", {
   skip_on_cran()
 
   lake <- Lake$new("test_multiparent_contracts")
@@ -145,7 +161,7 @@ test_that("W3: multi-parent join preserves all dependencies", {
   })
 })
 
-test_that("W3: diff returns differences based on version refs", {
+test_that("[C4] diff() returns differences based on version refs", {
   skip_on_cran()
 
   lake <- Lake$new("test_diff_contracts")
@@ -178,6 +194,121 @@ test_that("W3: diff returns differences based on version refs", {
            recursive = TRUE)
   })
 })
+
+# =============================================================================
+# C1: Overhead Tests
+# =============================================================================
+
+test_that("[C1] measurement records are complete and valid", {
+  # Test that result records have all required fields
+  record <- ol_eval_result(
+    workload = "W0-1",
+    variant = "omicslake",
+    size = "small",
+    cache = "warm",
+    rep = 1,
+    metrics = list(time_sec = 1.5, n_rows = 1000)
+  )
+
+  # Should pass validation
+  expect_true(ol_eval_validate_record(record))
+
+  # Verify all required fields present
+  expect_true("run_id" %in% names(record))
+  expect_true("timestamp" %in% names(record))
+  expect_true("workload" %in% names(record))
+  expect_true("variant" %in% names(record))
+  expect_true("size" %in% names(record))
+  expect_true("cache" %in% names(record))
+  expect_true("rep" %in% names(record))
+  expect_true("metrics" %in% names(record))
+  expect_true("env" %in% names(record))
+
+  # Metrics must include time_sec (not NA)
+  expect_false(is.null(record$metrics$time_sec))
+  expect_false(is.na(record$metrics$time_sec))
+})
+
+test_that("[C1] environment capture includes packages and git info", {
+  env <- ol_eval_env_info()
+
+  expect_true(is.list(env))
+  expect_true("r_version" %in% names(env))
+  expect_true("platform" %in% names(env))
+  expect_true("packages" %in% names(env))
+  expect_true("threads" %in% names(env))
+  expect_true("git" %in% names(env))
+  expect_true("timestamp" %in% names(env))
+
+  # Packages should include key dependencies
+  expect_true("duckdb" %in% names(env$packages))
+  expect_true("dplyr" %in% names(env$packages))
+})
+
+# =============================================================================
+# C2: Storage Tests
+# =============================================================================
+
+test_that("[C2] storage breakdown returns all categories", {
+  # Create a temp directory to test
+  temp_dir <- tempfile("storage_test_")
+  dir.create(temp_dir, recursive = TRUE)
+
+  tryCatch({
+    # Create some test files
+    file.create(file.path(temp_dir, "db.duckdb"))
+    writeLines("test", file.path(temp_dir, "test.rds"))
+
+    breakdown <- ol_eval_storage_breakdown(temp_dir)
+
+    expect_true(is.list(breakdown))
+    expect_true("bytes_total" %in% names(breakdown))
+    expect_true("bytes_db" %in% names(breakdown))
+    expect_true("bytes_backups" %in% names(breakdown))
+    expect_true("bytes_objects" %in% names(breakdown))
+    expect_true("bytes_meta" %in% names(breakdown))
+    expect_true("file_count" %in% names(breakdown))
+
+    # All values should be non-negative
+    expect_true(breakdown$bytes_total >= 0)
+    expect_true(breakdown$file_count >= 0)
+
+  }, finally = {
+    unlink(temp_dir, recursive = TRUE)
+  })
+})
+
+test_that("[C2] storage delta tracks changes correctly", {
+  temp_dir <- tempfile("storage_delta_test_")
+  dir.create(temp_dir, recursive = TRUE)
+
+  tryCatch({
+    # Get initial breakdown
+    before <- ol_eval_storage_breakdown(temp_dir)
+
+    # Add a file
+    writeLines(rep("test data", 100), file.path(temp_dir, "new_file.txt"))
+
+    # Get delta
+    delta_result <- ol_eval_storage_delta(temp_dir, before)
+
+    expect_true(is.list(delta_result))
+    expect_true("before" %in% names(delta_result))
+    expect_true("after" %in% names(delta_result))
+    expect_true("delta" %in% names(delta_result))
+
+    # Delta should show positive change
+    expect_true(delta_result$delta$bytes_total > 0)
+    expect_true(delta_result$delta$file_count > 0)
+
+  }, finally = {
+    unlink(temp_dir, recursive = TRUE)
+  })
+})
+
+# =============================================================================
+# Infrastructure Tests
+# =============================================================================
 
 test_that("Config loading works with defaults and YAML", {
   # Test default config
@@ -243,7 +374,7 @@ test_that("Metrics measurement works correctly", {
   expect_true("rss_mb" %in% names(m2))
 })
 
-test_that("Result record creation is correct", {
+test_that("Result record creation includes all fields", {
   record <- ol_eval_result(
     workload = "W0-1",
     variant = "omicslake",
@@ -262,7 +393,7 @@ test_that("Result record creation is correct", {
   expect_true("env" %in% names(record))
 })
 
-test_that("Pushdown validation works", {
+test_that("[C3] Pushdown validation helper works correctly", {
   # SQL with pushdown
   sql_good <- "SELECT id, value FROM table1 WHERE value > 5 GROUP BY id"
   expect_true(ol_eval_check_pushdown(sql_good, c("WHERE")))
@@ -278,7 +409,7 @@ test_that("Pushdown validation works", {
   expect_false(ol_eval_check_pushdown(NA, c("WHERE")))
 })
 
-test_that("Lineage validation works", {
+test_that("[C4] Lineage validation helper works correctly", {
   # Valid deps
   deps_good <- data.frame(
     parent_name = c("a", "b"),

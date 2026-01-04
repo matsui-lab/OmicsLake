@@ -4,6 +4,40 @@
 NULL
 
 # ============================================================================
+# Shared Query Specifications (P0-2: Baseline Fairness)
+# ============================================================================
+# These functions define the exact dplyr operations used in benchmarks.
+# Both OmicsLake and baseline variants use these same specs to ensure fairness.
+
+#' Query spec for W1-2: filter + group + summarize
+#'
+#' @param tbl A lazy table reference (tbl_lazy or lake_tbl)
+#' @return Lazy query result
+#' @keywords internal
+.ol_eval_query_spec_filter_group <- function(tbl) {
+  tbl |>
+    dplyr::filter(num1 > 50) |>
+    dplyr::group_by(cat1) |>
+    dplyr::summarise(mean_val = mean(num1, na.rm = TRUE), .groups = "drop")
+}
+
+#' Query spec for W1-1: simple filter + select
+#'
+#' @param tbl A lazy table reference
+#' @param filter_col Column to filter on
+#' @param threshold Filter threshold
+#' @param select_cols Columns to select
+#' @return Lazy query result
+#' @keywords internal
+.ol_eval_query_spec_filter_select <- function(tbl, filter_col = "num1",
+                                               threshold = 50,
+                                               select_cols = c("id", "num1", "cat1")) {
+  tbl |>
+    dplyr::filter(.data[[filter_col]] > threshold) |>
+    dplyr::select(dplyr::all_of(select_cols))
+}
+
+# ============================================================================
 # Main Benchmark Runner
 # ============================================================================
 
@@ -177,11 +211,15 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
   results
 }
 
-#' W0-3: tag/snap benchmark
+#' W0-3: tag/snap benchmark with storage breakdown (P0-3: C2)
 #' @keywords internal
 .ol_eval_W0_3_tag_snap <- function(lake, size_name, config, env_info, output_file) {
   n_reps <- config$reps$bench
   results <- list()
+
+  # Get project path for storage breakdown
+  project_path <- file.path(path.expand(config$project_root),
+                            lake$.__enclos_env__$private$.project)
 
   # Ensure we have a table to tag
   if (!"bench_table_1" %in% lake$tables()$table_name) {
@@ -190,16 +228,16 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
   }
 
   for (rep in seq_len(n_reps)) {
-    # Measure tag
+    # Measure tag with storage breakdown
     tag_name <- paste0("v", rep)
 
-    size_before <- .ol_eval_get_project_size(config$project_root, lake)
+    storage_before <- ol_eval_storage_breakdown(project_path)
 
     m_tag <- ol_eval_measure({
       lake$tag("bench_table_1", tag_name)
     })
 
-    size_after_tag <- .ol_eval_get_project_size(config$project_root, lake)
+    storage_delta <- ol_eval_storage_delta(project_path, storage_before)
 
     record_tag <- ol_eval_result(
       workload = "W0-3-tag",
@@ -209,23 +247,30 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
       rep = rep,
       metrics = list(
         time_sec = m_tag$time_sec,
-        bytes_delta = size_after_tag - size_before
+        bytes_delta = storage_delta$delta$bytes_total,
+        bytes_db_delta = storage_delta$delta$bytes_db,
+        bytes_backups_delta = storage_delta$delta$bytes_backups,
+        bytes_total = storage_delta$after$bytes_total
+      ),
+      evidence = list(
+        storage_before = storage_before,
+        storage_after = storage_delta$after
       ),
       env = env_info
     )
 
     ol_eval_write_jsonl(record_tag, output_file)
 
-    # Measure snap
+    # Measure snap with storage breakdown
     snap_label <- paste0("S", rep)
 
-    size_before_snap <- size_after_tag
+    storage_before_snap <- ol_eval_storage_breakdown(project_path)
 
     m_snap <- ol_eval_measure({
       lake$snap(snap_label, note = paste("Benchmark snapshot", rep))
     })
 
-    size_after_snap <- .ol_eval_get_project_size(config$project_root, lake)
+    storage_delta_snap <- ol_eval_storage_delta(project_path, storage_before_snap)
 
     record_snap <- ol_eval_result(
       workload = "W0-3-snap",
@@ -235,7 +280,14 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
       rep = rep,
       metrics = list(
         time_sec = m_snap$time_sec,
-        bytes_delta = size_after_snap - size_before_snap
+        bytes_delta = storage_delta_snap$delta$bytes_total,
+        bytes_db_delta = storage_delta_snap$delta$bytes_db,
+        bytes_backups_delta = storage_delta_snap$delta$bytes_backups,
+        bytes_total = storage_delta_snap$after$bytes_total
+      ),
+      evidence = list(
+        storage_before = storage_before_snap,
+        storage_after = storage_delta_snap$after
       ),
       env = env_info
     )
@@ -356,18 +408,19 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
   results
 }
 
-#' W1-2: ref + dplyr pipeline
+#' W1-2: ref + dplyr pipeline (uses shared query spec)
 #' @keywords internal
 .ol_eval_W1_2_ref_dplyr <- function(lake, size_name, config, env_info, output_file) {
   n_reps <- config$reps$bench
   results <- list()
 
+  # Cache mode definition for reproducibility
+  cache_def <- ol_eval_cache_definition()
+
   for (rep in seq_len(n_reps)) {
     m <- ol_eval_measure({
-      lazy_result <- lake$ref("main") |>
-        dplyr::filter(num1 > 50) |>
-        dplyr::group_by(cat1) |>
-        dplyr::summarise(mean_val = mean(num1, na.rm = TRUE), .groups = "drop")
+      # Use shared query spec for fairness with baseline
+      lazy_result <- .ol_eval_query_spec_filter_group(lake$ref("main"))
 
       sql <- tryCatch(dbplyr::sql_render(lazy_result), error = function(e) NA_character_)
       result <- dplyr::collect(lazy_result)
@@ -388,7 +441,9 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
       ),
       evidence = list(
         sql = sql_evidence,
-        pushdown_valid = ol_eval_check_pushdown(sql_evidence, c("WHERE", "GROUP BY"))
+        pushdown_valid = ol_eval_check_pushdown(sql_evidence, c("WHERE", "GROUP BY")),
+        query_spec = "ol_eval_query_spec_filter_group",
+        cache_definition = cache_def
       ),
       env = env_info
     )
@@ -467,31 +522,32 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
   results
 }
 
-#' W1 Baseline: Raw DuckDB/dbplyr
+#' W1 Baseline: Raw DuckDB/dbplyr (uses shared query spec for fairness)
 #' @keywords internal
 .ol_eval_W1_baseline_duckdb <- function(lake, df, size_name, config, env_info, output_file) {
   n_reps <- config$reps$bench
   results <- list()
+
+  # Cache mode definition for reproducibility
+  cache_def <- ol_eval_cache_definition()
 
   # Create temporary DuckDB connection
   temp_db <- tempfile(fileext = ".duckdb")
   con <- DBI::dbConnect(duckdb::duckdb(), temp_db)
 
   tryCatch({
-    # Write data directly
+    # Write data directly (same data as OmicsLake)
     DBI::dbWriteTable(con, "main", df, overwrite = TRUE)
 
     tbl_main <- dplyr::tbl(con, "main")
 
     for (rep in seq_len(n_reps)) {
-      # Same query as W1-2
+      # Use SAME query spec as OmicsLake for fair comparison
       m <- ol_eval_measure({
-        result <- tbl_main |>
-          dplyr::filter(num1 > 50) |>
-          dplyr::group_by(cat1) |>
-          dplyr::summarise(mean_val = mean(num1, na.rm = TRUE), .groups = "drop") |>
-          dplyr::collect()
-        result
+        lazy_result <- .ol_eval_query_spec_filter_group(tbl_main)
+        sql <- tryCatch(dbplyr::sql_render(lazy_result), error = function(e) NA_character_)
+        result <- dplyr::collect(lazy_result)
+        list(result = result, sql = sql)
       })
 
       record <- ol_eval_result(
@@ -502,7 +558,13 @@ ol_eval_run_benchmarks <- function(config, output_file = NULL) {
         rep = rep,
         metrics = list(
           time_sec = m$time_sec,
-          n_rows = nrow(m$result)
+          n_rows = nrow(m$result$result)
+        ),
+        evidence = list(
+          sql = m$result$sql,
+          query_spec = "ol_eval_query_spec_filter_group",
+          cache_definition = cache_def,
+          notes = "Same query spec as OmicsLake for fair comparison"
         ),
         env = env_info
       )

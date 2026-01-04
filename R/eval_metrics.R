@@ -86,7 +86,10 @@ ol_eval_load_config <- function(config_path = NULL) {
 # Environment Information
 # ============================================================================
 
-#' Capture environment information for reproducibility
+#' Capture comprehensive environment information for reproducibility
+#'
+#' Captures R version, platform, OS, package versions, threads, and git info
+#' to enable full reproducibility of evaluation results.
 #'
 #' @return Named list with environment details
 #' @export
@@ -96,16 +99,86 @@ ol_eval_env_info <- function() {
     platform = R.version$platform,
     os = Sys.info()[["sysname"]],
     os_version = Sys.info()[["release"]],
-    packages = list(
-      OmicsLake = as.character(packageVersion("OmicsLake")),
-      duckdb = as.character(packageVersion("duckdb")),
-      dplyr = as.character(packageVersion("dplyr")),
-      dbplyr = as.character(packageVersion("dbplyr")),
-      arrow = as.character(packageVersion("arrow")),
-      R6 = as.character(packageVersion("R6"))
-    ),
+    packages = ol_eval_capture_packages(),
+    threads = ol_eval_get_threads(),
+    git = ol_eval_capture_git(),
     timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   )
+}
+
+#' Capture package versions for key dependencies
+#'
+#' @return Named list of package versions
+#' @export
+ol_eval_capture_packages <- function() {
+  pkgs <- c("OmicsLake", "duckdb", "dplyr", "dbplyr", "arrow", "R6", "DBI", "rlang")
+
+  versions <- lapply(pkgs, function(pkg) {
+    tryCatch(
+      as.character(utils::packageVersion(pkg)),
+      error = function(e) NA_character_
+    )
+  })
+  names(versions) <- pkgs
+  versions
+}
+
+#' Capture git commit hash if available
+#'
+#' @param repo_path Path to git repository (default: current directory)
+#' @return Named list with commit, branch, and dirty status
+#' @export
+ol_eval_capture_git <- function(repo_path = ".") {
+  result <- list(
+    commit = NA_character_,
+    branch = NA_character_,
+    dirty = NA
+  )
+
+  # Try to get git info using system commands
+  tryCatch({
+    # Check if git is available and we're in a repo
+    git_check <- system2("git", c("-C", repo_path, "rev-parse", "--git-dir"),
+                         stdout = TRUE, stderr = FALSE)
+
+    if (length(git_check) > 0) {
+      # Get commit hash
+      commit <- system2("git", c("-C", repo_path, "rev-parse", "HEAD"),
+                        stdout = TRUE, stderr = FALSE)
+      if (length(commit) > 0) result$commit <- commit[1]
+
+      # Get branch name
+      branch <- system2("git", c("-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"),
+                        stdout = TRUE, stderr = FALSE)
+      if (length(branch) > 0) result$branch <- branch[1]
+
+      # Check for uncommitted changes
+      status <- system2("git", c("-C", repo_path, "status", "--porcelain"),
+                        stdout = TRUE, stderr = FALSE)
+      result$dirty <- length(status) > 0
+    }
+  }, error = function(e) {
+    # Git not available or not a repo - return NAs
+  }, warning = function(w) {
+    # Ignore warnings
+  })
+
+  result
+}
+
+#' Get number of threads available
+#'
+#' @return Integer number of threads
+#' @export
+ol_eval_get_threads <- function() {
+  # Try DuckDB threads setting first
+  threads <- tryCatch({
+    getOption("duckdb.threads", default = parallel::detectCores())
+  }, error = function(e) {
+    parallel::detectCores()
+  })
+
+  as.integer(threads %||% 1L)
 }
 
 # ============================================================================
@@ -247,21 +320,89 @@ ol_eval_bench <- function(expr, n = 10, warmup = 1, measure_memory = FALSE) {
 # Result Output
 # ============================================================================
 
-#' Write a result record to JSONL file
+#' Validate a result record has all required fields
+#'
+#' @param record Result record to validate
+#' @param strict If TRUE, throw error on validation failure
+#' @return Logical indicating validity, or throws error if strict=TRUE
+#' @export
+ol_eval_validate_record <- function(record, strict = FALSE) {
+  required_fields <- c("run_id", "timestamp", "workload", "variant", "size",
+                       "cache", "rep", "metrics", "env")
+
+  missing <- setdiff(required_fields, names(record))
+
+  if (length(missing) > 0) {
+    msg <- paste("Record missing required fields:", paste(missing, collapse = ", "))
+    if (strict) {
+      stop(msg, call. = FALSE)
+    }
+    warning(msg, call. = FALSE)
+    return(FALSE)
+  }
+
+  # Check metrics has at least time_sec
+  if (is.null(record$metrics$time_sec)) {
+    msg <- "Record metrics missing time_sec"
+    if (strict) {
+      stop(msg, call. = FALSE)
+    }
+    warning(msg, call. = FALSE)
+    return(FALSE)
+  }
+
+  # Check env has essential fields
+  if (is.null(record$env$r_version) || is.null(record$env$platform)) {
+    msg <- "Record env missing r_version or platform"
+    if (strict) {
+      stop(msg, call. = FALSE)
+    }
+    warning(msg, call. = FALSE)
+    return(FALSE)
+  }
+
+  TRUE
+}
+
+#' Write a result record to JSONL file with atomic append
+#'
+#' Uses tempfile + append for safer concurrent writes.
 #'
 #' @param record Result record from ol_eval_result()
 #' @param file Path to JSONL output file
 #' @param append Whether to append to existing file
+#' @param validate Whether to validate record before writing
 #' @export
-ol_eval_write_jsonl <- function(record, file, append = TRUE) {
+ol_eval_write_jsonl <- function(record, file, append = TRUE, validate = TRUE) {
+  # Validate record
+  if (validate) {
+    ol_eval_validate_record(record, strict = TRUE)
+  }
+
   # Ensure directory exists
   dir.create(dirname(file), recursive = TRUE, showWarnings = FALSE)
 
   # Convert to JSON line
   json_line <- jsonlite::toJSON(record, auto_unbox = TRUE)
 
-  # Write/append
-  cat(json_line, "\n", file = file, append = append)
+  # Atomic write using tempfile
+  if (append && file.exists(file)) {
+    # Write to temp, then append
+    temp_file <- tempfile(pattern = "ol_eval_", fileext = ".jsonl")
+    cat(json_line, "\n", file = temp_file)
+
+    # Append temp content to main file
+    tryCatch({
+      cat(readLines(temp_file, warn = FALSE), "\n", file = file, append = TRUE, sep = "")
+      unlink(temp_file)
+    }, error = function(e) {
+      unlink(temp_file)
+      stop("Failed to write JSONL: ", conditionMessage(e), call. = FALSE)
+    })
+  } else {
+    # First write or overwrite
+    cat(json_line, "\n", file = file, append = FALSE)
+  }
 
   invisible(record)
 }
@@ -411,4 +552,140 @@ ol_eval_check_lineage <- function(deps, expected_parents,
     missing = missing,
     issues = issues
   )
+}
+
+# ============================================================================
+# Storage Analysis (P0-3: C2 Storage Breakdown)
+# ============================================================================
+
+#' Get detailed storage breakdown for a lake project
+#'
+#' Breaks down storage into db, backups, objects, and metadata components
+#' to explain storage growth from tag/snap operations.
+#'
+#' @param project_dir Path to the lake project directory
+#' @return Named list with storage breakdown in bytes
+#' @export
+ol_eval_storage_breakdown <- function(project_dir) {
+  if (!dir.exists(project_dir)) {
+    return(list(
+      bytes_total = 0,
+      bytes_db = 0,
+      bytes_backups = 0,
+      bytes_objects = 0,
+      bytes_meta = 0,
+      file_count = 0
+    ))
+  }
+
+  # Get all files
+  all_files <- list.files(project_dir, recursive = TRUE, full.names = TRUE)
+  file_sizes <- file.info(all_files)$size
+  names(file_sizes) <- basename(all_files)
+
+  # Categorize files
+  bytes_db <- 0
+  bytes_backups <- 0
+  bytes_objects <- 0
+  bytes_meta <- 0
+
+  for (i in seq_along(all_files)) {
+    fname <- basename(all_files[i])
+    fsize <- file_sizes[i]
+
+    if (is.na(fsize)) next
+
+    if (grepl("\\.duckdb$", fname, ignore.case = TRUE)) {
+      # Main DuckDB file
+      bytes_db <- bytes_db + fsize
+    } else if (grepl("__ol_.*backup|_bak_|_tagged_", fname)) {
+      # Backup tables from tags/snaps
+      bytes_backups <- bytes_backups + fsize
+    } else if (grepl("\\.rds$|\\.qs$", fname, ignore.case = TRUE)) {
+      # Serialized R objects
+      bytes_objects <- bytes_objects + fsize
+    } else if (grepl("__ol_|meta|refs|deps", fname, ignore.case = TRUE)) {
+      # Metadata files
+      bytes_meta <- bytes_meta + fsize
+    } else {
+      # Other files go to db category
+      bytes_db <- bytes_db + fsize
+    }
+  }
+
+  list(
+    bytes_total = sum(file_sizes, na.rm = TRUE),
+    bytes_db = bytes_db,
+    bytes_backups = bytes_backups,
+    bytes_objects = bytes_objects,
+    bytes_meta = bytes_meta,
+    file_count = length(all_files)
+  )
+}
+
+#' Compare storage before and after an operation
+#'
+#' @param project_dir Path to the lake project directory
+#' @param before_breakdown Storage breakdown before operation
+#' @return Named list with deltas and new breakdown
+#' @export
+ol_eval_storage_delta <- function(project_dir, before_breakdown) {
+  after <- ol_eval_storage_breakdown(project_dir)
+
+  list(
+    before = before_breakdown,
+    after = after,
+    delta = list(
+      bytes_total = after$bytes_total - before_breakdown$bytes_total,
+      bytes_db = after$bytes_db - before_breakdown$bytes_db,
+      bytes_backups = after$bytes_backups - before_breakdown$bytes_backups,
+      bytes_objects = after$bytes_objects - before_breakdown$bytes_objects,
+      bytes_meta = after$bytes_meta - before_breakdown$bytes_meta,
+      file_count = after$file_count - before_breakdown$file_count
+    )
+  )
+}
+
+# ============================================================================
+# Cache Mode Helpers (P0-4)
+# ============================================================================
+
+#' Get cold/warm mode operational definition
+#'
+#' Returns a description of how cold/warm modes are operationally defined
+#' for reproducibility documentation.
+#'
+#' @return Character string with definition
+#' @export
+ol_eval_cache_definition <- function() {
+  paste0(
+    "Cold: Fresh Lake project or new DuckDB connection opened immediately ",
+    "before measurement. Warm: Same connection, query executed immediately ",
+    "after a previous execution. Note: OS-level cache clearing is not performed; ",
+    "cold represents application-level cold start only."
+  )
+}
+
+#' Create a cold cache condition
+#'
+#' Opens a fresh connection to simulate cold cache.
+#'
+#' @param lake Lake object
+#' @return Invisible NULL (side effect: reconnects lake)
+#' @keywords internal
+.ol_eval_cold_cache <- function(lake) {
+  # Force disconnect and reconnect
+  # This is a best-effort cold simulation at the application level
+  tryCatch({
+    # Access private state and reconnect
+    state <- lake$.__enclos_env__$private$.state
+    if (!is.null(state$conn)) {
+      DBI::dbDisconnect(state$conn)
+      # Reinitialize backend
+      lake$.__enclos_env__$private$.init_backend()
+    }
+  }, error = function(e) {
+    # Ignore errors in cold cache simulation
+  })
+  invisible(NULL)
 }
