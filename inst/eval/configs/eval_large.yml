@@ -1,0 +1,49 @@
+# OmicsLake Evaluation Suite - Large Configuration
+# Comprehensive evaluation for high-performance environments
+# May require significant time and memory
+
+project_root: "~/.omicslake_eval_large"
+seed: 42
+threads: 8
+
+sizes:
+  small:
+    n_rows: 1000000
+    n_cols: 50
+  medium:
+    n_rows: 10000000
+    n_cols: 100
+  large:
+    n_rows: 50000000
+    n_cols: 50
+
+reps:
+  bench: 10
+  heavy: 5
+
+cache_mode:
+  enable: true
+  modes: ["cold", "warm"]
+
+workloads:
+  W0_io: true
+  W1_queries: true
+  W2_lineage: true
+  W3_case_study: true
+
+baselines:
+  B1_duckdb_dbplyr: true
+  B2_file_based: true
+
+outputs:
+  results_dir: "inst/eval/results"
+  formats: ["jsonl", "csv"]
+
+case_study:
+  n_genes: 50000
+  n_samples: 12
+
+validation:
+  check_pushdown: true
+  check_lineage: true
+  strict_mode: true
