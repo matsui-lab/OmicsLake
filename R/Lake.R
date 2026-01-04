@@ -579,12 +579,21 @@ Lake <- R6::R6Class("Lake",
       }
 
       # Try to drop as table first, then as object
-      tryCatch({
+      table_dropped <- tryCatch({
         ol_drop(name, project = private$.project)
+        TRUE
       }, error = function(e) {
-        # May need to implement object drop
-        warning("Could not drop: ", conditionMessage(e), call. = FALSE)
+        FALSE
       })
+
+      if (!table_dropped) {
+        # Try to drop as object
+        tryCatch({
+          ol_drop_object(name, project = private$.project)
+        }, error = function(e) {
+          stop("'", name, "' not found as table or object", call. = FALSE)
+        })
+      }
 
       invisible(self)
     },

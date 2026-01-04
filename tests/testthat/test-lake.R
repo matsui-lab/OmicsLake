@@ -155,6 +155,32 @@ test_that("Lake$drop removes data", {
   unlink(file.path(path.expand("~"), ".omicslake", "test_lake_drop"), recursive = TRUE)
 })
 
+test_that("Lake$drop removes objects", {
+  lake <- Lake$new("test_lake_drop_obj")
+
+  # Save an arbitrary R object (not a data frame)
+  my_model <- list(coefficients = c(1.5, 2.3), type = "linear")
+  lake$put("my_model", my_model)
+  expect_true("my_model" %in% lake$objects()$name)
+
+  # Drop the object
+  lake$drop("my_model")
+  expect_false("my_model" %in% lake$objects()$name)
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_lake_drop_obj"), recursive = TRUE)
+})
+
+test_that("Lake$drop errors on non-existent data", {
+  lake <- Lake$new("test_lake_drop_err")
+
+  # Attempting to drop non-existent data should error
+  expect_error(lake$drop("does_not_exist"), "not found")
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_lake_drop_err"), recursive = TRUE)
+})
+
 test_that("Lake bracket notation works", {
   lake <- Lake$new("test_lake_bracket")
 
