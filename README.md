@@ -6,7 +6,8 @@
 
 ## Features
 
-- **Automatic Lineage Tracking** - Dependencies tracked through dplyr pipes without manual annotation
+- **Dataset-Level Lineage Tracking** - Dependencies tracked through dplyr pipes (`save_as()`) and tracking contexts (`with_tracking()`)
+- **Version-Aware Lineage** - Dependencies record which version of parent data was used (not just name)
 - **Simple API** - Just `put()`, `get()`, `snap()`, `tree()` - no verbose function names
 - **R-Native Queries** - No SQL required; use formula syntax or dplyr
 - **Bioconductor Ready** - Full SummarizedExperiment and Seurat support
@@ -129,7 +130,7 @@ tree("data")
 
 ## dplyr Integration
 
-Dependencies are automatically tracked through dplyr operations:
+Dependencies are automatically tracked through dplyr operations when using `save_as()`:
 
 ```r
 lake$ref("raw_counts") |>
@@ -141,6 +142,37 @@ lake$ref("raw_counts") |>
 
 # Lineage automatically recorded:
 # raw_counts + metadata -> summary_stats
+```
+
+## Lineage Tracking Scope
+
+OmicsLake provides **dataset-level lineage** tracking. Dependencies are captured automatically in the following contexts:
+
+| Context | How It Works |
+|---------|--------------|
+| `save_as()` | dplyr pipe terminator - tracks all `lake$ref()` sources in the pipe |
+| `with_tracking()` | Explicit tracking context - wraps code block to capture `lake$get()` calls |
+| `wrap_fn()` / `wrap_call()` | Function wrapper - tracks dependencies for wrapped function calls |
+| `depends_on` parameter | Manual specification - explicitly declare dependencies in `lake$put()` |
+
+**Note**: A simple `lake$get()` → `lake$put()` sequence without a tracking context will **not** automatically capture dependencies. Use one of the methods above or specify `depends_on` explicitly.
+
+```r
+# ✅ Dependencies captured via save_as()
+lake$ref("source") |> dplyr::filter(x > 0) |> save_as("result", lake)
+
+# ✅ Dependencies captured via with_tracking()
+with_tracking(lake, {
+  data <- lake$get("source")
+  lake$put("result", transform(data))
+})
+
+# ✅ Dependencies captured via explicit depends_on
+lake$put("result", data, depends_on = "source")
+
+# ⚠️ No automatic dependency capture (use depends_on or tracking context)
+data <- lake$get("source")
+lake$put("result", transform(data))  # depends_on = NULL
 ```
 
 ## Bioconductor Support

@@ -85,20 +85,69 @@
 
 .ol_ensure_dependencies_table <- function(state) {
   conn <- state$conn
+  ident <- .ol_sql_ident(conn, state, "__ol_dependencies")
+
+  # Create table with extended schema for version-aware lineage
   sql <- sprintf(
-    "CREATE TABLE IF NOT EXISTS %s (child_name TEXT, child_type TEXT, parent_name TEXT, parent_type TEXT, relationship_type TEXT, created_at TIMESTAMP)",
-    .ol_sql_ident(conn, state, "__ol_dependencies")
+    "CREATE TABLE IF NOT EXISTS %s (child_name TEXT, child_type TEXT, parent_name TEXT, parent_type TEXT, relationship_type TEXT, created_at TIMESTAMP, parent_ref TEXT, parent_version_id TEXT, child_version_id TEXT)",
+    ident
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
     if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
   })
+
+  # Migration: add new columns if they don't exist (for existing databases)
+  .ol_migrate_dependencies_table(state)
 }
 
-.ol_record_dependency <- function(state, child_name, child_type, parent_name, parent_type, relationship_type = "derived_from") {
+#' Migrate dependencies table to add version columns
+#' @keywords internal
+.ol_migrate_dependencies_table <- function(state) {
+  conn <- state$conn
+  ident <- .ol_sql_ident(conn, state, "__ol_dependencies")
+
+  # Check if columns exist and add them if missing
+  # DuckDB allows ADD COLUMN IF NOT EXISTS in recent versions
+  tryCatch({
+    DBI::dbExecute(conn, sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS parent_ref TEXT DEFAULT '@latest'", ident))
+  }, error = function(e) {
+    # Column may already exist - that's OK
+    if (!grepl("already exists|duplicate column", conditionMessage(e), ignore.case = TRUE)) {
+      warning("Could not add parent_ref column: ", conditionMessage(e), call. = FALSE)
+    }
+  })
+
+  tryCatch({
+    DBI::dbExecute(conn, sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS parent_version_id TEXT", ident))
+  }, error = function(e) {
+    if (!grepl("already exists|duplicate column", conditionMessage(e), ignore.case = TRUE)) {
+      warning("Could not add parent_version_id column: ", conditionMessage(e), call. = FALSE)
+    }
+  })
+
+  tryCatch({
+    DBI::dbExecute(conn, sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS child_version_id TEXT", ident))
+  }, error = function(e) {
+    if (!grepl("already exists|duplicate column", conditionMessage(e), ignore.case = TRUE)) {
+      warning("Could not add child_version_id column: ", conditionMessage(e), call. = FALSE)
+    }
+  })
+}
+
+.ol_record_dependency <- function(state, child_name, child_type, parent_name, parent_type,
+                                   relationship_type = "derived_from",
+                                   parent_ref = "@latest", parent_version_id = NULL,
+                                   child_version_id = NULL) {
   .ol_ensure_dependencies_table(state)
   conn <- state$conn
-  
+
+  # Resolve parent ref to version_id if not provided
+  if (is.null(parent_version_id)) {
+    resolved <- .ol_resolve_ref_to_version(state, parent_name, parent_ref, parent_type)
+    parent_version_id <- resolved$version_id
+  }
+
   dep_data <- data.frame(
     child_name = child_name,
     child_type = child_type,
@@ -106,10 +155,69 @@
     parent_type = parent_type,
     relationship_type = relationship_type,
     created_at = as.POSIXct(Sys.time(), tz = "UTC"),
+    parent_ref = as.character(parent_ref),
+    parent_version_id = if (is.null(parent_version_id)) NA_character_ else as.character(parent_version_id),
+    child_version_id = if (is.null(child_version_id)) NA_character_ else as.character(child_version_id),
     stringsAsFactors = FALSE
   )
-  
+
   DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_dependencies"), dep_data)
+}
+
+#' Resolve a reference to a version identifier
+#'
+#' @param state Backend state object
+#' @param name Name of the table or object
+#' @param ref Reference string (e.g., "@latest", "@tag(v1)", "@first")
+#' @param type Type of entity ("table" or "object")
+#' @return List with version_id, snapshot_table (for tables), and type
+#' @keywords internal
+.ol_resolve_ref_to_version <- function(state, name, ref, type = "table") {
+  conn <- state$conn
+
+  if (identical(type, "object")) {
+    # For objects, resolve to version_ts
+    .ol_ensure_objects_table(state)
+    ident <- .ol_sql_ident(conn, state, "__ol_objects")
+    parsed <- .ol_ref_parse(ref)
+
+    if (identical(parsed$type, "latest") || identical(ref, "@latest")) {
+      query <- sprintf(
+        "SELECT version_ts FROM %s WHERE name = %s ORDER BY version_ts DESC LIMIT 1",
+        ident, DBI::dbQuoteString(conn, name)
+      )
+    } else if (identical(ref, "@first")) {
+      query <- sprintf(
+        "SELECT version_ts FROM %s WHERE name = %s ORDER BY version_ts ASC LIMIT 1",
+        ident, DBI::dbQuoteString(conn, name)
+      )
+    } else if (identical(parsed$type, "tag")) {
+      # Look up tag in refs table
+      .ol_ensure_refs_table(state)
+      ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
+      ref_name <- paste0("__object__", name)
+      query <- sprintf(
+        "SELECT snapshot as version_ts FROM %s WHERE table_name = %s AND tag = %s ORDER BY as_of DESC LIMIT 1",
+        ident_refs, DBI::dbQuoteString(conn, ref_name), DBI::dbQuoteString(conn, parsed$value)
+      )
+    } else {
+      return(list(version_id = NULL, snapshot_table = NULL, type = "object"))
+    }
+
+    res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
+    version_id <- if (nrow(res) > 0) as.character(res$version_ts[1]) else NULL
+    return(list(version_id = version_id, snapshot_table = NULL, type = "object"))
+
+  } else {
+    # For tables, resolve to snapshot table name or current table
+    resolved <- .ol_resolve_reference(state, name, ref)
+    if (!is.null(resolved$backup_table)) {
+      return(list(version_id = resolved$backup_table, snapshot_table = resolved$backup_table, type = "table"))
+    } else {
+      # Current version - use table name as version_id
+      return(list(version_id = paste0(name, "@current"), snapshot_table = NULL, type = "table"))
+    }
+  }
 }
 
 #' Record multiple dependencies for a child entity
@@ -230,44 +338,63 @@
 }
 
 #' Tag a table by creating a backup
+#' @param .in_transaction Internal parameter - if TRUE, skip transaction management (caller handles it)
 #' @export
-ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")) {
+ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project"), .in_transaction = FALSE) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   if (missing(name) || !nzchar(name)) stop("name must be provided", call. = FALSE)
   if (missing(tag) || !nzchar(tag)) stop("tag must be provided", call. = FALSE)
   state <- .ol_get_backend_state(project)
   conn <- state$conn
-  
+
   backup_table <- .ol_get_backup_table_name(name, tag)
   source_ident <- .ol_sql_ident(conn, state, name)
   backup_ident <- .ol_sql_ident(conn, state, backup_table)
-  
-  create_backup_sql <- sprintf(
-    "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
-    backup_ident,
-    source_ident
-  )
-  tryCatch(DBI::dbExecute(conn, create_backup_sql), error = function(e) {
-    stop("Failed to create backup for table '", name, "': ", conditionMessage(e), call. = FALSE)
-  })
-  
-  .ol_ensure_refs_table(state)
-  ident <- .ol_sql_ident(conn, state, "__ol_refs")
-  delete_sql <- sprintf(
-    "DELETE FROM %s WHERE table_name = %s AND tag = %s",
-    ident,
-    DBI::dbQuoteString(conn, name),
-    DBI::dbQuoteString(conn, tag)
-  )
-  DBI::dbExecute(conn, delete_sql)
-  insert_sql <- sprintf(
-    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
-    ident,
-    DBI::dbQuoteString(conn, name),
-    DBI::dbQuoteString(conn, tag),
-    DBI::dbQuoteString(conn, backup_table)
-  )
-  DBI::dbExecute(conn, insert_sql)
+
+  # Internal function to do the actual work
+  .do_tag <- function() {
+    create_backup_sql <- sprintf(
+      "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
+      backup_ident,
+      source_ident
+    )
+    DBI::dbExecute(conn, create_backup_sql)
+
+    .ol_ensure_refs_table(state)
+    ident <- .ol_sql_ident(conn, state, "__ol_refs")
+    delete_sql <- sprintf(
+      "DELETE FROM %s WHERE table_name = %s AND tag = %s",
+      ident,
+      DBI::dbQuoteString(conn, name),
+      DBI::dbQuoteString(conn, tag)
+    )
+    DBI::dbExecute(conn, delete_sql)
+
+    insert_sql <- sprintf(
+      "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
+      ident,
+      DBI::dbQuoteString(conn, name),
+      DBI::dbQuoteString(conn, tag),
+      DBI::dbQuoteString(conn, backup_table)
+    )
+    DBI::dbExecute(conn, insert_sql)
+  }
+
+  # If caller is managing transaction, just do the work
+  if (isTRUE(.in_transaction)) {
+    .do_tag()
+  } else {
+    # Use transaction for atomicity: backup creation + refs update must both succeed
+    DBI::dbBegin(conn)
+    tryCatch({
+      .do_tag()
+      DBI::dbCommit(conn)
+    }, error = function(e) {
+      DBI::dbRollback(conn)
+      stop("Failed to tag table '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
+    })
+  }
+
   invisible(backup_table)
 }
 
@@ -276,15 +403,16 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
 #' @param tag Tag name to assign
 #' @param when Which version to tag: "latest" (default) or "first", or a specific version_ts timestamp
 #' @param project Project name
+#' @param .in_transaction Internal parameter - if TRUE, skip transaction management (caller handles it)
 #' @export
-ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project")) {
+ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project"), .in_transaction = FALSE) {
   .ol_validate_name(name, "object name")
   .ol_validate_name(tag, "tag")
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
-  
+
   ident_objects <- .ol_sql_ident(conn, state, "__ol_objects")
   if (is.character(when) && when %in% c("latest", "first")) {
     order_dir <- if (identical(when, "latest")) "DESC" else "ASC"
@@ -300,28 +428,46 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
   } else {
     version_ts <- when
   }
-  
-  .ol_ensure_refs_table(state)
-  ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
-  ref_name <- paste0("__object__", name)
-  
-  delete_sql <- sprintf(
-    "DELETE FROM %s WHERE table_name = %s AND tag = %s",
-    ident_refs,
-    DBI::dbQuoteString(conn, ref_name),
-    DBI::dbQuoteString(conn, tag)
-  )
-  DBI::dbExecute(conn, delete_sql)
-  
-  insert_sql <- sprintf(
-    "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
-    ident_refs,
-    DBI::dbQuoteString(conn, ref_name),
-    DBI::dbQuoteString(conn, tag),
-    DBI::dbQuoteString(conn, as.character(version_ts))
-  )
-  DBI::dbExecute(conn, insert_sql)
-  
+
+  # Internal function to do the actual work
+  .do_tag_object <- function() {
+    .ol_ensure_refs_table(state)
+    ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
+    ref_name <- paste0("__object__", name)
+
+    delete_sql <- sprintf(
+      "DELETE FROM %s WHERE table_name = %s AND tag = %s",
+      ident_refs,
+      DBI::dbQuoteString(conn, ref_name),
+      DBI::dbQuoteString(conn, tag)
+    )
+    DBI::dbExecute(conn, delete_sql)
+
+    insert_sql <- sprintf(
+      "INSERT INTO %s (table_name, tag, snapshot, as_of) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)",
+      ident_refs,
+      DBI::dbQuoteString(conn, ref_name),
+      DBI::dbQuoteString(conn, tag),
+      DBI::dbQuoteString(conn, as.character(version_ts))
+    )
+    DBI::dbExecute(conn, insert_sql)
+  }
+
+  # If caller is managing transaction, just do the work
+  if (isTRUE(.in_transaction)) {
+    .do_tag_object()
+  } else {
+    # Use transaction for atomicity
+    DBI::dbBegin(conn)
+    tryCatch({
+      .do_tag_object()
+      DBI::dbCommit(conn)
+    }, error = function(e) {
+      DBI::dbRollback(conn)
+      stop("Failed to tag object '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
+    })
+  }
+
   invisible(version_ts)
 }
 

@@ -436,3 +436,188 @@ UPDATE __ol_dependencies SET parent_ref = '@latest' WHERE parent_ref IS NULL;
 8. Handle bracket notation with lazy tables
 9. Implement actual file I/O hooks in observe mode
 10. Consider operation-level lineage storage
+
+---
+
+## Follow-up Verification Audit (2026-01-04)
+
+After implementing the P0/P1 fixes, a verification audit was conducted to ensure correctness.
+
+### Audit Areas
+
+#### A. Transaction Effectiveness (snap/tag)
+
+**Issue Found:** FAIL - Nested transactions causing premature commits
+
+**Evidence:**
+- `snap()` in `Lake.R` calls `DBI::dbBegin()`, then `ol_label()`
+- `ol_label()` in `init.R` calls `ol_tag()` for each table
+- `ol_tag()` in `backend.R` called `DBI::dbBegin()` inside the loop
+- Result: Inner `dbCommit()` would commit the outer transaction prematurely
+
+**Fix Applied:**
+- Added `.in_transaction` parameter to `ol_tag()`, `ol_tag_object()`, and `ol_label()`
+- When called with `.in_transaction = TRUE`, these functions skip their internal transaction management
+- `snap()` now passes `.in_transaction = TRUE` to `ol_label()`
+
+**Files Changed:**
+- `R/backend.R`: `ol_tag()` and `ol_tag_object()` refactored with `.in_transaction` param
+- `R/init.R`: `ol_label()` accepts and passes `.in_transaction` to child calls
+- `R/Lake.R`: `snap()` passes `.in_transaction = TRUE`
+
+**Tests Added:**
+- `test-atomicity.R`: "nested ol_tag calls within snap don't cause transaction issues"
+- `test-atomicity.R`: "ol_label with .in_transaction works correctly"
+
+#### B. Multi-Parent Lineage Completeness
+
+**Issue Found:** FAIL - Version refs not properly paired with names in joins
+
+**Evidence:**
+- `lake_source_ref` was stored as a single attribute, not paired with table names
+- When joining `counts@v1` with `metadata@baseline`, the refs were stored in separate vectors
+- In `put()`, the entire `lake_source_ref` vector was assigned to each dependency
+- Result: Both parents would get the same refs instead of their individual refs
+
+**Fix Applied:**
+1. Added new `lake_sources` attribute format: `list(list(name=..., ref=...), ...)`
+2. Updated `Lake$ref()` to set `lake_sources` with paired name-ref
+3. Updated `dplyr_compat.R`:
+   - `.preserve_lake_attrs()` preserves `lake_sources`
+   - `.merge_lake_attrs()` properly merges paired name-ref objects during joins
+   - `collect.lake_tbl()` transfers `lake_sources` to collected data
+   - `save_as()` reads `lake_sources` first, falls back to legacy format
+4. Updated `Lake$put()` to read from `lake_sources` first
+
+**Files Changed:**
+- `R/Lake.R`: `ref()` sets `lake_sources`, `put()` reads `lake_sources`
+- `R/dplyr_compat.R`: All S3 methods preserve `lake_sources`, merge logic updated
+
+**Tests Added:**
+- `test-version-lineage.R`: "multi-parent join preserves individual version refs"
+- `test-version-lineage.R`: "lake_sources attribute flows through dplyr pipe operations"
+
+#### C. Migration Idempotency
+
+**Status:** PASS
+
+**Evidence:**
+- `backend.R` uses `ADD COLUMN IF NOT EXISTS` for schema migration
+- Running migration multiple times is safe
+- SQLite compatibility handled with conditional logic
+
+---
+
+## Verification Audit Summary
+
+| Area | Initial Status | Fix Applied | Verified |
+|------|---------------|-------------|----------|
+| A. Transaction effectiveness | FAIL (nested tx) | `.in_transaction` param | Tests added |
+| B. Multi-parent lineage refs | FAIL (refs not paired) | `lake_sources` attribute | Tests added |
+| C. Migration idempotency | PASS | N/A | Confirmed |
+
+### Code Quality Notes
+
+1. **Backward Compatibility:** Legacy `lake_source`/`lake_source_ref` attributes are still set for older code
+2. **Graceful Degradation:** `put()` falls back to legacy format if `lake_sources` is not present
+3. **Transaction Safety:** `.in_transaction` pattern allows composable transaction control
+
+---
+
+## Final Verification Audit (2026-01-04) - Paper/Release Readiness
+
+### A. Transaction Boundary Verification
+
+**A1. Single Transaction Guarantee: PASS ✓**
+
+| File | Line | Code | Role |
+|------|------|------|------|
+| `Lake.R` | 283 | `DBI::dbBegin(conn)` | Outer transaction start |
+| `Lake.R` | 289 | `ol_label(..., .in_transaction = TRUE)` | Pass TRUE to children |
+| `init.R` | 47,59 | `ol_tag(..., .in_transaction = .in_transaction)` | Propagate to child calls |
+| `backend.R` | 384 | `if (isTRUE(.in_transaction)) .do_tag()` | Skip inner tx if TRUE |
+| `backend.R` | 457 | `if (isTRUE(.in_transaction)) .do_tag_object()` | Skip inner tx if TRUE |
+| `Lake.R` | 291,293 | `DBI::dbCommit/dbRollback(conn)` | Outer tx controls |
+
+**A2. Rollback Verification: PASS ✓**
+
+Tests added in `test-atomicity.R`:
+- `"snap rollback on failure leaves no partial state"` - verifies consistent state after snap
+- `"ol_tag atomic: backup and refs are consistent"` - verifies backup+refs atomicity
+
+### B. Multi-Parent Lineage Completeness
+
+**B1. Attribute Flow: PASS ✓**
+
+| Step | File:Line | Code | Description |
+|------|-----------|------|-------------|
+| 1 | `Lake.R:261` | `attr(tbl, "lake_sources") <- list(list(name=name, ref=ref))` | Set paired format |
+| 2 | `dplyr_compat.R:236-246` | `.merge_lake_attrs()` dedup by name | Merge on joins |
+| 3 | `dplyr_compat.R:305-307` | `attr(result, "lake_sources") <- lake_sources` | Transfer on collect |
+| 4 | `dplyr_compat.R:47-74` | `deps <- lake_sources` | Extract in save_as |
+| 5 | `Lake.R:104-117` | Check `lake_sources` first | Read in put() |
+| 6 | `Lake.R:832-838` | `.ol_record_dependency(..., parent_ref=...)` | Record per-parent ref |
+| 7 | `backend.R:158` | `parent_ref = as.character(parent_ref)` | Store in DB |
+
+**B2. Legacy Format Handling: PASS ✓**
+
+- `Lake.R:130-147`: Legacy `lake_source_ref` vector paired by index
+- `dplyr_compat.R:62-73`: Same index-based pairing in `save_as()`
+
+### C. Migration Safety
+
+**C1. Idempotency: PASS ✓**
+
+| File:Line | Code | Guarantee |
+|-----------|------|-----------|
+| `backend.R:92` | `CREATE TABLE IF NOT EXISTS` | Table creation idempotent |
+| `backend.R:113,122,130` | `ADD COLUMN IF NOT EXISTS` | Column addition idempotent |
+| `backend.R:116,124,132` | Error pattern matching | "already exists" errors ignored |
+
+**C2. Backward Compatibility: PASS ✓**
+
+- `backend.R:113`: `DEFAULT '@latest'` backfills existing rows
+- New columns nullable for older code compatibility
+
+---
+
+## Codex Review Fixes (2026-01-04)
+
+### 1. Allow Tagged Reads When Current Table Missing
+
+**Issue:** `get(name, ref="@tag(v1)")` failed when current table was dropped.
+
+**Fix:** `Lake.R:188-225` - Try table path first for tag refs even if current table missing.
+
+**Test:** `test-version-lineage.R`: `"tagged read works after current table is dropped"`
+
+### 2. Keep Per-Parent Refs Instead of Reusing Ref Vector
+
+**Issue:** Legacy `lake_source_ref` vector applied to all deps, not paired by index.
+
+**Fix:**
+- `Lake.R:130-147`: Pair by index when lengths match
+- `dplyr_compat.R:62-73`: Same logic in `save_as()`
+
+**Test:** `test-version-lineage.R`: `"legacy format refs are paired by index in put()"`
+
+---
+
+## Final Summary
+
+| Area | Status | Evidence |
+|------|--------|----------|
+| A1. Transaction single | **PASS** | `.in_transaction` param chain verified |
+| A2. Rollback behavior | **PASS** | Tests added for consistency |
+| B1. lake_sources flow | **PASS** | Attribute chain verified through joins |
+| B2. Legacy ref pairing | **PASS** | Index-based pairing implemented |
+| C1. Migration idempotent | **PASS** | IF NOT EXISTS used throughout |
+| C2. Backward compat | **PASS** | Legacy attributes maintained |
+
+### Paper/Release Readiness: **APPROVED**
+
+All critical paths have been verified. The implementation supports:
+- Dataset-level, version-aware lineage with proper parent-specific refs
+- Atomic transactions for snap/tag operations
+- Safe migration for existing databases
+- Backward compatibility with legacy attribute formats

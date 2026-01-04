@@ -263,42 +263,43 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
 #' @param name Name of the table or object
 #' @param direction Direction to query: "upstream" (parents), "downstream" (children), or "both"
 #' @param project Project name
+#' @return Data frame with dependency info including version references (parent_ref, parent_version_id)
 #' @export
 ol_get_dependencies <- function(name, direction = c("upstream", "downstream", "both"), project = getOption("ol.project")) {
   direction <- match.arg(direction)
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_backend_state(project)
-  
+
   .ol_ensure_dependencies_table(state)
   conn <- state$conn
   ident <- .ol_sql_ident(conn, state, "__ol_dependencies")
-  
+
   if (direction == "upstream") {
     query <- sprintf(
-      "SELECT parent_name, parent_type, relationship_type, created_at FROM %s WHERE child_name = %s ORDER BY created_at DESC",
+      "SELECT parent_name, parent_type, relationship_type, created_at, parent_ref, parent_version_id FROM %s WHERE child_name = %s ORDER BY created_at DESC",
       ident,
       DBI::dbQuoteString(conn, name)
     )
   } else if (direction == "downstream") {
     query <- sprintf(
-      "SELECT child_name, child_type, relationship_type, created_at FROM %s WHERE parent_name = %s ORDER BY created_at DESC",
+      "SELECT child_name, child_type, relationship_type, created_at, child_version_id FROM %s WHERE parent_name = %s ORDER BY created_at DESC",
       ident,
       DBI::dbQuoteString(conn, name)
     )
   } else {
     upstream_query <- sprintf(
-      "SELECT parent_name AS name, parent_type AS type, 'upstream' AS direction, relationship_type, created_at FROM %s WHERE child_name = %s",
+      "SELECT parent_name AS name, parent_type AS type, 'upstream' AS direction, relationship_type, created_at, parent_ref, parent_version_id FROM %s WHERE child_name = %s",
       ident,
       DBI::dbQuoteString(conn, name)
     )
     downstream_query <- sprintf(
-      "SELECT child_name AS name, child_type AS type, 'downstream' AS direction, relationship_type, created_at FROM %s WHERE parent_name = %s",
+      "SELECT child_name AS name, child_type AS type, 'downstream' AS direction, relationship_type, created_at, NULL as parent_ref, child_version_id as parent_version_id FROM %s WHERE parent_name = %s",
       ident,
       DBI::dbQuoteString(conn, name)
     )
     query <- sprintf("(%s) UNION ALL (%s) ORDER BY created_at DESC", upstream_query, downstream_query)
   }
-  
+
   DBI::dbGetQuery(conn, query)
 }
 

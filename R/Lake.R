@@ -72,7 +72,18 @@ Lake <- R6::R6Class("Lake",
     #' @description Write data to the lake
     #' @param name Name for the data
     #' @param data Data to store (data.frame, matrix, list, or any R object)
-    #' @param depends_on Optional explicit dependencies (auto-detected if NULL and auto_track is TRUE)
+    #' @param depends_on Optional explicit dependencies. Can be:
+    #'   - Character vector of names (uses @latest for all)
+    #'   - List of lists with 'name' and 'ref' elements for version-aware deps
+    #'
+    #' **Auto-tracking note**: When `auto_track=TRUE` (default), dependencies are
+
+    #' automatically detected from:
+    #' 1. `lake_deps` attribute on data (set by `save_as()` from dplyr pipes)
+    #' 2. Tracked reads within a `with_tracking()` or `wrap_fn()` context
+    #'
+    #' A simple `lake$get()` followed by `lake$put()` does NOT auto-capture
+    #' dependencies. Use `save_as()`, `with_tracking()`, or specify `depends_on`.
     #' @param tags Optional tags for this version
     #' @return Invisible self for chaining
     put = function(name, data, depends_on = NULL, tags = NULL) {
@@ -82,12 +93,64 @@ Lake <- R6::R6Class("Lake",
       storage_type <- private$.detect_storage_type(data)
 
       # Get auto-detected dependencies if tracking enabled
+      # Dependencies are now stored as list of {name, ref} objects
+      deps_with_refs <- list()
+
       if (is.null(depends_on) && private$.auto_track) {
-        # Check for dependencies from tracked reads
+        # Check for dependencies from tracked reads (already in {name, ref} format)
         tracked_deps <- private$.tracker$current_reads()
-        # Also check for lake_deps attribute (from dplyr pipes)
-        attr_deps <- attr(data, "lake_deps")
-        depends_on <- unique(c(tracked_deps, attr_deps))
+        deps_with_refs <- tracked_deps
+
+        # Check for new paired format first (lake_sources)
+        attr_sources <- attr(data, "lake_sources")
+        if (!is.null(attr_sources) && length(attr_sources) > 0) {
+          # New format: list of list(name=..., ref=...)
+          for (src in attr_sources) {
+            if (!is.null(src$name)) {
+              # Add if not already present
+              existing <- vapply(deps_with_refs, function(d) identical(d$name, src$name), logical(1))
+              if (!any(existing)) {
+                ref_val <- if (is.null(src$ref)) "@latest" else src$ref
+                deps_with_refs <- append(deps_with_refs, list(list(name = src$name, ref = ref_val)))
+              }
+            }
+          }
+        } else {
+          # Fallback to legacy format: lake_deps/lake_source with lake_source_ref
+          # Note: lake_source_ref may be a vector (from joins), so we need to pair by index
+          attr_deps <- attr(data, "lake_deps")
+          if (is.null(attr_deps)) {
+            attr_deps <- attr(data, "lake_source")
+          }
+          if (!is.null(attr_deps)) {
+            # Check for lake_source_ref attribute
+            attr_ref <- attr(data, "lake_source_ref")
+            if (is.null(attr_ref)) attr_ref <- "@latest"
+
+            for (i in seq_along(attr_deps)) {
+              dep_name <- attr_deps[i]
+              # Pair ref by index if attr_ref is a vector of same length
+              # Otherwise use the single ref or first element
+              if (length(attr_ref) == length(attr_deps)) {
+                ref_val <- attr_ref[i]
+              } else if (length(attr_ref) == 1) {
+                ref_val <- attr_ref
+              } else {
+                # Mismatch: use @latest as safe fallback
+                ref_val <- "@latest"
+              }
+
+              # Add as {name, ref} object if not already present
+              existing <- vapply(deps_with_refs, function(d) identical(d$name, dep_name), logical(1))
+              if (!any(existing)) {
+                deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = ref_val)))
+              }
+            }
+          }
+        }
+      } else if (!is.null(depends_on)) {
+        # Convert explicit depends_on to {name, ref} format
+        deps_with_refs <- private$.normalize_dependencies(depends_on)
       }
 
       # Store data based on type
@@ -99,9 +162,9 @@ Lake <- R6::R6Class("Lake",
         stop("Unsupported data type: ", class(data)[1])
       )
 
-      # Record dependencies
-      if (length(depends_on) > 0) {
-        private$.record_dependencies(name, storage_type, depends_on)
+      # Record dependencies with version info
+      if (length(deps_with_refs) > 0) {
+        private$.record_dependencies(name, storage_type, deps_with_refs)
       }
 
       # Apply tags if provided
@@ -131,41 +194,74 @@ Lake <- R6::R6Class("Lake",
       # Track this read for dependency detection
       private$.tracker$track_read(name, ref)
 
-      # Get data from backend
-      data <- private$.get_data(name, ref)
+      # Determine if this is a table or object
+      # For tagged refs, try table first even if current table is missing
+      # (the backup table from the tag may still exist)
+      is_table <- private$.is_table(name)
+      is_tag_ref <- grepl("^@tag\\(", ref)
 
-      # Apply filter if provided
-      if (!is.null(where)) {
-        data <- private$.apply_filter(data, where)
+      if (is_table || is_tag_ref) {
+        # Try table path first
+        # For tagged refs, ol_read() can resolve to backup table even if current is dropped
+        table_result <- tryCatch({
+          data <- private$.get_lazy_data(name, ref)
+
+          # Apply filter if provided (SQL pushdown)
+          if (!is.null(where)) {
+            data <- private$.apply_filter(data, where)
+          }
+
+          # Apply column selection if provided (SQL pushdown)
+          if (!is.null(select)) {
+            data <- private$.apply_select(data, select)
+          }
+
+          # Collect only if requested
+          if (collect) {
+            private$.collect(data)
+          } else {
+            data
+          }
+        }, error = function(e) {
+          # If table read failed and this was a tag ref fallback attempt,
+          # return NULL to try object path
+          if (is_tag_ref && !is_table) {
+            NULL
+          } else {
+            stop(e)
+          }
+        })
+
+        if (!is.null(table_result)) {
+          return(table_result)
+        }
+        # Fall through to object path if tag ref table read failed
       }
 
-      # Apply column selection if provided
-      if (!is.null(select)) {
-        data <- private$.apply_select(data, select)
+      # For objects: cannot be lazy, where/select not supported
+      if (!is.null(where) || !is.null(select)) {
+        warning("where/select parameters are ignored for non-table objects", call. = FALSE)
       }
-
-      # Handle lazy vs eager evaluation
-      if (!collect && private$.is_lazy(data)) {
-        return(data)
-      }
-
       if (!collect) {
-        return(private$.as_lazy(data))
+        warning("collect=FALSE is ignored for non-table objects (objects are always eager)", call. = FALSE)
       }
-
-      private$.collect(data)
+      return(private$.get_object_data(name, ref))
     },
 
     #' @description Get a lazy reference for dplyr operations
     #' @param name Table name
+    #' @param ref Version reference (default: "@latest")
     #' @return A lazy table reference (tbl_lazy)
-    ref = function(name) {
+    ref = function(name, ref = "@latest") {
       private$.validate_name(name)
-      private$.tracker$track_read(name, "@latest")
-      tbl <- private$.get_lazy_ref(name)
+      private$.tracker$track_read(name, ref)
+      tbl <- private$.get_lazy_data(name, ref)
 
-      # Attach lineage metadata
+      # Attach lineage metadata with version info (new paired format)
+      attr(tbl, "lake_sources") <- list(list(name = name, ref = ref))
+      # Legacy format for backward compatibility
       attr(tbl, "lake_source") <- name
+      attr(tbl, "lake_source_ref") <- ref
       class(tbl) <- c("lake_tbl", class(tbl))
       tbl
     },
@@ -181,12 +277,22 @@ Lake <- R6::R6Class("Lake",
       private$.validate_name(label)
 
       state <- private$.state
+      conn <- state$conn
 
-      # Create commit record
-      ol_commit(note = note, params = params, project = private$.project)
+      # Use transaction for atomicity: commit + label must both succeed or both fail
+      DBI::dbBegin(conn)
+      tryCatch({
+        # Create commit record
+        ol_commit(note = note, params = params, project = private$.project)
 
-      # Label all current tables and objects
-      ol_label(label, project = private$.project)
+        # Label all current tables and objects (pass .in_transaction=TRUE to avoid nested transactions)
+        ol_label(label, project = private$.project, .in_transaction = TRUE)
+
+        DBI::dbCommit(conn)
+      }, error = function(e) {
+        DBI::dbRollback(conn)
+        stop("Snapshot failed (rolled back): ", conditionMessage(e), call. = FALSE)
+      })
 
       invisible(self)
     },
@@ -226,10 +332,47 @@ Lake <- R6::R6Class("Lake",
     #' @param name Data name
     #' @param ref1 First version reference (default: "@latest")
     #' @param ref2 Second version reference (default: "@first")
-    #' @return Comparison summary
+    #' @return Comparison summary with row counts, column differences, and sample data
     diff = function(name, ref1 = "@latest", ref2 = "@first") {
       private$.validate_name(name)
-      ol_compare_versions(name, project = private$.project)
+
+      # Get data from both versions
+      data1 <- tryCatch(
+        self$get(name, ref = ref1, collect = TRUE),
+        error = function(e) NULL
+      )
+      data2 <- tryCatch(
+        self$get(name, ref = ref2, collect = TRUE),
+        error = function(e) NULL
+      )
+
+      if (is.null(data1) && is.null(data2)) {
+        stop("Neither version found for: ", name, call. = FALSE)
+      }
+
+      # Build comparison summary
+      result <- list(
+        name = name,
+        ref1 = ref1,
+        ref2 = ref2,
+        ref1_rows = if (!is.null(data1) && is.data.frame(data1)) nrow(data1) else NA,
+        ref2_rows = if (!is.null(data2) && is.data.frame(data2)) nrow(data2) else NA,
+        ref1_cols = if (!is.null(data1) && is.data.frame(data1)) ncol(data1) else NA,
+        ref2_cols = if (!is.null(data2) && is.data.frame(data2)) ncol(data2) else NA
+      )
+
+      # Column differences
+      if (!is.null(data1) && !is.null(data2) && is.data.frame(data1) && is.data.frame(data2)) {
+        cols1 <- names(data1)
+        cols2 <- names(data2)
+        result$cols_added <- setdiff(cols1, cols2)
+        result$cols_removed <- setdiff(cols2, cols1)
+        result$cols_common <- intersect(cols1, cols2)
+        result$row_diff <- result$ref1_rows - result$ref2_rows
+      }
+
+      class(result) <- c("lake_diff", "list")
+      result
     },
 
     # ========== Lineage ==========
@@ -639,17 +782,17 @@ Lake <- R6::R6Class("Lake",
       ol_save(name, data, project = private$.project)
     },
 
-    # Get data from backend
-    .get_data = function(name, ref) {
-      tryCatch({
-        ol_read(name, ref = ref, project = private$.project, collect = TRUE)
-      }, error = function(e) {
-        # Try as object
-        ol_read_object(name, ref = ref, project = private$.project)
-      })
+    # Get lazy reference to table with version support
+    .get_lazy_data = function(name, ref) {
+      ol_read(name, ref = ref, project = private$.project, collect = FALSE)
     },
 
-    # Get lazy reference to table
+    # Get object data (always eager)
+    .get_object_data = function(name, ref) {
+      ol_read_object(name, ref = ref, project = private$.project)
+    },
+
+    # Get lazy reference to table (always @latest, for ref() method)
     .get_lazy_ref = function(name) {
       ol_read(name, ref = "@latest", project = private$.project, collect = FALSE)
     },
@@ -673,16 +816,48 @@ Lake <- R6::R6Class("Lake",
       }
     },
 
-    # Record dependencies
+    # Record dependencies with version info
+    # depends_on is now a list of {name, ref} objects
     .record_dependencies = function(name, type, depends_on) {
       if (length(depends_on) == 0) return()
 
       state <- private$.state
       .ol_ensure_dependencies_table(state)
 
-      for (parent in depends_on) {
-        parent_type <- if (private$.is_object(parent)) "object" else "table"
-        .ol_record_dependency(state, name, type, parent, parent_type)
+      for (dep in depends_on) {
+        parent_name <- dep$name
+        parent_ref <- if (!is.null(dep$ref)) dep$ref else "@latest"
+        parent_type <- if (private$.is_object(parent_name)) "object" else "table"
+
+        .ol_record_dependency(
+          state = state,
+          child_name = name,
+          child_type = type,
+          parent_name = parent_name,
+          parent_type = parent_type,
+          parent_ref = parent_ref
+        )
+      }
+    },
+
+    # Normalize depends_on to list of {name, ref} objects
+    .normalize_dependencies = function(depends_on) {
+      if (is.character(depends_on)) {
+        # Character vector: convert each to {name, ref="@latest"}
+        lapply(depends_on, function(n) list(name = n, ref = "@latest"))
+      } else if (is.list(depends_on)) {
+        # Check if it's already in the right format
+        lapply(depends_on, function(d) {
+          if (is.character(d) && length(d) == 1) {
+            list(name = d, ref = "@latest")
+          } else if (is.list(d) && !is.null(d$name)) {
+            list(name = d$name, ref = if (!is.null(d$ref)) d$ref else "@latest")
+          } else {
+            stop("Invalid dependency format", call. = FALSE)
+          }
+        })
+      } else {
+        stop("depends_on must be a character vector or list", call. = FALSE)
       }
     },
 
@@ -698,9 +873,9 @@ Lake <- R6::R6Class("Lake",
       name %in% objects$name
     },
 
-    # Check if data is lazy (tbl_lazy)
+    # Check if data is lazy (tbl_lazy, tbl_sql, tbl_dbi, or other dbplyr types)
     .is_lazy = function(data) {
-      inherits(data, "tbl_lazy")
+      inherits(data, c("tbl_lazy", "tbl_sql", "tbl_dbi", "tbl_duckdb_connection"))
     },
 
     # Convert to lazy reference
@@ -713,7 +888,7 @@ Lake <- R6::R6Class("Lake",
 
     # Collect lazy data
     .collect = function(data) {
-      if (inherits(data, "tbl_lazy")) {
+      if (private$.is_lazy(data)) {
         dplyr::collect(data)
       } else {
         data
@@ -742,7 +917,7 @@ Lake <- R6::R6Class("Lake",
 
 
 #' @title Dependency Tracker
-#' @description Tracks data dependencies during operations
+#' @description Tracks data dependencies during operations with version-aware lineage
 #' @keywords internal
 DependencyTracker <- R6::R6Class("DependencyTracker",
   public = list(
@@ -751,12 +926,23 @@ DependencyTracker <- R6::R6Class("DependencyTracker",
       private$.read_stack <- list()
     },
 
-    #' Record a read operation
+    #' Record a read operation with version reference
+    #' @param name Name of the data being read
+
+    #' @param ref Version reference (e.g., "@latest", "@tag(v1)")
     track_read = function(name, ref = "@latest") {
       if (length(private$.read_stack) > 0) {
-        # Add to current context
+        # Add to current context as name+ref pair
         ctx <- private$.read_stack[[length(private$.read_stack)]]
-        ctx$reads <- unique(c(ctx$reads, name))
+        # Store as list of lists for version-aware tracking
+        new_read <- list(name = name, ref = as.character(ref))
+        # Check if this exact name+ref pair already exists
+        existing <- vapply(ctx$reads, function(r) {
+          identical(r$name, name) && identical(r$ref, as.character(ref))
+        }, logical(1))
+        if (!any(existing)) {
+          ctx$reads <- append(ctx$reads, list(new_read))
+        }
         private$.read_stack[[length(private$.read_stack)]] <- ctx
       }
       invisible(self)
@@ -765,15 +951,16 @@ DependencyTracker <- R6::R6Class("DependencyTracker",
     #' Start tracking a write operation
     start_write = function(name) {
       private$.read_stack <- append(private$.read_stack, list(
-        list(name = name, reads = character(0), start_time = Sys.time())
+        list(name = name, reads = list(), start_time = Sys.time())
       ))
       invisible(self)
     },
 
-    #' End tracking and return dependencies
+    #' End tracking and return dependencies with version info
+    #' @return List of dependency objects with name and ref
     end_write = function() {
       if (length(private$.read_stack) == 0) {
-        return(character(0))
+        return(list())
       }
 
       ctx <- private$.read_stack[[length(private$.read_stack)]]
@@ -781,12 +968,21 @@ DependencyTracker <- R6::R6Class("DependencyTracker",
       ctx$reads
     },
 
-    #' Get current tracked reads
+    #' Get current tracked reads with version info
+    #' @return List of dependency objects with name and ref
     current_reads = function() {
       if (length(private$.read_stack) == 0) {
-        return(character(0))
+        return(list())
       }
       private$.read_stack[[length(private$.read_stack)]]$reads
+    },
+
+    #' Get current tracked reads as character vector (for backward compatibility)
+    #' @return Character vector of dependency names
+    current_read_names = function() {
+      reads <- self$current_reads()
+      if (length(reads) == 0) return(character(0))
+      vapply(reads, function(r) r$name, character(1))
     },
 
     #' Clear all tracking

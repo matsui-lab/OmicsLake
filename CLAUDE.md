@@ -5,10 +5,22 @@
 **OmicsLake** is an R package for versioned, reproducible omics data management with automatic data lineage tracking. Built on DuckDB, Apache Arrow, and Parquet, it provides a lightweight addon for bioinformatics workflows.
 
 ### Core Value Proposition
-- Automatic lineage tracking through dplyr pipes
+- **Dataset-level lineage tracking** with version awareness through dplyr pipes (`save_as()`) and tracking contexts (`with_tracking()`)
 - Version control for data (snapshots, tags, time travel)
 - Zero-friction integration with existing R/Bioconductor workflows
 - R-native query syntax (formulas, dplyr) - no SQL required
+
+### Lineage Tracking Scope (Paper-Grade Claims)
+OmicsLake provides **dataset-level, version-aware lineage**:
+- Dependencies are captured at the dataset level (which tables/objects depend on which)
+- Version references are resolved and stored (which specific version was used)
+- Automatic capture requires specific contexts:
+  - `save_as()` - dplyr pipe terminator
+  - `with_tracking()` / `wrap_fn()` - explicit tracking wrappers
+  - `depends_on` parameter - manual specification
+
+**Note**: A simple `lake$get()` → `lake$put()` does NOT auto-capture dependencies.
+This is by design for performance; use the methods above for lineage tracking.
 
 ## Repository Structure
 
@@ -92,16 +104,22 @@ Both APIs are fully functional. The legacy API internally uses the same backend.
 - Timestamp - Specific point in time
 
 ### 4. Dependency Tracking
-Dependencies are tracked:
-- **Explicitly**: via `depends_on` parameter
+Dependencies are tracked with version awareness:
+- **Explicitly**: via `depends_on` parameter (character vector or list with name+ref)
 - **Automatically**: through dplyr pipes using `lake$ref()` and `save_as()`
+- **With tracking context**: using `with_tracking()` or `wrap_fn()`
+
+Dependencies now include:
+- `parent_name` - Name of the parent dataset
+- `parent_ref` - The version reference used (e.g., "@latest", "@tag(v1)")
+- `parent_version_id` - Resolved version identifier (snapshot table or timestamp)
 
 ### 5. Internal Tables
 The backend maintains metadata in special tables:
 - `__ol_refs` - Tags and snapshot references
 - `__ol_objects` - Serialized R objects
 - `__ol_commits` - Commit history with notes/params
-- `__ol_dependencies` - Lineage graph edges
+- `__ol_dependencies` - Lineage graph edges (with version info: parent_ref, parent_version_id, child_version_id)
 
 ## Development Workflow
 
