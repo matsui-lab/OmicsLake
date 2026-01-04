@@ -101,21 +101,37 @@ Lake <- R6::R6Class("Lake",
         tracked_deps <- private$.tracker$current_reads()
         deps_with_refs <- tracked_deps
 
-        # Also check for lake_deps/lake_source attribute (from dplyr pipes)
-        attr_deps <- attr(data, "lake_deps")
-        if (is.null(attr_deps)) {
-          attr_deps <- attr(data, "lake_source")
-        }
-        if (!is.null(attr_deps)) {
-          # Check for lake_source_ref attribute
-          attr_ref <- attr(data, "lake_source_ref")
-          if (is.null(attr_ref)) attr_ref <- "@latest"
+        # Check for new paired format first (lake_sources)
+        attr_sources <- attr(data, "lake_sources")
+        if (!is.null(attr_sources) && length(attr_sources) > 0) {
+          # New format: list of list(name=..., ref=...)
+          for (src in attr_sources) {
+            if (!is.null(src$name)) {
+              # Add if not already present
+              existing <- vapply(deps_with_refs, function(d) identical(d$name, src$name), logical(1))
+              if (!any(existing)) {
+                ref_val <- if (is.null(src$ref)) "@latest" else src$ref
+                deps_with_refs <- append(deps_with_refs, list(list(name = src$name, ref = ref_val)))
+              }
+            }
+          }
+        } else {
+          # Fallback to legacy format: lake_deps/lake_source with single lake_source_ref
+          attr_deps <- attr(data, "lake_deps")
+          if (is.null(attr_deps)) {
+            attr_deps <- attr(data, "lake_source")
+          }
+          if (!is.null(attr_deps)) {
+            # Check for lake_source_ref attribute
+            attr_ref <- attr(data, "lake_source_ref")
+            if (is.null(attr_ref)) attr_ref <- "@latest"
 
-          for (dep_name in attr_deps) {
-            # Add as {name, ref} object if not already present
-            existing <- vapply(deps_with_refs, function(d) identical(d$name, dep_name), logical(1))
-            if (!any(existing)) {
-              deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = attr_ref)))
+            for (dep_name in attr_deps) {
+              # Add as {name, ref} object if not already present
+              existing <- vapply(deps_with_refs, function(d) identical(d$name, dep_name), logical(1))
+              if (!any(existing)) {
+                deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = attr_ref)))
+              }
             }
           }
         }
@@ -209,7 +225,9 @@ Lake <- R6::R6Class("Lake",
       private$.tracker$track_read(name, ref)
       tbl <- private$.get_lazy_data(name, ref)
 
-      # Attach lineage metadata with version info
+      # Attach lineage metadata with version info (new paired format)
+      attr(tbl, "lake_sources") <- list(list(name = name, ref = ref))
+      # Legacy format for backward compatibility
       attr(tbl, "lake_source") <- name
       attr(tbl, "lake_source_ref") <- ref
       class(tbl) <- c("lake_tbl", class(tbl))
@@ -235,8 +253,8 @@ Lake <- R6::R6Class("Lake",
         # Create commit record
         ol_commit(note = note, params = params, project = private$.project)
 
-        # Label all current tables and objects
-        ol_label(label, project = private$.project)
+        # Label all current tables and objects (pass .in_transaction=TRUE to avoid nested transactions)
+        ol_label(label, project = private$.project, .in_transaction = TRUE)
 
         DBI::dbCommit(conn)
       }, error = function(e) {

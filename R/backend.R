@@ -338,8 +338,9 @@
 }
 
 #' Tag a table by creating a backup
+#' @param .in_transaction Internal parameter - if TRUE, skip transaction management (caller handles it)
 #' @export
-ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")) {
+ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project"), .in_transaction = FALSE) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   if (missing(name) || !nzchar(name)) stop("name must be provided", call. = FALSE)
   if (missing(tag) || !nzchar(tag)) stop("tag must be provided", call. = FALSE)
@@ -350,9 +351,8 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   source_ident <- .ol_sql_ident(conn, state, name)
   backup_ident <- .ol_sql_ident(conn, state, backup_table)
 
-  # Use transaction for atomicity: backup creation + refs update must both succeed
-  DBI::dbBegin(conn)
-  tryCatch({
+  # Internal function to do the actual work
+  .do_tag <- function() {
     create_backup_sql <- sprintf(
       "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
       backup_ident,
@@ -378,12 +378,22 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
       DBI::dbQuoteString(conn, backup_table)
     )
     DBI::dbExecute(conn, insert_sql)
+  }
 
-    DBI::dbCommit(conn)
-  }, error = function(e) {
-    DBI::dbRollback(conn)
-    stop("Failed to tag table '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
-  })
+  # If caller is managing transaction, just do the work
+  if (isTRUE(.in_transaction)) {
+    .do_tag()
+  } else {
+    # Use transaction for atomicity: backup creation + refs update must both succeed
+    DBI::dbBegin(conn)
+    tryCatch({
+      .do_tag()
+      DBI::dbCommit(conn)
+    }, error = function(e) {
+      DBI::dbRollback(conn)
+      stop("Failed to tag table '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
+    })
+  }
 
   invisible(backup_table)
 }
@@ -393,8 +403,9 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
 #' @param tag Tag name to assign
 #' @param when Which version to tag: "latest" (default) or "first", or a specific version_ts timestamp
 #' @param project Project name
+#' @param .in_transaction Internal parameter - if TRUE, skip transaction management (caller handles it)
 #' @export
-ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project")) {
+ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.project"), .in_transaction = FALSE) {
   .ol_validate_name(name, "object name")
   .ol_validate_name(tag, "tag")
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
@@ -418,9 +429,8 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
     version_ts <- when
   }
 
-  # Use transaction for atomicity
-  DBI::dbBegin(conn)
-  tryCatch({
+  # Internal function to do the actual work
+  .do_tag_object <- function() {
     .ol_ensure_refs_table(state)
     ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
     ref_name <- paste0("__object__", name)
@@ -441,12 +451,22 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
       DBI::dbQuoteString(conn, as.character(version_ts))
     )
     DBI::dbExecute(conn, insert_sql)
+  }
 
-    DBI::dbCommit(conn)
-  }, error = function(e) {
-    DBI::dbRollback(conn)
-    stop("Failed to tag object '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
-  })
+  # If caller is managing transaction, just do the work
+  if (isTRUE(.in_transaction)) {
+    .do_tag_object()
+  } else {
+    # Use transaction for atomicity
+    DBI::dbBegin(conn)
+    tryCatch({
+      .do_tag_object()
+      DBI::dbCommit(conn)
+    }, error = function(e) {
+      DBI::dbRollback(conn)
+      stop("Failed to tag object '", name, "' (rolled back): ", conditionMessage(e), call. = FALSE)
+    })
+  }
 
   invisible(version_ts)
 }

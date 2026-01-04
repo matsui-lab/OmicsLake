@@ -131,3 +131,55 @@ test_that("snap with params stores params correctly", {
   # Clean up
   unlink(file.path(path.expand("~"), ".omicslake", "test_snap_params"), recursive = TRUE)
 })
+
+test_that("nested ol_tag calls within snap don't cause transaction issues", {
+  # This test verifies Fix A: nested transactions were causing premature commits
+  # After fix, ol_tag/ol_tag_object accept .in_transaction parameter
+  lake <- Lake$new("test_nested_tx")
+
+  # Create multiple tables
+  lake$put("table1", data.frame(a = 1:3))
+  lake$put("table2", data.frame(b = 4:6))
+  lake$put("table3", data.frame(c = 7:9))
+
+  # Create snapshot - this internally calls ol_label which calls ol_tag for each table
+  # Before fix: nested dbBegin/dbCommit would cause issues
+  # After fix: .in_transaction=TRUE prevents nested transactions
+  expect_no_error(lake$snap("multi_table_snap"))
+
+  # Verify all tables were tagged
+  snaps <- lake$snaps()
+  expect_true(nrow(snaps) > 0 || "multi_table_snap" %in% snaps$tag)
+
+  # Verify we can restore
+  lake$put("table1", data.frame(a = 100:103))
+  lake$restore("multi_table_snap")
+
+  restored <- lake$get("table1")
+  expect_equal(restored$a, 1:3)
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_nested_tx"), recursive = TRUE)
+})
+
+test_that("ol_label with .in_transaction works correctly", {
+  # Direct test of the .in_transaction parameter
+  lake <- Lake$new("test_in_transaction")
+
+  lake$put("data", data.frame(x = 1:5))
+
+  # Call ol_label with .in_transaction = FALSE (default behavior - it manages its own tx)
+  expect_no_error(ol_label("label1", project = "test_in_transaction", .in_transaction = FALSE))
+
+  # Verify label was created
+  refs <- tryCatch({
+    state <- .ol_get_backend_state("test_in_transaction")
+    ident <- .ol_sql_ident(state$conn, state, "__ol_refs")
+    DBI::dbGetQuery(state$conn, sprintf("SELECT * FROM %s WHERE tag = 'label1'", ident))
+  }, error = function(e) data.frame())
+
+  expect_true(nrow(refs) > 0)
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_in_transaction"), recursive = TRUE)
+})

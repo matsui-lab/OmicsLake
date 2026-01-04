@@ -40,14 +40,28 @@ save_as <- function(.data, name, lake = NULL) {
     lake <- lake()
   }
 
-  # Extract tracked dependencies from attributes
-  deps <- attr(.data, "lake_source")
-  if (is.null(deps)) {
-    deps <- attr(.data, "lake_deps")
+  # Extract tracked dependencies - prefer new paired format
+  lake_sources <- attr(.data, "lake_sources")
+  deps <- NULL
+
+  if (!is.null(lake_sources) && length(lake_sources) > 0) {
+    # New format: list of list(name=..., ref=...)
+    deps <- lake_sources
+  } else {
+    # Fallback to legacy format
+    legacy_deps <- attr(.data, "lake_source")
+    if (is.null(legacy_deps)) {
+      legacy_deps <- attr(.data, "lake_deps")
+    }
+    if (!is.null(legacy_deps)) {
+      # Convert to new format with ref
+      source_ref <- attr(.data, "lake_source_ref")
+      if (is.null(source_ref)) source_ref <- "@latest"
+      deps <- lapply(legacy_deps, function(n) list(name = n, ref = source_ref))
+    }
   }
 
   # Collect if lazy
-
   if (inherits(.data, "tbl_lazy")) {
     .data <- dplyr::collect(.data)
   }
@@ -116,8 +130,11 @@ into <- function(lake) {
 # dplyr operations
 # ============================================================
 
-# Helper to preserve lineage attributes
+# Helper to preserve lineage attributes (with paired name-ref storage)
 .preserve_lake_attrs <- function(result, source_data) {
+  # New format: lake_sources is a list of list(name=..., ref=...)
+  attr(result, "lake_sources") <- attr(source_data, "lake_sources")
+  # Legacy format: keep for backward compatibility
   attr(result, "lake_source") <- attr(source_data, "lake_source")
   attr(result, "lake_source_ref") <- attr(source_data, "lake_source_ref")
   class(result) <- unique(c("lake_tbl", class(result)))
@@ -196,15 +213,33 @@ relocate.lake_tbl <- function(.data, ..., .before = NULL, .after = NULL) {
 }
 
 # Join operations - merge sources from both sides
-# Helper to merge lineage from two tables
+# Helper to merge lineage from two tables (with proper name-ref pairing)
 .merge_lake_attrs <- function(result, x, y) {
+  # New format: merge lake_sources lists
+  x_sources <- attr(x, "lake_sources")
+  y_sources <- attr(y, "lake_sources")
+
+  # Combine and deduplicate by name (keep first occurrence)
+  merged_sources <- c(x_sources, y_sources)
+  if (length(merged_sources) > 0) {
+    seen_names <- character(0)
+    unique_sources <- list()
+    for (src in merged_sources) {
+      if (!is.null(src$name) && !(src$name %in% seen_names)) {
+        seen_names <- c(seen_names, src$name)
+        unique_sources <- c(unique_sources, list(src))
+      }
+    }
+    attr(result, "lake_sources") <- unique_sources
+  }
+
+  # Legacy format: keep for backward compatibility
   x_source <- attr(x, "lake_source")
   y_source <- attr(y, "lake_source")
   x_ref <- attr(x, "lake_source_ref")
   y_ref <- attr(y, "lake_source_ref")
 
   attr(result, "lake_source") <- unique(c(x_source, y_source))
-  # For refs, keep both (may need more sophisticated merging later)
   if (!is.null(x_ref) || !is.null(y_ref)) {
     attr(result, "lake_source_ref") <- unique(c(x_ref, y_ref))
   }
@@ -253,7 +288,12 @@ anti_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
 #' @export
 collect.lake_tbl <- function(x, ...) {
   result <- NextMethod()
-  # Transfer lake_source to lake_deps for collected data
+  # Transfer lake_sources (new paired format) to collected data
+  lake_sources <- attr(x, "lake_sources")
+  if (!is.null(lake_sources) && length(lake_sources) > 0) {
+    attr(result, "lake_sources") <- lake_sources
+  }
+  # Also transfer legacy format for backward compatibility
   sources <- attr(x, "lake_source")
   source_ref <- attr(x, "lake_source_ref")
   if (!is.null(sources)) {
