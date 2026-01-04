@@ -152,7 +152,7 @@ ol_list_tables <- function(project = getOption("ol.project")) {
   conn <- state$conn
   
   tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
-  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits"))
+  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits", "__ol_dependencies", "__ol_adapters"))
   
   data.frame(
     table_name = tables,

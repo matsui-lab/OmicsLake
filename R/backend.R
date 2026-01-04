@@ -83,6 +83,76 @@
   })
 }
 
+#' Ensure the adapter registry table exists
+#' Stores metadata about adapter-managed objects for deterministic detection
+#' @keywords internal
+.ol_ensure_adapters_table <- function(state) {
+  conn <- state$conn
+  sql <- sprintf(
+    "CREATE TABLE IF NOT EXISTS %s (name TEXT, adapter_name TEXT, format_version INTEGER, components_json TEXT, created_at TIMESTAMP, PRIMARY KEY (name, created_at))",
+    .ol_sql_ident(conn, state, "__ol_adapters")
+  )
+  tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
+    msg <- conditionMessage(e)
+    if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
+  })
+}
+
+#' Register an adapter-managed object
+#' @keywords internal
+.ol_register_adapter_object <- function(state, name, adapter_name, components, format_version = 1L) {
+  .ol_ensure_adapters_table(state)
+  conn <- state$conn
+  ident <- .ol_sql_ident(conn, state, "__ol_adapters")
+
+  components_json <- jsonlite::toJSON(components, auto_unbox = TRUE)
+
+  insert_sql <- sprintf(
+    "INSERT INTO %s (name, adapter_name, format_version, components_json, created_at) VALUES (%s, %s, %d, %s, %s)",
+    ident,
+    DBI::dbQuoteString(conn, name),
+    DBI::dbQuoteString(conn, adapter_name),
+    as.integer(format_version),
+    DBI::dbQuoteString(conn, as.character(components_json)),
+    DBI::dbQuoteString(conn, format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC"))
+  )
+  DBI::dbExecute(conn, insert_sql)
+  invisible(TRUE)
+}
+
+#' Get adapter info for an object (deterministic lookup)
+#' @keywords internal
+.ol_get_adapter_info <- function(state, name) {
+  .ol_ensure_adapters_table(state)
+  conn <- state$conn
+  ident <- .ol_sql_ident(conn, state, "__ol_adapters")
+
+  query <- sprintf(
+    "SELECT adapter_name, format_version, components_json, created_at FROM %s WHERE name = %s ORDER BY created_at DESC LIMIT 1",
+    ident,
+    DBI::dbQuoteString(conn, name)
+  )
+  result <- DBI::dbGetQuery(conn, query)
+
+  if (nrow(result) == 0) {
+    return(NULL)
+  }
+
+  list(
+    adapter_name = result$adapter_name[1],
+    format_version = result$format_version[1],
+    components = jsonlite::fromJSON(result$components_json[1]),
+    created_at = result$created_at[1]
+  )
+}
+
+#' Check if object is adapter-managed
+#' @keywords internal
+.ol_is_adapter_object <- function(state, name) {
+  info <- .ol_get_adapter_info(state, name)
+  !is.null(info)
+}
+
 .ol_ensure_dependencies_table <- function(state) {
   conn <- state$conn
   ident <- .ol_sql_ident(conn, state, "__ol_dependencies")

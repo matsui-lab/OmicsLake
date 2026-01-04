@@ -54,75 +54,98 @@ SEAdapter <- R6::R6Class("SEAdapter",
         stop("SummarizedExperiment package is required", call. = FALSE)
       }
 
+      project <- lake$.__enclos_env__$private$.project
+      state <- .ol_get_backend_state(project)
+      conn <- state$conn
       prefix <- paste0(name, ".__se__.")
 
-      # Store assays
+      # Collect component names for registry
+      components <- c("colData", "rowData")
+
+      # Prepare assay names
       assay_names <- SummarizedExperiment::assayNames(data)
       if (length(assay_names) == 0 && length(SummarizedExperiment::assays(data)) > 0) {
         assay_names <- paste0("assay", seq_along(SummarizedExperiment::assays(data)))
       }
-
-      for (i in seq_along(assay_names)) {
-        assay_name <- assay_names[i]
-        mat <- SummarizedExperiment::assay(data, i)
-        long_df <- private$.matrix_to_long(mat)
-        ol_write(paste0(prefix, "assay.", assay_name), long_df,
-                 project = lake$.__enclos_env__$private$.project,
-                 mode = "overwrite")
+      for (an in assay_names) {
+        components <- c(components, paste0("assay.", an))
       }
 
-      # Store colData
-      col_data <- as.data.frame(SummarizedExperiment::colData(data))
-      col_data$.__sample_id__ <- rownames(col_data)
-      if (nrow(col_data) == 0) {
-        col_data <- data.frame(.__sample_id__ = colnames(data), stringsAsFactors = FALSE)
-      }
-      ol_write(paste0(prefix, "colData"), col_data,
-               project = lake$.__enclos_env__$private$.project,
-               mode = "overwrite")
-
-      # Store rowData
-      row_data <- as.data.frame(SummarizedExperiment::rowData(data))
-      row_data$.__feature_id__ <- rownames(row_data)
-      if (nrow(row_data) == 0) {
-        row_data <- data.frame(.__feature_id__ = rownames(data), stringsAsFactors = FALSE)
-      }
-      ol_write(paste0(prefix, "rowData"), row_data,
-               project = lake$.__enclos_env__$private$.project,
-               mode = "overwrite")
-
-      # Store rowRanges if present (as RangedSummarizedExperiment)
-      if (inherits(data, "RangedSummarizedExperiment")) {
+      has_rowRanges <- inherits(data, "RangedSummarizedExperiment")
+      if (has_rowRanges) {
         row_ranges <- SummarizedExperiment::rowRanges(data)
         if (length(row_ranges) > 0) {
-          ranges_df <- as.data.frame(row_ranges)
-          ranges_df$.__feature_id__ <- names(row_ranges)
-          ol_write(paste0(prefix, "rowRanges"), ranges_df,
-                   project = lake$.__enclos_env__$private$.project,
-                   mode = "overwrite")
+          components <- c(components, "rowRanges")
         }
       }
 
-      # Store metadata
       meta <- S4Vectors::metadata(data)
       if (length(meta) > 0) {
-        ol_save(paste0(prefix, "metadata"), meta,
-                project = lake$.__enclos_env__$private$.project)
+        components <- c(components, "metadata")
       }
+      components <- c(components, "manifest")
 
-      # Store manifest
-      manifest <- list(
-        type = "SummarizedExperiment",
-        class = class(data)[1],
-        assay_names = assay_names,
-        n_samples = ncol(data),
-        n_features = nrow(data),
-        has_rowRanges = inherits(data, "RangedSummarizedExperiment"),
-        has_metadata = length(meta) > 0,
-        created_at = Sys.time()
-      )
-      ol_save(paste0(prefix, "manifest"), manifest,
-              project = lake$.__enclos_env__$private$.project)
+      # Wrap all writes in a transaction for atomicity
+      DBI::dbBegin(conn)
+      tryCatch({
+        # Store assays
+        for (i in seq_along(assay_names)) {
+          assay_name <- assay_names[i]
+          mat <- SummarizedExperiment::assay(data, i)
+          long_df <- private$.matrix_to_long(mat)
+          ol_write(paste0(prefix, "assay.", assay_name), long_df,
+                   project = project, mode = "overwrite")
+        }
+
+        # Store colData
+        col_data <- as.data.frame(SummarizedExperiment::colData(data))
+        col_data$.__sample_id__ <- rownames(col_data)
+        if (nrow(col_data) == 0) {
+          col_data <- data.frame(.__sample_id__ = colnames(data), stringsAsFactors = FALSE)
+        }
+        ol_write(paste0(prefix, "colData"), col_data, project = project, mode = "overwrite")
+
+        # Store rowData
+        row_data <- as.data.frame(SummarizedExperiment::rowData(data))
+        row_data$.__feature_id__ <- rownames(row_data)
+        if (nrow(row_data) == 0) {
+          row_data <- data.frame(.__feature_id__ = rownames(data), stringsAsFactors = FALSE)
+        }
+        ol_write(paste0(prefix, "rowData"), row_data, project = project, mode = "overwrite")
+
+        # Store rowRanges if present (as RangedSummarizedExperiment)
+        if (has_rowRanges && length(row_ranges) > 0) {
+          ranges_df <- as.data.frame(row_ranges)
+          ranges_df$.__feature_id__ <- names(row_ranges)
+          ol_write(paste0(prefix, "rowRanges"), ranges_df, project = project, mode = "overwrite")
+        }
+
+        # Store metadata
+        if (length(meta) > 0) {
+          ol_save(paste0(prefix, "metadata"), meta, project = project)
+        }
+
+        # Store manifest (internal object, not in adapter registry)
+        manifest <- list(
+          type = "SummarizedExperiment",
+          class = class(data)[1],
+          assay_names = assay_names,
+          n_samples = ncol(data),
+          n_features = nrow(data),
+          has_rowRanges = has_rowRanges,
+          has_metadata = length(meta) > 0,
+          created_at = Sys.time()
+        )
+        ol_save(paste0(prefix, "manifest"), manifest, project = project)
+
+        # Register in adapter table for deterministic lookup
+        .ol_register_adapter_object(state, name, "SummarizedExperiment", components, format_version = 1L)
+
+        DBI::dbCommit(conn)
+      }, error = function(e) {
+        DBI::dbRollback(conn)
+        stop("SummarizedExperiment storage failed (rolled back): ", conditionMessage(e), call. = FALSE)
+      })
 
       invisible(TRUE)
     },
