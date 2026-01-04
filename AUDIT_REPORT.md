@@ -521,3 +521,103 @@ After implementing the P0/P1 fixes, a verification audit was conducted to ensure
 1. **Backward Compatibility:** Legacy `lake_source`/`lake_source_ref` attributes are still set for older code
 2. **Graceful Degradation:** `put()` falls back to legacy format if `lake_sources` is not present
 3. **Transaction Safety:** `.in_transaction` pattern allows composable transaction control
+
+---
+
+## Final Verification Audit (2026-01-04) - Paper/Release Readiness
+
+### A. Transaction Boundary Verification
+
+**A1. Single Transaction Guarantee: PASS ✓**
+
+| File | Line | Code | Role |
+|------|------|------|------|
+| `Lake.R` | 283 | `DBI::dbBegin(conn)` | Outer transaction start |
+| `Lake.R` | 289 | `ol_label(..., .in_transaction = TRUE)` | Pass TRUE to children |
+| `init.R` | 47,59 | `ol_tag(..., .in_transaction = .in_transaction)` | Propagate to child calls |
+| `backend.R` | 384 | `if (isTRUE(.in_transaction)) .do_tag()` | Skip inner tx if TRUE |
+| `backend.R` | 457 | `if (isTRUE(.in_transaction)) .do_tag_object()` | Skip inner tx if TRUE |
+| `Lake.R` | 291,293 | `DBI::dbCommit/dbRollback(conn)` | Outer tx controls |
+
+**A2. Rollback Verification: PASS ✓**
+
+Tests added in `test-atomicity.R`:
+- `"snap rollback on failure leaves no partial state"` - verifies consistent state after snap
+- `"ol_tag atomic: backup and refs are consistent"` - verifies backup+refs atomicity
+
+### B. Multi-Parent Lineage Completeness
+
+**B1. Attribute Flow: PASS ✓**
+
+| Step | File:Line | Code | Description |
+|------|-----------|------|-------------|
+| 1 | `Lake.R:261` | `attr(tbl, "lake_sources") <- list(list(name=name, ref=ref))` | Set paired format |
+| 2 | `dplyr_compat.R:236-246` | `.merge_lake_attrs()` dedup by name | Merge on joins |
+| 3 | `dplyr_compat.R:305-307` | `attr(result, "lake_sources") <- lake_sources` | Transfer on collect |
+| 4 | `dplyr_compat.R:47-74` | `deps <- lake_sources` | Extract in save_as |
+| 5 | `Lake.R:104-117` | Check `lake_sources` first | Read in put() |
+| 6 | `Lake.R:832-838` | `.ol_record_dependency(..., parent_ref=...)` | Record per-parent ref |
+| 7 | `backend.R:158` | `parent_ref = as.character(parent_ref)` | Store in DB |
+
+**B2. Legacy Format Handling: PASS ✓**
+
+- `Lake.R:130-147`: Legacy `lake_source_ref` vector paired by index
+- `dplyr_compat.R:62-73`: Same index-based pairing in `save_as()`
+
+### C. Migration Safety
+
+**C1. Idempotency: PASS ✓**
+
+| File:Line | Code | Guarantee |
+|-----------|------|-----------|
+| `backend.R:92` | `CREATE TABLE IF NOT EXISTS` | Table creation idempotent |
+| `backend.R:113,122,130` | `ADD COLUMN IF NOT EXISTS` | Column addition idempotent |
+| `backend.R:116,124,132` | Error pattern matching | "already exists" errors ignored |
+
+**C2. Backward Compatibility: PASS ✓**
+
+- `backend.R:113`: `DEFAULT '@latest'` backfills existing rows
+- New columns nullable for older code compatibility
+
+---
+
+## Codex Review Fixes (2026-01-04)
+
+### 1. Allow Tagged Reads When Current Table Missing
+
+**Issue:** `get(name, ref="@tag(v1)")` failed when current table was dropped.
+
+**Fix:** `Lake.R:188-225` - Try table path first for tag refs even if current table missing.
+
+**Test:** `test-version-lineage.R`: `"tagged read works after current table is dropped"`
+
+### 2. Keep Per-Parent Refs Instead of Reusing Ref Vector
+
+**Issue:** Legacy `lake_source_ref` vector applied to all deps, not paired by index.
+
+**Fix:**
+- `Lake.R:130-147`: Pair by index when lengths match
+- `dplyr_compat.R:62-73`: Same logic in `save_as()`
+
+**Test:** `test-version-lineage.R`: `"legacy format refs are paired by index in put()"`
+
+---
+
+## Final Summary
+
+| Area | Status | Evidence |
+|------|--------|----------|
+| A1. Transaction single | **PASS** | `.in_transaction` param chain verified |
+| A2. Rollback behavior | **PASS** | Tests added for consistency |
+| B1. lake_sources flow | **PASS** | Attribute chain verified through joins |
+| B2. Legacy ref pairing | **PASS** | Index-based pairing implemented |
+| C1. Migration idempotent | **PASS** | IF NOT EXISTS used throughout |
+| C2. Backward compat | **PASS** | Legacy attributes maintained |
+
+### Paper/Release Readiness: **APPROVED**
+
+All critical paths have been verified. The implementation supports:
+- Dataset-level, version-aware lineage with proper parent-specific refs
+- Atomic transactions for snap/tag operations
+- Safe migration for existing databases
+- Backward compatibility with legacy attribute formats
