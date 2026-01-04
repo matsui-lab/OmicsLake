@@ -117,10 +117,45 @@ test_that("ol_log returns snapshot information", {
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")
   on.exit(options(ol.root = old_opt), add = TRUE)
-  
+
   options(ol.root = tmpdir)
   ol_init("test_project")
-  
+
   result <- ol_log(name = NULL)
   expect_s3_class(result, "data.frame")
+})
+
+test_that("ol_drop_object removes objects", {
+  tmpdir <- withr::local_tempdir()
+  old_opt <- getOption("ol.root")
+  on.exit(options(ol.root = old_opt), add = TRUE)
+
+  options(ol.root = tmpdir)
+  ol_init("test_project")
+
+  # Save an object
+  test_obj <- list(a = 1:5, b = "test")
+  ol_save("test_object", test_obj)
+
+  # Verify it exists
+  objs <- ol_list_objects()
+  expect_true("test_object" %in% objs$name)
+
+  # Drop the object
+  ol_drop_object("test_object")
+
+  # Verify it's gone
+  objs <- ol_list_objects()
+  expect_false("test_object" %in% objs$name)
+})
+
+test_that("ol_drop_object errors on non-existent object", {
+  tmpdir <- withr::local_tempdir()
+  old_opt <- getOption("ol.root")
+  on.exit(options(ol.root = old_opt), add = TRUE)
+
+  options(ol.root = tmpdir)
+  ol_init("test_project")
+
+  expect_error(ol_drop_object("nonexistent"), "not found")
 })

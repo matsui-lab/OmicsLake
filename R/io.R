@@ -229,14 +229,53 @@ ol_drop <- function(name, project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_backend_state(project)
   conn <- state$conn
-  
+
   ident <- .ol_sql_ident(conn, state, name)
-  
+
   tryCatch({
     DBI::dbExecute(conn, sprintf("DROP TABLE IF EXISTS %s", ident))
     invisible(TRUE)
   }, error = function(e) {
     stop("Failed to drop table '", name, "': ", conditionMessage(e), call. = FALSE)
+  })
+}
+
+#' Drop (delete) an object from the project
+#' @param name Name of the object to drop
+#' @param project Project name
+#' @export
+ol_drop_object <- function(name, project = getOption("ol.project")) {
+  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  state <- .ol_get_backend_state(project)
+  .ol_ensure_objects_table(state)
+  conn <- state$conn
+
+  ident <- .ol_sql_ident(conn, state, "__ol_objects")
+
+  # Check if object exists
+  check_query <- sprintf(
+    "SELECT COUNT(*) as cnt FROM %s WHERE name = %s",
+    ident,
+    DBI::dbQuoteString(conn, name)
+  )
+  count <- DBI::dbGetQuery(conn, check_query)$cnt
+
+  if (count == 0) {
+    stop("Object '", name, "' not found", call. = FALSE)
+  }
+
+  # Delete all versions of the object
+  delete_query <- sprintf(
+    "DELETE FROM %s WHERE name = %s",
+    ident,
+    DBI::dbQuoteString(conn, name)
+  )
+
+  tryCatch({
+    DBI::dbExecute(conn, delete_query)
+    invisible(TRUE)
+  }, error = function(e) {
+    stop("Failed to drop object '", name, "': ", conditionMessage(e), call. = FALSE)
   })
 }
 
