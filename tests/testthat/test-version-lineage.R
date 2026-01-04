@@ -246,3 +246,65 @@ test_that("lake_sources attribute flows through dplyr pipe operations", {
   # Clean up
   unlink(file.path(path.expand("~"), ".omicslake", "test_sources_flow"), recursive = TRUE)
 })
+
+test_that("tagged read works after current table is dropped", {
+  # Codex Review Fix 1: get(name, ref="@tag(...)") should work even if current table is dropped
+  lake <- Lake$new("test_tag_after_drop")
+
+  # Create table and tag it
+  lake$put("mydata", data.frame(x = 1:5, y = 6:10))
+  lake$tag("mydata", "v1")
+
+  # Verify tag works before drop
+  before_drop <- lake$get("mydata", ref = "@tag(v1)")
+  expect_equal(before_drop$x, 1:5)
+
+  # Drop the current table
+  lake$drop("mydata")
+
+  # Verify current table is gone
+  tables <- lake$tables()
+  expect_false("mydata" %in% tables$table_name)
+
+  # Reading via tag should still work (backup table exists)
+  after_drop <- lake$get("mydata", ref = "@tag(v1)")
+  expect_equal(after_drop$x, 1:5)
+  expect_equal(after_drop$y, 6:10)
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_tag_after_drop"), recursive = TRUE)
+})
+
+test_that("legacy format refs are paired by index in put()", {
+  # Codex Review Fix 2: legacy lake_source_ref vector should pair with lake_source by index
+  lake <- Lake$new("test_legacy_ref_pairing")
+
+  lake$put("a", data.frame(x = 1:3))
+  lake$tag("a", "v1")
+  lake$put("b", data.frame(y = 4:6))
+  lake$tag("b", "v2")
+
+  # Simulate legacy format data with paired name/ref vectors
+  # This mimics what older code might produce from a join
+  legacy_data <- data.frame(z = 7:9)
+  attr(legacy_data, "lake_source") <- c("a", "b")
+  attr(legacy_data, "lake_source_ref") <- c("@tag(v1)", "@tag(v2)")
+
+  # Put should pair refs by index
+  lake$put("result", legacy_data)
+
+  deps <- lake$deps("result")
+  expect_true(nrow(deps) == 2)
+
+  # Verify each parent has its correct ref
+  a_dep <- deps[deps$parent_name == "a", ]
+  b_dep <- deps[deps$parent_name == "b", ]
+
+  if ("parent_ref" %in% names(deps)) {
+    expect_equal(a_dep$parent_ref[1], "@tag(v1)")
+    expect_equal(b_dep$parent_ref[1], "@tag(v2)")
+  }
+
+  # Clean up
+  unlink(file.path(path.expand("~"), ".omicslake", "test_legacy_ref_pairing"), recursive = TRUE)
+})

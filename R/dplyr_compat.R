@@ -49,15 +49,28 @@ save_as <- function(.data, name, lake = NULL) {
     deps <- lake_sources
   } else {
     # Fallback to legacy format
+    # Note: lake_source_ref may be a vector (from joins), so pair by index
     legacy_deps <- attr(.data, "lake_source")
     if (is.null(legacy_deps)) {
       legacy_deps <- attr(.data, "lake_deps")
     }
     if (!is.null(legacy_deps)) {
-      # Convert to new format with ref
+      # Convert to new format with ref, pairing by index if possible
       source_ref <- attr(.data, "lake_source_ref")
       if (is.null(source_ref)) source_ref <- "@latest"
-      deps <- lapply(legacy_deps, function(n) list(name = n, ref = source_ref))
+
+      deps <- lapply(seq_along(legacy_deps), function(i) {
+        dep_name <- legacy_deps[i]
+        # Pair ref by index if source_ref is a vector of same length
+        if (length(source_ref) == length(legacy_deps)) {
+          ref_val <- source_ref[i]
+        } else if (length(source_ref) == 1) {
+          ref_val <- source_ref
+        } else {
+          ref_val <- "@latest"  # Safe fallback for mismatched lengths
+        }
+        list(name = dep_name, ref = ref_val)
+      })
     }
   }
 

@@ -116,7 +116,8 @@ Lake <- R6::R6Class("Lake",
             }
           }
         } else {
-          # Fallback to legacy format: lake_deps/lake_source with single lake_source_ref
+          # Fallback to legacy format: lake_deps/lake_source with lake_source_ref
+          # Note: lake_source_ref may be a vector (from joins), so we need to pair by index
           attr_deps <- attr(data, "lake_deps")
           if (is.null(attr_deps)) {
             attr_deps <- attr(data, "lake_source")
@@ -126,11 +127,23 @@ Lake <- R6::R6Class("Lake",
             attr_ref <- attr(data, "lake_source_ref")
             if (is.null(attr_ref)) attr_ref <- "@latest"
 
-            for (dep_name in attr_deps) {
+            for (i in seq_along(attr_deps)) {
+              dep_name <- attr_deps[i]
+              # Pair ref by index if attr_ref is a vector of same length
+              # Otherwise use the single ref or first element
+              if (length(attr_ref) == length(attr_deps)) {
+                ref_val <- attr_ref[i]
+              } else if (length(attr_ref) == 1) {
+                ref_val <- attr_ref
+              } else {
+                # Mismatch: use @latest as safe fallback
+                ref_val <- "@latest"
+              }
+
               # Add as {name, ref} object if not already present
               existing <- vapply(deps_with_refs, function(d) identical(d$name, dep_name), logical(1))
               if (!any(existing)) {
-                deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = attr_ref)))
+                deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = ref_val)))
               }
             }
           }
@@ -182,38 +195,57 @@ Lake <- R6::R6Class("Lake",
       private$.tracker$track_read(name, ref)
 
       # Determine if this is a table or object
+      # For tagged refs, try table first even if current table is missing
+      # (the backup table from the tag may still exist)
       is_table <- private$.is_table(name)
+      is_tag_ref <- grepl("^@tag\\(", ref)
 
-      if (is_table) {
-        # For tables: always start lazy, apply pushdown, then optionally collect
-        data <- private$.get_lazy_data(name, ref)
+      if (is_table || is_tag_ref) {
+        # Try table path first
+        # For tagged refs, ol_read() can resolve to backup table even if current is dropped
+        table_result <- tryCatch({
+          data <- private$.get_lazy_data(name, ref)
 
-        # Apply filter if provided (SQL pushdown)
-        if (!is.null(where)) {
-          data <- private$.apply_filter(data, where)
-        }
+          # Apply filter if provided (SQL pushdown)
+          if (!is.null(where)) {
+            data <- private$.apply_filter(data, where)
+          }
 
-        # Apply column selection if provided (SQL pushdown)
-        if (!is.null(select)) {
-          data <- private$.apply_select(data, select)
-        }
+          # Apply column selection if provided (SQL pushdown)
+          if (!is.null(select)) {
+            data <- private$.apply_select(data, select)
+          }
 
-        # Collect only if requested
-        if (collect) {
-          return(private$.collect(data))
-        } else {
-          return(data)
+          # Collect only if requested
+          if (collect) {
+            private$.collect(data)
+          } else {
+            data
+          }
+        }, error = function(e) {
+          # If table read failed and this was a tag ref fallback attempt,
+          # return NULL to try object path
+          if (is_tag_ref && !is_table) {
+            NULL
+          } else {
+            stop(e)
+          }
+        })
+
+        if (!is.null(table_result)) {
+          return(table_result)
         }
-      } else {
-        # For objects: cannot be lazy, where/select not supported
-        if (!is.null(where) || !is.null(select)) {
-          warning("where/select parameters are ignored for non-table objects", call. = FALSE)
-        }
-        if (!collect) {
-          warning("collect=FALSE is ignored for non-table objects (objects are always eager)", call. = FALSE)
-        }
-        return(private$.get_object_data(name, ref))
+        # Fall through to object path if tag ref table read failed
       }
+
+      # For objects: cannot be lazy, where/select not supported
+      if (!is.null(where) || !is.null(select)) {
+        warning("where/select parameters are ignored for non-table objects", call. = FALSE)
+      }
+      if (!collect) {
+        warning("collect=FALSE is ignored for non-table objects (objects are always eager)", call. = FALSE)
+      }
+      return(private$.get_object_data(name, ref))
     },
 
     #' @description Get a lazy reference for dplyr operations
