@@ -194,6 +194,18 @@ Lake <- R6::R6Class("Lake",
       # Track this read for dependency detection
       private$.tracker$track_read(name, ref)
 
+      # Check for adapter-stored objects (e.g., SummarizedExperiment)
+      adapter <- private$.find_adapter_for_stored(name)
+      if (!is.null(adapter)) {
+        if (!is.null(where) || !is.null(select)) {
+          warning("where/select parameters are ignored for adapter-stored objects", call. = FALSE)
+        }
+        if (!collect) {
+          warning("collect=FALSE is ignored for adapter-stored objects", call. = FALSE)
+        }
+        return(private$.get_adapter_data(name, ref, adapter))
+      }
+
       # Determine if this is a table or object
       # For tagged refs, try table first even if current table is missing
       # (the backup table from the tag may still exist)
@@ -779,10 +791,15 @@ Lake <- R6::R6Class("Lake",
       ol_save(name, data, project = private$.project)
     },
 
-    # Store SummarizedExperiment (placeholder for adapter)
+    # Store SummarizedExperiment using adapter
     .put_se = function(name, data) {
-      # For now, save as object; adapter will provide full support
-      ol_save(name, data, project = private$.project)
+      adapter <- find_adapter(data)
+      if (!is.null(adapter)) {
+        adapter$put(self, name, data)
+      } else {
+        # Fallback if adapter not registered
+        ol_save(name, data, project = private$.project)
+      }
     },
 
     # Store Seurat object (placeholder for adapter)
@@ -880,6 +897,27 @@ Lake <- R6::R6Class("Lake",
     .is_object = function(name) {
       objects <- tryCatch(self$objects(), error = function(e) data.frame(name = character(0)))
       name %in% objects$name
+    },
+
+    # Check if name is an adapter-stored object (e.g., SummarizedExperiment)
+    # Returns the adapter if found, NULL otherwise
+    .find_adapter_for_stored = function(name) {
+      # Check for SE adapter manifest
+      manifest_name <- paste0(name, ".__se__.manifest")
+      if (private$.is_object(manifest_name)) {
+        adapters <- get_adapters()
+        for (adapter in adapters) {
+          if (adapter$exists(self, name)) {
+            return(adapter)
+          }
+        }
+      }
+      NULL
+    },
+
+    # Retrieve data via adapter
+    .get_adapter_data = function(name, ref, adapter) {
+      adapter$get(self, name, ref)
     },
 
     # Check if data is lazy (tbl_lazy, tbl_sql, tbl_dbi, or other dbplyr types)
