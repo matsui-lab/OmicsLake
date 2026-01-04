@@ -2,6 +2,29 @@
 #' @description R6 class for versioned, lineage-tracked data management.
 #' Provides a modern, fluent API for data operations with automatic dependency tracking.
 #'
+#' @section SummarizedExperiment Support:
+#' SummarizedExperiment objects are stored via the SEAdapter pattern, which decomposes
+#' the object into queryable components:
+#' \itemize{
+#'   \item Assays are stored as tables (long format for efficient querying)
+#'   \item colData and rowData are stored as separate tables
+#'   \item Metadata is stored as a serialized R object
+#' }
+#'
+#' When you \code{put()} a SummarizedExperiment, all components are stored atomically
+#' within a transaction. When you \code{tag()} an SE object, all components are tagged
+#' together to maintain version consistency.
+#'
+#' Legacy objects stored before the adapter registry are still readable via fallback
+#' detection.
+#'
+#' @section Storage Types:
+#' \itemize{
+#'   \item \strong{Tables}: data.frames stored in DuckDB (queryable with SQL/dplyr)
+#'   \item \strong{Objects}: Arbitrary R objects serialized with qs/RDS
+#'   \item \strong{SummarizedExperiment}: Decomposed storage via SEAdapter
+#' }
+#'
 #' @examples
 #' \dontrun{
 #' # Initialize a lake
@@ -26,6 +49,13 @@
 #'
 #' # View lineage
 #' lake$tree("results")
+#'
+#' # SummarizedExperiment storage
+#' library(SummarizedExperiment)
+#' se <- SummarizedExperiment(assays = list(counts = matrix(1:100, 10, 10)))
+#' lake$put("my_experiment", se)
+#' lake$tag("my_experiment", "v1")
+#' se_retrieved <- lake$get("my_experiment", ref = "@tag(v1)")
 #' }
 #'
 #' @importFrom R6 R6Class
@@ -194,6 +224,18 @@ Lake <- R6::R6Class("Lake",
       # Track this read for dependency detection
       private$.tracker$track_read(name, ref)
 
+      # Check for adapter-stored objects (e.g., SummarizedExperiment)
+      adapter <- private$.find_adapter_for_stored(name, ref)
+      if (!is.null(adapter)) {
+        if (!is.null(where) || !is.null(select)) {
+          warning("where/select parameters are ignored for adapter-stored objects", call. = FALSE)
+        }
+        if (!collect) {
+          warning("collect=FALSE is ignored for adapter-stored objects", call. = FALSE)
+        }
+        return(private$.get_adapter_data(name, ref, adapter))
+      }
+
       # Determine if this is a table or object
       # For tagged refs, try table first even if current table is missing
       # (the backup table from the tag may still exist)
@@ -306,6 +348,31 @@ Lake <- R6::R6Class("Lake",
       private$.validate_name(tag)
 
       state <- private$.state
+      conn <- state$conn
+
+      # Check if it's an adapter-managed object (e.g., SummarizedExperiment)
+      adapter_info <- .ol_get_adapter_info(state, name)
+      if (!is.null(adapter_info)) {
+        # Tag all components atomically
+        prefix <- paste0(name, ".__se__.")
+        DBI::dbBegin(conn)
+        tryCatch({
+          for (component in adapter_info$components) {
+            full_name <- paste0(prefix, component)
+            # Determine if component is table or object
+            if (private$.is_table(full_name)) {
+              ol_tag(full_name, tag, project = private$.project, .in_transaction = TRUE)
+            } else if (private$.is_object(full_name)) {
+              ol_tag_object(full_name, tag, project = private$.project, .in_transaction = TRUE)
+            }
+          }
+          DBI::dbCommit(conn)
+        }, error = function(e) {
+          DBI::dbRollback(conn)
+          stop("Tag failed for adapter object (rolled back): ", conditionMessage(e), call. = FALSE)
+        })
+        return(invisible(self))
+      }
 
       # Check if it's a table or object
       if (private$.is_table(name)) {
@@ -578,6 +645,49 @@ Lake <- R6::R6Class("Lake",
              " dependent(s). Use force = TRUE to override.", call. = FALSE)
       }
 
+      state <- private$.state
+      conn <- state$conn
+
+      # Check if it's an adapter-managed object
+      adapter_info <- .ol_get_adapter_info(state, name)
+      if (!is.null(adapter_info)) {
+        # Drop all components atomically
+        prefix <- paste0(name, ".__se__.")
+        DBI::dbBegin(conn)
+        tryCatch({
+          for (component in adapter_info$components) {
+            full_name <- paste0(prefix, component)
+            # Try to drop as table, then as object
+            table_dropped <- tryCatch({
+              ol_drop(full_name, project = private$.project)
+              TRUE
+            }, error = function(e) FALSE)
+            if (!table_dropped) {
+              tryCatch({
+                ol_drop_object(full_name, project = private$.project)
+              }, error = function(e) {
+                # Component may not exist, that's OK
+              })
+            }
+          }
+
+          # Remove from adapter registry
+          ident <- .ol_sql_ident(conn, state, "__ol_adapters")
+          delete_sql <- sprintf(
+            "DELETE FROM %s WHERE name = %s",
+            ident,
+            DBI::dbQuoteString(conn, name)
+          )
+          DBI::dbExecute(conn, delete_sql)
+
+          DBI::dbCommit(conn)
+        }, error = function(e) {
+          DBI::dbRollback(conn)
+          stop("Drop failed for adapter object (rolled back): ", conditionMessage(e), call. = FALSE)
+        })
+        return(invisible(self))
+      }
+
       # Try to drop as table first, then as object
       table_dropped <- tryCatch({
         ol_drop(name, project = private$.project)
@@ -779,10 +889,15 @@ Lake <- R6::R6Class("Lake",
       ol_save(name, data, project = private$.project)
     },
 
-    # Store SummarizedExperiment (placeholder for adapter)
+    # Store SummarizedExperiment using adapter
     .put_se = function(name, data) {
-      # For now, save as object; adapter will provide full support
-      ol_save(name, data, project = private$.project)
+      adapter <- find_adapter(data)
+      if (!is.null(adapter)) {
+        adapter$put(self, name, data)
+      } else {
+        # Fallback if adapter not registered
+        ol_save(name, data, project = private$.project)
+      }
     },
 
     # Store Seurat object (placeholder for adapter)
@@ -880,6 +995,43 @@ Lake <- R6::R6Class("Lake",
     .is_object = function(name) {
       objects <- tryCatch(self$objects(), error = function(e) data.frame(name = character(0)))
       name %in% objects$name
+    },
+
+    # Check if name is an adapter-stored object (e.g., SummarizedExperiment)
+    # Returns the adapter if found, NULL otherwise
+    # Uses deterministic lookup from __ol_adapters registry table
+    .find_adapter_for_stored = function(name, ref = "@latest") {
+      state <- private$.state
+      adapter_info <- .ol_get_adapter_info(state, name, ref)
+
+      if (is.null(adapter_info)) {
+        # Fallback: check for legacy SE storage (manifest object exists)
+        # This provides backward compatibility for objects stored before registry
+        manifest_name <- paste0(name, ".__se__.manifest")
+        if (private$.is_object(manifest_name)) {
+          adapters <- get_adapters()
+          for (adapter in adapters) {
+            if (adapter$exists(self, name)) {
+              return(adapter)
+            }
+          }
+        }
+        return(NULL)
+      }
+
+      # Find adapter by registered name
+      adapters <- get_adapters()
+      for (adapter in adapters) {
+        if (adapter$name() == adapter_info$adapter_name) {
+          return(adapter)
+        }
+      }
+      NULL
+    },
+
+    # Retrieve data via adapter
+    .get_adapter_data = function(name, ref, adapter) {
+      adapter$get(self, name, ref)
     },
 
     # Check if data is lazy (tbl_lazy, tbl_sql, tbl_dbi, or other dbplyr types)

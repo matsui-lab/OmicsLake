@@ -39,7 +39,7 @@ ol_label <- function(label, state_id = NULL, project = getOption("ol.project"), 
 
   # Filter tables (exclude internal/backup tables)
   tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
-  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits", "__ol_dependencies"))
+  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits", "__ol_dependencies", "__ol_adapters"))
   tables <- grep("^__ol_backup_", tables, value = TRUE, invert = TRUE)
 
   for (name in tables) {
