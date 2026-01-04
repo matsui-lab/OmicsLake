@@ -114,10 +114,10 @@ ol_eval_generate_table <- function(n_rows, n_cols, seed = 1,
 #' @return A data frame with dimension data
 #' @export
 ol_eval_generate_dim_table <- function(n_rows, seed = 1, key_col = "id") {
-set.seed(seed)
+  set.seed(seed)
 
-  data.frame(
-    id = seq_len(n_rows),
+  df <- data.frame(
+    .key = seq_len(n_rows),
     category = sample(c("pathway_A", "pathway_B", "pathway_C", "pathway_D"),
                       n_rows, replace = TRUE),
     annotation = paste0("GO:", sprintf("%04d", sample.int(9999, n_rows, replace = TRUE))),
@@ -125,6 +125,11 @@ set.seed(seed)
     priority = sample(1:5, n_rows, replace = TRUE),
     stringsAsFactors = FALSE
   )
+
+  # Rename key column to respect key_col parameter
+
+  names(df)[names(df) == ".key"] <- key_col
+  df
 }
 
 #' Generate synthetic RNA-seq data for case study
@@ -189,12 +194,12 @@ ol_eval_generate_case_rnaseq <- function(seed = 1, n_genes = 20000, n_samples = 
   )
 
   # Sample metadata
-  n_conditions <- 2
-  n_per_condition <- n_samples / n_conditions
+  # Use length.out to handle odd sample counts correctly
+  conditions <- rep(c("control", "treatment"), length.out = n_samples)
 
   sample_info <- data.frame(
     sample_id = paste0("sample", seq_len(n_samples)),
-    condition = rep(c("control", "treatment"), each = n_per_condition),
+    condition = conditions,
     batch = rep(c("batch1", "batch2"), length.out = n_samples),
     quality_score = runif(n_samples, 0.8, 1.0),
     stringsAsFactors = FALSE
