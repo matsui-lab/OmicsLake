@@ -225,7 +225,7 @@ Lake <- R6::R6Class("Lake",
       private$.tracker$track_read(name, ref)
 
       # Check for adapter-stored objects (e.g., SummarizedExperiment)
-      adapter <- private$.find_adapter_for_stored(name)
+      adapter <- private$.find_adapter_for_stored(name, ref)
       if (!is.null(adapter)) {
         if (!is.null(where) || !is.null(select)) {
           warning("where/select parameters are ignored for adapter-stored objects", call. = FALSE)
@@ -645,6 +645,49 @@ Lake <- R6::R6Class("Lake",
              " dependent(s). Use force = TRUE to override.", call. = FALSE)
       }
 
+      state <- private$.state
+      conn <- state$conn
+
+      # Check if it's an adapter-managed object
+      adapter_info <- .ol_get_adapter_info(state, name)
+      if (!is.null(adapter_info)) {
+        # Drop all components atomically
+        prefix <- paste0(name, ".__se__.")
+        DBI::dbBegin(conn)
+        tryCatch({
+          for (component in adapter_info$components) {
+            full_name <- paste0(prefix, component)
+            # Try to drop as table, then as object
+            table_dropped <- tryCatch({
+              ol_drop(full_name, project = private$.project)
+              TRUE
+            }, error = function(e) FALSE)
+            if (!table_dropped) {
+              tryCatch({
+                ol_drop_object(full_name, project = private$.project)
+              }, error = function(e) {
+                # Component may not exist, that's OK
+              })
+            }
+          }
+
+          # Remove from adapter registry
+          ident <- .ol_sql_ident(conn, state, "__ol_adapters")
+          delete_sql <- sprintf(
+            "DELETE FROM %s WHERE name = %s",
+            ident,
+            DBI::dbQuoteString(conn, name)
+          )
+          DBI::dbExecute(conn, delete_sql)
+
+          DBI::dbCommit(conn)
+        }, error = function(e) {
+          DBI::dbRollback(conn)
+          stop("Drop failed for adapter object (rolled back): ", conditionMessage(e), call. = FALSE)
+        })
+        return(invisible(self))
+      }
+
       # Try to drop as table first, then as object
       table_dropped <- tryCatch({
         ol_drop(name, project = private$.project)
@@ -957,9 +1000,9 @@ Lake <- R6::R6Class("Lake",
     # Check if name is an adapter-stored object (e.g., SummarizedExperiment)
     # Returns the adapter if found, NULL otherwise
     # Uses deterministic lookup from __ol_adapters registry table
-    .find_adapter_for_stored = function(name) {
+    .find_adapter_for_stored = function(name, ref = "@latest") {
       state <- private$.state
-      adapter_info <- .ol_get_adapter_info(state, name)
+      adapter_info <- .ol_get_adapter_info(state, name, ref)
 
       if (is.null(adapter_info)) {
         # Fallback: check for legacy SE storage (manifest object exists)

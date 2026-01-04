@@ -49,7 +49,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
       100  # High priority for SE objects
     },
 
-    put = function(lake, name, data) {
+    #' @param .in_transaction Internal: if TRUE, caller manages transaction (no begin/commit here)
+    put = function(lake, name, data, .in_transaction = FALSE) {
       if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
         stop("SummarizedExperiment package is required", call. = FALSE)
       }
@@ -85,9 +86,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
       }
       components <- c(components, "manifest")
 
-      # Wrap all writes in a transaction for atomicity
-      DBI::dbBegin(conn)
-      tryCatch({
+      # Internal function to do the actual writes
+      .do_put <- function() {
         # Store assays
         for (i in seq_along(assay_names)) {
           assay_name <- assay_names[i]
@@ -140,12 +140,22 @@ SEAdapter <- R6::R6Class("SEAdapter",
 
         # Register in adapter table for deterministic lookup
         .ol_register_adapter_object(state, name, "SummarizedExperiment", components, format_version = 1L)
+      }
 
-        DBI::dbCommit(conn)
-      }, error = function(e) {
-        DBI::dbRollback(conn)
-        stop("SummarizedExperiment storage failed (rolled back): ", conditionMessage(e), call. = FALSE)
-      })
+      # If caller is managing transaction, just do the work
+      if (isTRUE(.in_transaction)) {
+        .do_put()
+      } else {
+        # Wrap all writes in a transaction for atomicity
+        DBI::dbBegin(conn)
+        tryCatch({
+          .do_put()
+          DBI::dbCommit(conn)
+        }, error = function(e) {
+          DBI::dbRollback(conn)
+          stop("SummarizedExperiment storage failed (rolled back): ", conditionMessage(e), call. = FALSE)
+        })
+      }
 
       invisible(TRUE)
     },

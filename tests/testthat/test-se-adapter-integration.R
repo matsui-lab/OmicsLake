@@ -251,3 +251,65 @@ test_that("Legacy SE storage (pre-registry) can still be read", {
   expect_equal(nrow(retrieved), 5)
   expect_equal(ncol(retrieved), 4)
 })
+
+test_that("SE drop() removes all components and registry entry", {
+  skip_if_not_installed("SummarizedExperiment")
+
+  tmpdir <- withr::local_tempdir()
+  old_opt <- getOption("ol.root")
+  on.exit(options(ol.root = old_opt), add = TRUE)
+  options(ol.root = tmpdir)
+
+  lake <- Lake$new("test_se_drop")
+
+  # Create and store SE
+  counts <- matrix(1:20, nrow = 5, ncol = 4)
+  se <- SummarizedExperiment::SummarizedExperiment(assays = list(counts = counts))
+  lake$put("to_drop", se)
+
+  # Verify it exists
+  state <- .ol_get_backend_state("test_se_drop")
+  expect_true(.ol_is_adapter_object(state, "to_drop"))
+
+  # Drop it
+  lake$drop("to_drop")
+
+  # Verify registry entry is gone
+  expect_false(.ol_is_adapter_object(state, "to_drop"))
+
+  # Verify components are gone (trying to get should fail)
+  expect_error(lake$get("to_drop"), "not found|Cannot find")
+})
+
+test_that("SE version-aware registry lookup works with tags", {
+  skip_if_not_installed("SummarizedExperiment")
+
+  tmpdir <- withr::local_tempdir()
+  old_opt <- getOption("ol.root")
+  on.exit(options(ol.root = old_opt), add = TRUE)
+  options(ol.root = tmpdir)
+
+  lake <- Lake$new("test_se_version_registry")
+
+  # Create v1 with 5 features
+  se_v1 <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(counts = matrix(1:20, nrow = 5, ncol = 4))
+  )
+  lake$put("versioned_se", se_v1)
+  lake$tag("versioned_se", "v1")
+
+  # Create v2 with 10 features
+  se_v2 <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(counts = matrix(1:40, nrow = 10, ncol = 4))
+  )
+  lake$put("versioned_se", se_v2)
+  lake$tag("versioned_se", "v2")
+
+  # Retrieve v1 via tag - should get correct adapter info for that version
+  retrieved_v1 <- lake$get("versioned_se", ref = "@tag(v1)")
+  expect_equal(nrow(retrieved_v1), 5)
+
+  # Retrieve v2 via tag
+  retrieved_v2 <- lake$get("versioned_se", ref = "@tag(v2)")
+  expect_equal(nrow(retrieved_v2), 10)
+})

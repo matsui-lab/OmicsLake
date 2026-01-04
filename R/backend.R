@@ -89,49 +89,116 @@
 .ol_ensure_adapters_table <- function(state) {
   conn <- state$conn
   sql <- sprintf(
-    "CREATE TABLE IF NOT EXISTS %s (name TEXT, adapter_name TEXT, format_version INTEGER, components_json TEXT, created_at TIMESTAMP, PRIMARY KEY (name, created_at))",
+    "CREATE TABLE IF NOT EXISTS %s (name TEXT, adapter_name TEXT, format_version INTEGER, components_json TEXT, version_id TEXT, created_at TIMESTAMP, PRIMARY KEY (name, version_id))",
     .ol_sql_ident(conn, state, "__ol_adapters")
   )
   tryCatch(DBI::dbExecute(conn, sql), error = function(e) {
     msg <- conditionMessage(e)
     if (!grepl("already", msg, ignore.case = TRUE)) stop(e)
   })
+
+  # Migration: add version_id column if missing (for existing databases)
+  tryCatch({
+    DBI::dbExecute(conn, sprintf(
+      "ALTER TABLE %s ADD COLUMN IF NOT EXISTS version_id TEXT",
+      .ol_sql_ident(conn, state, "__ol_adapters")
+    ))
+  }, error = function(e) {
+    if (!grepl("already exists|duplicate column", conditionMessage(e), ignore.case = TRUE)) {
+      warning("Could not add version_id column: ", conditionMessage(e), call. = FALSE)
+    }
+  })
 }
 
 #' Register an adapter-managed object
+#' @param version_id Version identifier (typically a timestamp string)
 #' @keywords internal
-.ol_register_adapter_object <- function(state, name, adapter_name, components, format_version = 1L) {
+.ol_register_adapter_object <- function(state, name, adapter_name, components, format_version = 1L, version_id = NULL) {
   .ol_ensure_adapters_table(state)
   conn <- state$conn
   ident <- .ol_sql_ident(conn, state, "__ol_adapters")
 
   components_json <- jsonlite::toJSON(components, auto_unbox = TRUE)
+  created_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC")
+
+  # Use created_at as version_id if not provided
+  if (is.null(version_id)) {
+    version_id <- created_at
+  }
 
   insert_sql <- sprintf(
-    "INSERT INTO %s (name, adapter_name, format_version, components_json, created_at) VALUES (%s, %s, %d, %s, %s)",
+    "INSERT INTO %s (name, adapter_name, format_version, components_json, version_id, created_at) VALUES (%s, %s, %d, %s, %s, %s)",
     ident,
     DBI::dbQuoteString(conn, name),
     DBI::dbQuoteString(conn, adapter_name),
     as.integer(format_version),
     DBI::dbQuoteString(conn, as.character(components_json)),
-    DBI::dbQuoteString(conn, format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC"))
+    DBI::dbQuoteString(conn, version_id),
+    DBI::dbQuoteString(conn, created_at)
   )
   DBI::dbExecute(conn, insert_sql)
-  invisible(TRUE)
+  invisible(version_id)
 }
 
 #' Get adapter info for an object (deterministic lookup)
+#' @param ref Optional version reference (default: "@latest")
 #' @keywords internal
-.ol_get_adapter_info <- function(state, name) {
+.ol_get_adapter_info <- function(state, name, ref = "@latest") {
   .ol_ensure_adapters_table(state)
   conn <- state$conn
   ident <- .ol_sql_ident(conn, state, "__ol_adapters")
 
-  query <- sprintf(
-    "SELECT adapter_name, format_version, components_json, created_at FROM %s WHERE name = %s ORDER BY created_at DESC LIMIT 1",
-    ident,
-    DBI::dbQuoteString(conn, name)
-  )
+  # For @latest, get the most recent entry
+  if (identical(ref, "@latest")) {
+    query <- sprintf(
+      "SELECT adapter_name, format_version, components_json, version_id, created_at FROM %s WHERE name = %s ORDER BY created_at DESC LIMIT 1",
+      ident,
+      DBI::dbQuoteString(conn, name)
+    )
+  } else if (grepl("^@tag\\(", ref)) {
+    # For tagged refs, we need to resolve via the manifest object's tag
+    # The tag was applied to the manifest component, so look up that version
+    tag_name <- sub("^@tag\\((.+)\\)$", "\\1", ref)
+    manifest_name <- paste0(name, ".__se__.manifest")
+
+    # Look up the version_ts for the tagged manifest
+    .ol_ensure_refs_table(state)
+    refs_ident <- .ol_sql_ident(conn, state, "__ol_refs")
+    tag_query <- sprintf(
+      "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s",
+      refs_ident,
+      DBI::dbQuoteString(conn, manifest_name),
+      DBI::dbQuoteString(conn, tag_name)
+    )
+    tag_result <- DBI::dbGetQuery(conn, tag_query)
+
+    if (nrow(tag_result) == 0) {
+      # Tag not found - fallback to latest
+      query <- sprintf(
+        "SELECT adapter_name, format_version, components_json, version_id, created_at FROM %s WHERE name = %s ORDER BY created_at DESC LIMIT 1",
+        ident,
+        DBI::dbQuoteString(conn, name)
+      )
+    } else {
+      # Find adapter registry entry closest to (but not after) the tagged version
+      snapshot_ts <- tag_result$snapshot[1]
+      query <- sprintf(
+        "SELECT adapter_name, format_version, components_json, version_id, created_at FROM %s WHERE name = %s AND created_at <= %s ORDER BY created_at DESC LIMIT 1",
+        ident,
+        DBI::dbQuoteString(conn, name),
+        DBI::dbQuoteString(conn, snapshot_ts)
+      )
+    }
+  } else {
+    # For timestamp refs, find the entry valid at that time
+    query <- sprintf(
+      "SELECT adapter_name, format_version, components_json, version_id, created_at FROM %s WHERE name = %s AND created_at <= %s ORDER BY created_at DESC LIMIT 1",
+      ident,
+      DBI::dbQuoteString(conn, name),
+      DBI::dbQuoteString(conn, ref)
+    )
+  }
+
   result <- DBI::dbGetQuery(conn, query)
 
   if (nrow(result) == 0) {
@@ -142,14 +209,15 @@
     adapter_name = result$adapter_name[1],
     format_version = result$format_version[1],
     components = jsonlite::fromJSON(result$components_json[1]),
+    version_id = result$version_id[1],
     created_at = result$created_at[1]
   )
 }
 
 #' Check if object is adapter-managed
 #' @keywords internal
-.ol_is_adapter_object <- function(state, name) {
-  info <- .ol_get_adapter_info(state, name)
+.ol_is_adapter_object <- function(state, name, ref = "@latest") {
+  info <- .ol_get_adapter_info(state, name, ref)
   !is.null(info)
 }
 

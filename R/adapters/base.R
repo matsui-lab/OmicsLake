@@ -7,6 +7,38 @@
 #' or Seurat objects) in a structured way that preserves all metadata and
 #' allows partial queries.
 #'
+#' @section Adapter Invariant Conditions:
+#' All adapter implementations must satisfy these invariants:
+#'
+#' \strong{1. Registry-based Detection (Deterministic)}
+#' \itemize{
+#'   \item Adapter-managed objects are registered in \code{__ol_adapters} with the
+#'         adapter name and resolved version identifiers.
+#'   \item Retrieval is deterministic via the registry; legacy stored objects
+#'         remain readable via fallback detection.
+#' }
+#'
+#' \strong{2. Atomic Operations (Transaction Safety)}
+#' \itemize{
+#'   \item Adapter writes and component tagging are atomic; all components
+#'         succeed or all fail together.
+#'   \item Nested operations reuse the parent transaction via \code{.in_transaction}
+#'         parameter (no premature commits).
+#' }
+#'
+#' \strong{3. Consistent Versioning}
+#' \itemize{
+#'   \item For adapter-managed objects, versioning operations (tag/restore/drop)
+#'         apply to the full component set consistently.
+#'   \item Components share the same tag names and version references.
+#' }
+#'
+#' \strong{4. Backward Compatibility}
+#' \itemize{
+#'   \item Legacy objects stored before the adapter registry are still readable
+#'         via fallback manifest detection.
+#' }
+#'
 #' @examples
 #' \dontrun{
 #' # Register a custom adapter
