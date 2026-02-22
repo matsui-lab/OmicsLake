@@ -18,13 +18,421 @@ test_that("observe() tracks reads and writes", {
   })
 
   expect_s3_class(result, "lake_observation")
-  expect_true(length(result$reads) >= 0)  # May or may not capture depending on implementation
-  expect_true(length(result$writes) >= 0)
+  expect_true(basename(input_file) %in% basename(result$reads))
+  expect_true(basename(output_file) %in% basename(result$writes))
   expect_true(!is.null(result$result))
 
   # Clean up
   unlink(input_file)
   unlink(output_file)
+})
+
+test_that("observe() can disable auto interception", {
+  temp_dir <- tempdir()
+  input_file <- file.path(temp_dir, "test_input_disable.csv")
+  output_file <- file.path(temp_dir, "test_output_disable.csv")
+
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+
+  result <- observe({
+    data <- read.csv(input_file)
+    write.csv(data, output_file, row.names = FALSE)
+  }, track_functions = character(0))
+
+  expect_equal(length(result$reads), 0)
+  expect_equal(length(result$writes), 0)
+
+  unlink(input_file)
+  unlink(output_file)
+})
+
+test_that("observe() infers lineage from event order", {
+  temp_dir <- tempdir()
+  input_a <- file.path(temp_dir, "order_input_a.csv")
+  input_b <- file.path(temp_dir, "order_input_b.csv")
+  output_a <- file.path(temp_dir, "order_output_a.csv")
+  output_b <- file.path(temp_dir, "order_output_b.csv")
+
+  write.csv(data.frame(x = 1:3), input_a, row.names = FALSE)
+  write.csv(data.frame(x = 4:6), input_b, row.names = FALSE)
+
+  result <- observe({
+    a <- read.csv(input_a)
+    write.csv(a, output_a, row.names = FALSE)
+    b <- read.csv(input_b)
+    write.csv(b, output_b, row.names = FALSE)
+  })
+
+  expect_true(any(result$lineage$parent == basename(input_a) & result$lineage$child == basename(output_a)))
+  expect_true(any(result$lineage$parent == basename(input_b) & result$lineage$child == basename(output_b)))
+  expect_false(any(result$lineage$parent == basename(input_b) & result$lineage$child == basename(output_a)))
+
+  unlink(input_a)
+  unlink(input_b)
+  unlink(output_a)
+  unlink(output_b)
+})
+
+test_that("observe_to_lake() records inferred file lineage", {
+  temp_dir <- tempdir()
+  input_file <- file.path(temp_dir, "test_input_lake.csv")
+  output_file <- file.path(temp_dir, "test_output_lake.csv")
+
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+  lake <- Lake$new("test_observe_to_lake")
+
+  observe_to_lake({
+    data <- read.csv(input_file)
+    write.csv(data, output_file, row.names = FALSE)
+    nrow(data)
+  }, lake = lake)
+
+  deps <- lake$deps(paste0("file:", basename(output_file)), direction = "up")
+  expect_true(paste0("file:", basename(input_file)) %in% deps$parent_name)
+
+  unlink(input_file)
+  unlink(output_file)
+  unlink(file.path(path.expand("~"), ".omicslake", "test_observe_to_lake"), recursive = TRUE)
+})
+
+test_that("track_pipeline() uses default lake and can snapshot", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  use_lake("proj_track_pipeline")
+  input_file <- file.path(tmpdir, "tp_input.csv")
+  output_file <- file.path(tmpdir, "tp_output.csv")
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+
+  result <- track_pipeline({
+    data <- read.csv(input_file)
+    write.csv(data, output_file, row.names = FALSE)
+    nrow(data)
+  }, snapshot = "run1")
+
+  expect_equal(result, 5)
+  deps <- lake()$deps(paste0("file:", basename(output_file)), direction = "up")
+  expect_true(paste0("file:", basename(input_file)) %in% deps$parent_name)
+
+  labels <- ol_list_labels(project = "proj_track_pipeline")
+  expect_true(any(labels$tag == "run1"))
+})
+
+test_that("track_script() sources legacy scripts with lineage tracking", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  input_file <- file.path(tmpdir, "script_input.csv")
+  output_file <- file.path(tmpdir, "script_output.csv")
+  script_file <- file.path(tmpdir, "pipeline_script.R")
+  write.csv(data.frame(x = 1:4), input_file, row.names = FALSE)
+
+  writeLines(c(
+    sprintf("d <- read.csv(%s)", deparse(input_file)),
+    "d$y <- d$x * 2",
+    sprintf("write.csv(d, %s, row.names = FALSE)", deparse(output_file)),
+    "nrow(d)"
+  ), con = script_file)
+
+  result <- track_script(script_file, project = "proj_track_script")
+  expect_equal(result, 4)
+
+  deps <- lake()$deps(paste0("file:", basename(output_file)), direction = "up")
+  expect_true(paste0("file:", basename(input_file)) %in% deps$parent_name)
+})
+
+test_that("track_pipeline() can save returned result with observed dependencies", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  use_lake("proj_track_pipeline_save")
+  input_file <- file.path(tmpdir, "tp_save_input.csv")
+  output_file <- file.path(tmpdir, "tp_save_output.csv")
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+
+  result <- track_pipeline({
+    data <- read.csv(input_file)
+    write.csv(data, output_file, row.names = FALSE)
+    data.frame(n = nrow(data))
+  }, save_result = TRUE, result_name = "pipeline_summary", result_depends_on = "writes")
+
+  expect_equal(result$n, 5)
+  stored <- lake()$get("pipeline_summary")
+  expect_equal(stored$n, 5)
+  deps <- lake()$deps("pipeline_summary", direction = "up")
+  expect_true(paste0("file:", basename(output_file)) %in% deps$parent_name)
+})
+
+test_that("track_script() can save script return value with default name", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  input_file <- file.path(tmpdir, "script_save_input.csv")
+  output_file <- file.path(tmpdir, "script_save_output.csv")
+  script_file <- file.path(tmpdir, "pipeline_script_save.R")
+  write.csv(data.frame(x = 1:4), input_file, row.names = FALSE)
+
+  writeLines(c(
+    sprintf("d <- read.csv(%s)", deparse(input_file)),
+    sprintf("write.csv(d, %s, row.names = FALSE)", deparse(output_file)),
+    "sum(d$x)"
+  ), con = script_file)
+
+  result <- track_script(
+    script_file,
+    project = "proj_track_script_save",
+    save_result = TRUE,
+    result_depends_on = "writes"
+  )
+  expect_equal(result, 10)
+
+  expect_true(lake_exists("script_result_pipeline_script_save", type = "object"))
+  expect_equal(fetch("script_result_pipeline_script_save"), 10)
+  deps <- lake()$deps("script_result_pipeline_script_save", direction = "up")
+  expect_true(paste0("file:", basename(output_file)) %in% deps$parent_name)
+})
+
+test_that("track_pipeline() can store observation record", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  use_lake("proj_track_pipeline_observation")
+  input_file <- file.path(tmpdir, "tp_obs_input.csv")
+  output_file <- file.path(tmpdir, "tp_obs_output.csv")
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+
+  track_pipeline({
+    data <- read.csv(input_file)
+    write.csv(data, output_file, row.names = FALSE)
+    nrow(data)
+  }, store_observation = TRUE, observation_name = "obs_tp_run", observation_depends_on = "both")
+
+  expect_true(lake_exists("obs_tp_run", type = "object"))
+  obs <- fetch("obs_tp_run")
+  expect_true(is.list(obs))
+  expect_true(all(c("reads", "writes", "lineage", "read_nodes", "write_nodes", "recorded_at") %in% names(obs)))
+  expect_true(basename(input_file) %in% basename(obs$reads))
+  expect_true(basename(output_file) %in% basename(obs$writes))
+
+  deps <- lake()$deps("obs_tp_run", direction = "up")
+  expect_true(paste0("file:", basename(input_file)) %in% deps$parent_name)
+  expect_true(paste0("file:", basename(output_file)) %in% deps$parent_name)
+})
+
+test_that("track_script() can store observation record with default name", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  input_file <- file.path(tmpdir, "script_obs_input.csv")
+  output_file <- file.path(tmpdir, "script_obs_output.csv")
+  script_file <- file.path(tmpdir, "pipeline_script_observation.R")
+  write.csv(data.frame(x = 1:4), input_file, row.names = FALSE)
+
+  writeLines(c(
+    sprintf("d <- read.csv(%s)", deparse(input_file)),
+    sprintf("write.csv(d, %s, row.names = FALSE)", deparse(output_file)),
+    "sum(d$x)"
+  ), con = script_file)
+
+  result <- track_script(
+    script_file,
+    project = "proj_track_script_observation",
+    store_observation = TRUE
+  )
+  expect_equal(result, 10)
+
+  expect_true(lake_exists("script_observation_pipeline_script_observation", type = "object"))
+  obs <- fetch("script_observation_pipeline_script_observation")
+  expect_true(is.list(obs))
+  expect_true(basename(output_file) %in% basename(obs$writes))
+})
+
+test_that("track_script() forwards source() arguments via source_args", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  input_file <- file.path(tmpdir, "script_source_args_input.csv")
+  output_file <- file.path(tmpdir, "script_source_args_output.csv")
+  script_file <- file.path(tmpdir, "pipeline_script_source_args.R")
+  write.csv(data.frame(x = 1:4), input_file, row.names = FALSE)
+
+  writeLines(c(
+    sprintf("d <- read.csv(%s)", deparse(input_file)),
+    sprintf("write.csv(d, %s, row.names = FALSE)", deparse(output_file)),
+    "sum(d$x)"
+  ), con = script_file)
+
+  result <- track_script(
+    script_file,
+    project = "proj_track_script_source_args",
+    source_args = list(print.eval = TRUE)
+  )
+  expect_equal(result, 10)
+  expect_true(file.exists(output_file))
+})
+
+test_that("track_script() rejects reserved source_args names", {
+  tmpdir <- withr::local_tempdir()
+  script_file <- file.path(tmpdir, "pipeline_script_reserved_source_args.R")
+  writeLines("1 + 1", con = script_file)
+
+  expect_error(
+    track_script(script_file, project = "proj_track_script_reserved", source_args = list(file = "other.R")),
+    "source_args cannot include reserved names"
+  )
+})
+
+test_that("transparent tracking works without wrapping code blocks", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  had_global_read <- exists("read.csv", envir = .GlobalEnv, inherits = FALSE)
+  old_global_read <- if (had_global_read) get("read.csv", envir = .GlobalEnv, inherits = FALSE) else NULL
+
+  on.exit({
+    if (.auto_track_env$active) {
+      ol_disable_transparent_tracking(commit = FALSE)
+    }
+    if (had_global_read) {
+      assign("read.csv", old_global_read, envir = .GlobalEnv)
+    } else if (exists("read.csv", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(list = "read.csv", envir = .GlobalEnv)
+    }
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  input_file <- file.path(tmpdir, "transparent_input.csv")
+  output_file <- file.path(tmpdir, "transparent_output.csv")
+  write.csv(data.frame(x = 1:5), input_file, row.names = FALSE)
+
+  ol_enable_transparent_tracking(
+    project = "proj_transparent",
+    auto_disable = FALSE,
+    store_observation = TRUE,
+    observation_name = "obs_transparent"
+  )
+
+  data <- read.csv(input_file)
+  write.csv(data, output_file, row.names = FALSE)
+
+  obs <- ol_disable_transparent_tracking(commit = TRUE)
+  expect_s3_class(obs, "lake_observation")
+  expect_true(basename(input_file) %in% basename(obs$reads))
+  expect_true(basename(output_file) %in% basename(obs$writes))
+  expect_true(lake_exists("obs_transparent", type = "object"))
+  deps <- lake()$deps(paste0("file:", basename(output_file)), direction = "up")
+  expect_true(paste0("file:", basename(input_file)) %in% deps$parent_name)
+
+  if (had_global_read) {
+    expect_identical(get("read.csv", envir = .GlobalEnv, inherits = FALSE), old_global_read)
+  } else {
+    expect_false(exists("read.csv", envir = .GlobalEnv, inherits = FALSE))
+  }
+})
+
+test_that("transparent tracking guard rails work", {
+  tmpdir <- withr::local_tempdir()
+  old_root <- getOption("ol.root")
+  old_proj <- getOption("ol.project")
+  on.exit({
+    if (.auto_track_env$active) {
+      ol_disable_transparent_tracking(commit = FALSE)
+    }
+    options(ol.root = old_root)
+    options(ol.project = old_proj)
+    if (exists("default", envir = .lake_env, inherits = FALSE)) {
+      rm("default", envir = .lake_env)
+    }
+  }, add = TRUE)
+
+  options(ol.root = tmpdir)
+  options(ol.project = NULL)
+
+  expect_s3_class(ol_disable_transparent_tracking(commit = FALSE), "lake_observation")
+
+  ol_enable_transparent_tracking(project = "proj_transparent_guard", auto_disable = FALSE)
+  expect_error(
+    ol_enable_transparent_tracking(project = "proj_transparent_guard2", auto_disable = FALSE),
+    "already active"
+  )
+  expect_no_error(ol_disable_transparent_tracking(commit = FALSE))
 })
 
 test_that("observe() returns result correctly", {
@@ -102,6 +510,53 @@ test_that("mark creates a marker node", {
 
   # Clean up
   unlink(file.path(path.expand("~"), ".omicslake", "test_mark"), recursive = TRUE)
+})
+
+test_that("mark captures external file fingerprint metadata", {
+  lake <- Lake$new("test_mark_external_metadata")
+  path <- tempfile(pattern = "omicslake_mark_", fileext = ".txt")
+  writeLines("alpha", con = path)
+
+  mark("file:input.txt", path, lake)
+  meta1 <- lake$get(".__marker__.file:input.txt")
+  expect_equal(meta1$source_kind, "file")
+  expect_true(isTRUE(meta1$source_exists))
+  expect_true(is.character(meta1$content_md5))
+  expect_true(nzchar(meta1$content_md5))
+
+  Sys.sleep(1.1)
+  writeLines("beta", con = path)
+  mark("file:input.txt", path, lake)
+  meta2 <- lake$get(".__marker__.file:input.txt")
+  expect_true(is.character(meta2$content_md5))
+  expect_true(nzchar(meta2$content_md5))
+  expect_false(identical(meta1$content_md5, meta2$content_md5))
+
+  unlink(file.path(path.expand("~"), ".omicslake", "test_mark_external_metadata"), recursive = TRUE)
+})
+
+test_that("mark captures API metadata from named list payload", {
+  lake <- Lake$new("test_mark_api_metadata")
+  meta <- list(
+    source_kind = "api",
+    endpoint = "https://api.example.org/v1/resource",
+    etag = "v1",
+    last_modified = "Sun, 22 Feb 2026 00:00:00 GMT",
+    status_code = 200L,
+    response_md5 = "abc123"
+  )
+
+  mark("api:example_resource", meta, lake)
+  marker <- lake$get(".__marker__.api:example_resource")
+
+  expect_equal(marker$source_kind, "api")
+  expect_equal(marker$source_id, "https://api.example.org/v1/resource")
+  expect_equal(marker$etag, "v1")
+  expect_equal(marker$last_modified, "Sun, 22 Feb 2026 00:00:00 GMT")
+  expect_equal(marker$status_code, 200L)
+  expect_equal(marker$response_md5, "abc123")
+
+  unlink(file.path(path.expand("~"), ".omicslake", "test_mark_api_metadata"), recursive = TRUE)
 })
 
 test_that("link creates explicit dependency", {
