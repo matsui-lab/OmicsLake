@@ -126,14 +126,24 @@ ol_import_parquet <- function(path, name,
   if (length(path) == 1) {
     read_expr <- sprintf("read_parquet(%s", DBI::dbQuoteString(conn, path))
   } else {
-    path_list <- paste(sapply(path, function(p) DBI::dbQuoteString(conn, p)), collapse = ", ")
+    path_list <- paste(
+      vapply(path, function(p) as.character(DBI::dbQuoteString(conn, p)), character(1)),
+      collapse = ", "
+    )
     read_expr <- sprintf("read_parquet([%s]", path_list)
   }
   
   if (length(read_opts) > 0) {
-    opts_str <- paste(names(read_opts), "=", 
-                     sapply(read_opts, function(x) if (is.logical(x)) tolower(as.character(x)) else x),
-                     collapse = ", ")
+    opts_str <- paste(
+      names(read_opts),
+      "=",
+      vapply(
+        read_opts,
+        function(x) if (is.logical(x)) tolower(as.character(x)) else as.character(x),
+        character(1)
+      ),
+      collapse = ", "
+    )
     read_expr <- paste0(read_expr, ", ", opts_str)
   }
   read_expr <- paste0(read_expr, ")")

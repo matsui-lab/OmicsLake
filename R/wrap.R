@@ -569,11 +569,14 @@ Pipeline <- R6::R6Class("Pipeline",
     },
 
     print = function() {
-      cat("Pipeline:", private$.name, "\n")
-      cat("Steps:", length(private$.steps), "\n")
+      lines <- c(
+        paste0("Pipeline: ", private$.name),
+        paste0("Steps: ", length(private$.steps))
+      )
       for (i in seq_along(private$.steps)) {
-        cat("  ", i, ". ", private$.steps[[i]]$name, "\n")
+        lines <- c(lines, paste0("  ", i, ". ", private$.steps[[i]]$name))
       }
+      writeLines(lines)
       invisible(self)
     }
   ),
@@ -606,7 +609,8 @@ Pipeline <- R6::R6Class("Pipeline",
 #' )
 #' }
 trace_calls <- function(functions, expr, lake = NULL) {
-  calls <- list()
+  calls_env <- new.env(parent = emptyenv())
+  calls_env$calls <- list()
 
   # Set up traces
   for (fn_name in names(functions)) {
@@ -617,7 +621,7 @@ trace_calls <- function(functions, expr, lake = NULL) {
     })
 
     tryCatch({
-      suppressMessages(trace(fn_name, tracer, print = FALSE, where = parent.frame()))
+      trace(fn_name, tracer, print = FALSE, where = parent.frame())
     }, error = function(e) {
       # Function might not be traceable
     })
@@ -625,7 +629,7 @@ trace_calls <- function(functions, expr, lake = NULL) {
 
   # Helper to record calls
   .record_trace_call <- function(fn_name, role, call) {
-    calls <<- append(calls, list(list(
+    calls_env$calls <- append(calls_env$calls, list(list(
       fn = fn_name,
       role = role,
       call = call,
@@ -640,7 +644,7 @@ trace_calls <- function(functions, expr, lake = NULL) {
     # Remove traces
     for (fn_name in names(functions)) {
       tryCatch({
-        suppressMessages(untrace(fn_name, where = parent.frame()))
+        untrace(fn_name, where = parent.frame())
       }, error = function(e) {
         # Ignore
       })
@@ -649,6 +653,6 @@ trace_calls <- function(functions, expr, lake = NULL) {
 
   list(
     result = result,
-    calls = calls
+    calls = calls_env$calls
   )
 }

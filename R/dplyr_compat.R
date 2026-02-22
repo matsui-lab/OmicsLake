@@ -3,7 +3,7 @@
 #' Automatically tracks dependencies through dplyr operations.
 #'
 #' @examples
-#' \dontrun
+#' \dontrun{
 #' lake <- Lake$new("my_project")
 #'
 #' # Dependencies are automatically tracked through the pipe
@@ -324,7 +324,7 @@ collect.lake_tbl <- function(x, ...) {
 print.lake_tbl <- function(x, ...) {
   sources <- attr(x, "lake_source")
   if (!is.null(sources)) {
-    cat("# Lake table from:", paste(sources, collapse = ", "), "\n")
+    writeLines(paste0("# Lake table from: ", paste(sources, collapse = ", ")))
   }
   NextMethod()
 }

@@ -53,11 +53,11 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   )
   tags_data <- DBI::dbGetQuery(conn, tags_query)
   
-  versions$tags <- sapply(versions$version_ts, function(vts) {
+  versions$tags <- vapply(versions$version_ts, function(vts) {
     matching_tags <- tags_data$tag[tags_data$snapshot == as.character(vts)]
     if (length(matching_tags) == 0) return("")
     paste(matching_tags, collapse = ", ")
-  })
+  }, character(1))
   
   .ol_ensure_dependencies_table(state)
   ident_deps <- .ol_sql_ident(conn, state, "__ol_dependencies")
@@ -72,13 +72,13 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   # Use nearest-neighbor matching: assign each dependency to the version with closest timestamp (important-comment)
   # This prevents dependencies from being incorrectly matched to multiple versions when saves happen quickly (important-comment)
   version_deps <- list()
-  for (i in 1:nrow(versions)) {
+  for (i in seq_len(nrow(versions))) {
     version_deps[[as.character(versions$version_ts[i])]] <- character(0)
   }
   
   # For each dependency record, assign it to the closest version (important-comment)
   if (nrow(deps_data) > 0) {
-    for (i in 1:nrow(deps_data)) {
+    for (i in seq_len(nrow(deps_data))) {
       dep_time <- as.POSIXct(deps_data$created_at[i])
       
       # Find the version with the closest timestamp (important-comment)
@@ -92,11 +92,11 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
   }
   
   # Fill in the dependencies column (important-comment)
-  versions$dependencies <- sapply(versions$version_ts, function(vts) {
+  versions$dependencies <- vapply(versions$version_ts, function(vts) {
     deps <- unique(version_deps[[as.character(vts)]])
     if (length(deps) == 0) return("")
     paste(deps, collapse = ", ")
-  })
+  }, character(1))
   
   versions
 }
@@ -161,7 +161,7 @@ ol_compare_versions <- function(name, versions = NULL, project = getOption("ol.p
       }
     })
     
-    version_ts_list <- unlist(version_ts_list[!sapply(version_ts_list, is.null)])
+    version_ts_list <- unlist(version_ts_list[!vapply(version_ts_list, is.null, logical(1))])
     
     if (length(version_ts_list) == 0) {
       stop("No valid versions found for comparison", call. = FALSE)
@@ -185,7 +185,7 @@ ol_compare_versions <- function(name, versions = NULL, project = getOption("ol.p
   all_versions$deps_removed <- ""
   
   # Compare each version to the next older version (i+1) to calculate deps_added/removed (important-comment)
-  for (i in 1:(nrow(all_versions)-1)) {
+  for (i in seq_len(nrow(all_versions) - 1L)) {
     curr_deps <- strsplit(all_versions$dependencies[i], ", ")[[1]]
     prev_deps <- strsplit(all_versions$dependencies[i+1], ", ")[[1]]
     

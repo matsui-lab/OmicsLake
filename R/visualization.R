@@ -142,7 +142,7 @@ ol_plot_lineage <- function(
     data.frame(name = child_nodes$name, stringsAsFactors = FALSE)
   ))
   
-  all_nodes$type <- sapply(all_nodes$name, function(n) {
+  all_nodes$type <- vapply(all_nodes$name, function(n) {
     idx <- which(child_nodes$name == n)
     if (length(idx) > 0) {
       return(child_nodes$type[idx[1]])
@@ -152,7 +152,7 @@ ol_plot_lineage <- function(
       return("object")
     }
     return("unknown")
-  })
+  }, character(1))
   
   g <- igraph::graph_from_data_frame(edges, directed = TRUE, vertices = all_nodes)
   

@@ -587,8 +587,8 @@ lake_repair <- function(target = NULL,
     return(out)
   }
 
-  add_row <- function(node, marker_object, comparable, drift_detected, latest_hash, ref_hash, reason) {
-    details[nrow(details) + 1L, ] <<- list(
+  add_row <- function(details, node, marker_object, comparable, drift_detected, latest_hash, ref_hash, reason) {
+    details[nrow(details) + 1L, ] <- list(
       as.character(node),
       as.character(marker_object),
       isTRUE(comparable),
@@ -597,23 +597,24 @@ lake_repair <- function(target = NULL,
       as.character(ref_hash),
       as.character(reason)
     )
+    details
   }
 
   for (node in nodes) {
     marker_object <- .ol_repair_marker_object_name(node)
     marker_exists <- tryCatch(lake$exists(marker_object, type = "object"), error = function(e) FALSE)
     if (!isTRUE(marker_exists)) {
-      add_row(node, marker_object, FALSE, FALSE, NA_character_, NA_character_, "marker_object_not_found")
+      details <- add_row(details, node, marker_object, FALSE, FALSE, NA_character_, NA_character_, "marker_object_not_found")
       next
     }
     latest_meta <- tryCatch(lake$get(marker_object), error = function(e) e)
     if (inherits(latest_meta, "error")) {
-      add_row(node, marker_object, FALSE, FALSE, NA_character_, NA_character_, paste0("latest_marker_read_failed: ", conditionMessage(latest_meta)))
+      details <- add_row(details, node, marker_object, FALSE, FALSE, NA_character_, NA_character_, paste0("latest_marker_read_failed: ", conditionMessage(latest_meta)))
       next
     }
     ref_meta <- tryCatch(lake$get(marker_object, ref = paste0("@", reference_label)), error = function(e) e)
     if (inherits(ref_meta, "error")) {
-      add_row(node, marker_object, FALSE, FALSE, NA_character_, NA_character_, paste0("reference_marker_read_failed: ", conditionMessage(ref_meta)))
+      details <- add_row(details, node, marker_object, FALSE, FALSE, NA_character_, NA_character_, paste0("reference_marker_read_failed: ", conditionMessage(ref_meta)))
       next
     }
 
@@ -624,9 +625,18 @@ lake_repair <- function(target = NULL,
 
     if (!is.na(latest_hash) && !is.na(ref_hash)) {
       drift <- !identical(latest_hash, ref_hash)
-      add_row(node, marker_object, TRUE, drift, latest_hash, ref_hash, if (isTRUE(drift)) "fingerprint_changed" else "fingerprint_unchanged")
+      details <- add_row(
+        details,
+        node,
+        marker_object,
+        TRUE,
+        drift,
+        latest_hash,
+        ref_hash,
+        if (isTRUE(drift)) "fingerprint_changed" else "fingerprint_unchanged"
+      )
     } else {
-      add_row(node, marker_object, FALSE, FALSE, latest_hash, ref_hash, "fingerprint_hash_failed")
+      details <- add_row(details, node, marker_object, FALSE, FALSE, latest_hash, ref_hash, "fingerprint_hash_failed")
     }
   }
 
@@ -803,18 +813,20 @@ lake_repair <- function(target = NULL,
 
 .ol_repair_build_causes <- function(doctor_failures, validation, target, target_edges, target_diff = NULL) {
   out <- .ol_repair_empty_causes()
-  add_cause <- function(source, item, diagnosis, evidence = "") {
-    out[nrow(out) + 1L, ] <<- list(
+  add_cause <- function(out, source, item, diagnosis, evidence = "") {
+    out[nrow(out) + 1L, ] <- list(
       as.character(source),
       as.character(item),
       as.character(diagnosis),
       as.character(evidence)
     )
+    out
   }
 
   if (is.data.frame(doctor_failures) && nrow(doctor_failures) > 0) {
     for (i in seq_len(nrow(doctor_failures))) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "doctor",
         item = .ol_repair_col_scalar(doctor_failures[i, , drop = FALSE], "check", default = "unknown_check"),
         diagnosis = .ol_repair_col_scalar(doctor_failures[i, , drop = FALSE], "detail", default = "check failed"),
@@ -827,7 +839,8 @@ lake_repair <- function(target = NULL,
   row_n <- .ol_repair_list_int(validation, "row_count_changes", default = 0L)
   prev_label <- .ol_repair_list_chr(validation, "previous_label", default = NA_character_)
   if (isTRUE(structural > 0L) || isTRUE(row_n > 0L)) {
-    add_cause(
+    out <- add_cause(
+      out,
       source = "snapshot_validation",
       item = if (is.na(prev_label)) "previous_label_unknown" else prev_label,
       diagnosis = "Snapshot drift detected against previous labeled state.",
@@ -837,14 +850,16 @@ lake_repair <- function(target = NULL,
 
   if (!is.null(target)) {
     if (!isTRUE(target_edges$exists)) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "target",
         item = as.character(target),
         diagnosis = "Target node was not found in the lake.",
         evidence = "Use lake_find() to locate the correct name."
       )
     } else {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "lineage",
         item = as.character(target),
         diagnosis = "Dependency footprint was collected for the target node.",
@@ -855,7 +870,8 @@ lake_repair <- function(target = NULL,
       )
     }
     if (is.list(target_diff) && isTRUE(target_diff$comparable) && isTRUE(target_diff$drift_detected)) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "target_diff",
         item = as.character(target),
         diagnosis = "Target differs from the selected reference label.",
@@ -868,7 +884,8 @@ lake_repair <- function(target = NULL,
         )
       )
     } else if (is.list(target_diff) && !isTRUE(target_diff$comparable) && nzchar(.ol_repair_as_char(target_diff$message))) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "target_diff",
         item = as.character(target),
         diagnosis = "Could not compare target with the selected reference label.",
@@ -876,7 +893,8 @@ lake_repair <- function(target = NULL,
       )
     }
     if (is.list(target_diff) && isTRUE(target_diff$external_dependency_drift)) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "external_dependency",
         item = as.character(target),
         diagnosis = "External dependency fingerprints changed from the selected reference label.",
@@ -886,7 +904,8 @@ lake_repair <- function(target = NULL,
                is.data.frame(target_diff$external_dependency_details) &&
                nrow(target_diff$external_dependency_details) > 0 &&
                any(!target_diff$external_dependency_details$comparable)) {
-      add_cause(
+      out <- add_cause(
+        out,
         source = "external_dependency",
         item = as.character(target),
         diagnosis = "Some external dependencies could not be compared against the selected reference label.",
@@ -896,7 +915,8 @@ lake_repair <- function(target = NULL,
   }
 
   if (nrow(out) == 0) {
-    add_cause(
+    out <- add_cause(
+      out,
       source = "summary",
       item = "no_obvious_issue",
       diagnosis = "No failing checks were found.",
@@ -915,11 +935,11 @@ lake_repair <- function(target = NULL,
                                        renv_restore,
                                        strict_path) {
   out <- .ol_repair_empty_proposals()
-  add_proposal <- function(action_id, summary, command, auto_supported, selected, rationale) {
+  add_proposal <- function(out, action_id, summary, command, auto_supported, selected, rationale) {
     if (action_id %in% out$action_id) {
-      return(invisible(NULL))
+      return(out)
     }
-    out[nrow(out) + 1L, ] <<- list(
+    out[nrow(out) + 1L, ] <- list(
       as.character(action_id),
       as.character(summary),
       as.character(command),
@@ -927,7 +947,7 @@ lake_repair <- function(target = NULL,
       isTRUE(selected),
       as.character(rationale)
     )
-    invisible(NULL)
+    out
   }
 
   if (is.data.frame(doctor_failures) && nrow(doctor_failures) > 0) {
@@ -937,7 +957,8 @@ lake_repair <- function(target = NULL,
       fix <- .ol_repair_col_scalar(doctor_failures[i, , drop = FALSE], "fix", default = "")
 
       if (identical(check_name, "default shortcuts point to this project")) {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = "bind_shortcuts",
           summary = "Bind default shortcuts to the current lake project.",
           command = paste0("use_lake('", project, "')"),
@@ -946,7 +967,8 @@ lake_repair <- function(target = NULL,
           rationale = detail
         )
       } else if (identical(check_name, "automatic reproducibility metadata capture")) {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = "enable_repro_capture",
           summary = "Enable automatic reproducibility metadata capture.",
           command = "options(ol.repro.capture = TRUE)",
@@ -955,7 +977,8 @@ lake_repair <- function(target = NULL,
           rationale = detail
         )
       } else if (identical(check_name, "reproducibility context path exists")) {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = "set_repro_path",
           summary = "Set a valid reproducibility path.",
           command = "options(ol.repro.path = '<analysis_repo_path>')",
@@ -964,7 +987,8 @@ lake_repair <- function(target = NULL,
           rationale = fix
         )
       } else if (identical(check_name, "git working tree is clean")) {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = "clean_git_state",
           summary = "Commit or stash local Git changes before final snapshots.",
           command = "git status && git add -A && git commit -m 'snapshot prep'  # or git stash",
@@ -973,7 +997,8 @@ lake_repair <- function(target = NULL,
           rationale = detail
         )
       } else if (identical(check_name, "renv lockfile detected") || identical(check_name, "renv lockfile parseable")) {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = "refresh_renv_lockfile",
           summary = "Regenerate renv.lock to stabilize package environments.",
           command = "renv::snapshot()",
@@ -982,7 +1007,8 @@ lake_repair <- function(target = NULL,
           rationale = fix
         )
       } else {
-        add_proposal(
+        out <- add_proposal(
+          out,
           action_id = paste0("manual_", i),
           summary = paste0("Resolve failing check: ", check_name),
           command = if (nzchar(fix)) fix else "Inspect lake_doctor() details and fix manually.",
@@ -997,7 +1023,8 @@ lake_repair <- function(target = NULL,
   structural <- .ol_repair_list_int(validation, "structural_changes", default = 0L)
   row_n <- .ol_repair_list_int(validation, "row_count_changes", default = 0L)
   if (!is.null(restore_candidate)) {
-    add_proposal(
+    out <- add_proposal(
+      out,
       action_id = "restore_snapshot",
       summary = paste0("Rollback to snapshot label '", restore_candidate, "'."),
       command = paste0("restore('", restore_candidate, "')"),
@@ -1007,7 +1034,8 @@ lake_repair <- function(target = NULL,
     )
   }
 
-  add_proposal(
+  out <- add_proposal(
+    out,
     action_id = "enable_strict_mode",
     summary = "Enable strict reproducibility guardrails for future runs.",
     command = paste0("ol_enable_strict_repro_mode(path = '", strict_path, "')"),
@@ -1017,7 +1045,8 @@ lake_repair <- function(target = NULL,
   )
 
   if (isTRUE(renv_restore)) {
-    add_proposal(
+    out <- add_proposal(
+      out,
       action_id = "renv_restore",
       summary = "Restore R package environment from renv.lock.",
       command = paste0("renv::restore(project = '", strict_path, "', prompt = FALSE)"),
@@ -1042,21 +1071,22 @@ lake_repair <- function(target = NULL,
 
 .ol_repair_execute <- function(lake, project, proposals, auto, restore_candidate, strict_path) {
   out <- .ol_repair_empty_execution()
-  add_exec <- function(action_id, status, message) {
-    out[nrow(out) + 1L, ] <<- list(
+  add_exec <- function(out, action_id, status, message) {
+    out[nrow(out) + 1L, ] <- list(
       as.character(action_id),
       as.character(status),
       as.character(message)
     )
+    out
   }
 
   if (!isTRUE(auto)) {
-    add_exec("auto_execution", "skipped", "auto = FALSE; generated diagnosis and proposals only.")
+    out <- add_exec(out, "auto_execution", "skipped", "auto = FALSE; generated diagnosis and proposals only.")
     return(out)
   }
 
   if (!is.data.frame(proposals) || nrow(proposals) == 0) {
-    add_exec("auto_execution", "skipped", "No proposals available.")
+    out <- add_exec(out, "auto_execution", "skipped", "No proposals available.")
     return(out)
   }
 
@@ -1065,7 +1095,7 @@ lake_repair <- function(target = NULL,
   selected <- as.character(selected)
   selected <- selected[nzchar(selected)]
   if (!length(selected)) {
-    add_exec("auto_execution", "skipped", "No auto-supported proposals were selected.")
+    out <- add_exec(out, "auto_execution", "skipped", "No auto-supported proposals were selected.")
     return(out)
   }
 
@@ -1108,9 +1138,9 @@ lake_repair <- function(target = NULL,
     )
 
     if (inherits(res, "error")) {
-      add_exec(action_id, "failed", conditionMessage(res))
+      out <- add_exec(out, action_id, "failed", conditionMessage(res))
     } else {
-      add_exec(action_id, "ok", as.character(res))
+      out <- add_exec(out, action_id, "ok", as.character(res))
     }
   }
 
@@ -1198,43 +1228,45 @@ lake_repair <- function(target = NULL,
 #' @return The input object, invisibly
 #' @export
 print.lake_repair_report <- function(x, ...) {
-  cat("Lake Repair Report\n")
-  cat("Project: ", .ol_repair_as_char(x$project), "\n", sep = "")
-  cat("Generated: ", .ol_repair_as_char(x$generated_at_utc), "\n\n", sep = "")
-
-  cat("1) Situation\n")
+  writeLines(c(
+    "Lake Repair Report",
+    paste0("Project: ", .ol_repair_as_char(x$project)),
+    paste0("Generated: ", .ol_repair_as_char(x$generated_at_utc)),
+    ""
+  ))
+  writeLines("1) Situation")
   if (is.data.frame(x$situation) && nrow(x$situation) > 0) {
     print(x$situation, row.names = FALSE)
   } else {
-    cat("  (no situation data)\n")
+    writeLines("  (no situation data)")
   }
 
-  cat("\n2) Cause Identification\n")
+  writeLines(c("", "2) Cause Identification"))
   if (is.data.frame(x$causes) && nrow(x$causes) > 0) {
     print(x$causes, row.names = FALSE)
   } else {
-    cat("  (no causes)\n")
+    writeLines("  (no causes)")
   }
 
-  cat("\n3) Fix Proposals\n")
+  writeLines(c("", "3) Fix Proposals"))
   if (is.data.frame(x$proposals) && nrow(x$proposals) > 0) {
     print(x$proposals, row.names = FALSE)
   } else {
-    cat("  (no proposals)\n")
+    writeLines("  (no proposals)")
   }
 
-  cat("\n4) Auto Execution\n")
+  writeLines(c("", "4) Auto Execution"))
   if (is.data.frame(x$execution) && nrow(x$execution) > 0) {
     print(x$execution, row.names = FALSE)
   } else {
-    cat("  (no execution records)\n")
+    writeLines("  (no execution records)")
   }
 
-  cat("\n5) Before/After Comparison\n")
+  writeLines(c("", "5) Before/After Comparison"))
   if (is.data.frame(x$comparison) && nrow(x$comparison) > 0) {
     print(x$comparison, row.names = FALSE)
   } else {
-    cat("  (no comparison data)\n")
+    writeLines("  (no comparison data)")
   }
 
   invisible(x)

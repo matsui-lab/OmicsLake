@@ -1,5 +1,10 @@
 #' Write a table using the DuckDB backend
+#' @param name Table name
+#' @param data Data frame to store
+#' @param project Project name
+#' @param mode Write mode: "create", "overwrite", or "append"
 #' @param depends_on Optional character vector of table/object names that this table depends on
+#' @return Invisible qualified table name
 #' @export
 ol_write <- function(name, data, project = getOption("ol.project"), mode = c("create", "overwrite", "append"), depends_on = NULL) {
   .ol_require(c("arrow", "duckdb"))
@@ -29,7 +34,12 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
 }
 
 #' Save an R object via the backend metadata table
+#' @param name Object name
+#' @param object R object to save
+#' @param project Project name
+#' @param mime MIME type for object payload
 #' @param depends_on Optional character vector of table/object names that this object depends on
+#' @return Invisible TRUE on success
 #' @export
 ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL, depends_on = NULL) {
   .ol_validate_name(name, "object name")
@@ -67,6 +77,16 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
 #' @param note Commit message describing the changes
 #' @param params Named list of parameters to store with the commit
 #' @param project Project name
+#' @details
+#' By default, commits automatically embed reproducibility context under
+#' `params$omicslake_repro` (Git state, `renv.lock`, and session/system metadata
+#' when available). Control this with:
+#' `options(ol.repro.capture = TRUE/FALSE)`,
+#' `options(ol.repro.path = "/path/to/analysis")`,
+#' `options(ol.repro.include = c("git","renv","session","system"))`,
+#' `options(ol.repro.strict = TRUE/FALSE)`,
+#' `options(ol.repro.require_clean_git = TRUE/FALSE)`,
+#' and AI metadata options such as `options(ol.agent.prompt_id = "...")`.
 #' @export
 ol_commit <- function(note = "", params = list(), project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
@@ -76,7 +96,8 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
   .ol_ensure_commits_table(state)
   conn <- state$conn
   
-  params_json <- if (length(params) > 0) jsonlite::toJSON(params, auto_unbox = TRUE) else ""
+  params <- .ol_add_repro_to_params(params)
+  params_json <- if (length(params) > 0) jsonlite::toJSON(params, auto_unbox = TRUE, null = "null") else ""
   
   commit_data <- data.frame(
     commit_id = commit_id,
@@ -92,33 +113,82 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 }
 
 #' Read a table by name and reference
+#' @param name Table or object name
+#' @param ref Reference string (e.g. "@latest", "@tag(v1)")
+#' @param project Project name
+#' @param collect If TRUE, return data.frame; if FALSE, return lazy table
+#' @return Data frame, lazy table, or stored object
 #' @export
 ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), collect = TRUE) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
   state <- .ol_get_backend_state(project)
-  resolved <- .ol_resolve_reference(state, name, ref)
-  sql <- .ol_get_table_sql(state, name, resolved)
+
   if (!isTRUE(collect)) {
+    if (.ol_is_object(state, name) && !.ol_table_exists(state, name)) {
+      stop(
+        "collect = FALSE is only supported for tables. ",
+        "The name '", name, "' resolves to an object; use collect = TRUE.",
+        call. = FALSE
+      )
+    }
+    resolved <- .ol_resolve_reference(state, name, ref)
+    sql <- .ol_get_table_sql(state, name, resolved)
     .ol_require(c("dplyr", "dbplyr"))
     return(dplyr::tbl(state$conn, dbplyr::sql(sql)))
   }
-  res <- tryCatch(DBI::dbGetQuery(state$conn, sql), error = function(e) {
-    tryCatch({
-      obj <- ol_read_object(name, project = project)
-      attr(obj, "ol.ref") <- ref
-      obj
-    }, error = function(e2) stop(e))
-  })
-  if (is.data.frame(res)) {
+
+  table_attempt <- tryCatch(
+    {
+      resolved <- .ol_resolve_reference(state, name, ref)
+      sql <- .ol_get_table_sql(state, name, resolved)
+      list(result = DBI::dbGetQuery(state$conn, sql), error = NULL)
+    },
+    error = function(e) list(result = NULL, error = conditionMessage(e))
+  )
+  table_err <- table_attempt$error
+  res <- table_attempt$result
+
+  if (!is.null(res) && is.data.frame(res)) {
     rownames(res) <- NULL
+    return(res)
   }
-  res
+
+  object_attempt <- tryCatch(
+    {
+      list(result = ol_read_object(name, ref = ref, project = project), error = NULL)
+    },
+    error = function(e) list(result = NULL, error = conditionMessage(e))
+  )
+  obj_err <- object_attempt$error
+  obj <- object_attempt$result
+
+  if (!is.null(obj)) {
+    if (!is.atomic(obj)) {
+      attr(obj, "ol.ref") <- ref
+    }
+    return(obj)
+  }
+
+  msg <- paste0(
+    "Failed to read '", name, "' at ref '", ref, "'. ",
+    if (!is.null(table_err)) paste0("Table read error: ", table_err, ". ") else "",
+    if (!is.null(obj_err)) paste0("Object read error: ", obj_err, ".") else ""
+  )
+  stop(msg, call. = FALSE)
 }
 
+#' Alias of \code{ol_read()}
+#' @param name Table or object name
+#' @param ref Reference string (e.g. "@latest", "@tag(v1)")
+#' @param project Project name
+#' @return Data frame, lazy table, or stored object
 #' @export
 ol_load <- function(name, ref = "@latest", project = getOption("ol.project")) ol_read(name, ref, project)
 
 #' Return version log for a table
+#' @param name Optional table name. If NULL, returns commit log.
+#' @param project Project name
+#' @return Data frame of version history
 #' @export
 ol_log <- function(name = NULL, project = getOption("ol.project")) {
   project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
@@ -294,6 +364,98 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
   
   query <- sprintf("SELECT commit_id, note, params_json, created_at FROM %s ORDER BY created_at DESC LIMIT %d", ident, as.integer(n))
   res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
+  if (nrow(res) > 0) {
+    parsed <- lapply(res$params_json, .ol_parse_params_json)
+    repro <- lapply(parsed, function(x) {
+      r <- .ol_get_nested(x, c("omicslake_repro"))
+      if (is.null(r)) {
+        r <- .ol_get_nested(x, c("omicslake_repro_auto"))
+      }
+      r
+    })
+    agent <- lapply(parsed, function(x) {
+      a <- .ol_get_nested(x, c("omicslake_agent"))
+      if (is.null(a)) {
+        a <- .ol_get_nested(x, c("omicslake_agent_auto"))
+      }
+      a
+    })
+    validation <- lapply(parsed, function(x) {
+      v <- .ol_get_nested(x, c("omicslake_snapshot_validation"))
+      if (is.null(v)) {
+        v <- .ol_get_nested(x, c("omicslake_snapshot_validation_auto"))
+      }
+      v
+    })
+    res$git_commit <- vapply(
+      repro,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("git", "commit")), NA_character_),
+      character(1)
+    )
+    res$git_branch <- vapply(
+      repro,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("git", "branch")), NA_character_),
+      character(1)
+    )
+    res$git_dirty <- vapply(
+      repro,
+      function(x) {
+        val <- .ol_as_scalar_logical(.ol_get_nested(x, c("git", "dirty")), NA)
+        if (is.na(val)) NA else isTRUE(val)
+      },
+      logical(1)
+    )
+    res$renv_lockfile <- vapply(
+      repro,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("renv", "lockfile")), NA_character_),
+      character(1)
+    )
+    res$renv_lockfile_md5 <- vapply(
+      repro,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("renv", "lockfile_md5")), NA_character_),
+      character(1)
+    )
+    res$agent_prompt_id <- vapply(
+      agent,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("prompt_id")), NA_character_),
+      character(1)
+    )
+    res$agent_run_id <- vapply(
+      agent,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("run_id")), NA_character_),
+      character(1)
+    )
+    res$agent_name <- vapply(
+      agent,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("agent_name")), NA_character_),
+      character(1)
+    )
+    res$agent_script_path <- vapply(
+      agent,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("script_path")), NA_character_),
+      character(1)
+    )
+    res$agent_script_md5 <- vapply(
+      agent,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("script_md5")), NA_character_),
+      character(1)
+    )
+    res$snapshot_validation_prev <- vapply(
+      validation,
+      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("previous_label")), NA_character_),
+      character(1)
+    )
+    res$snapshot_validation_structural_changes <- vapply(
+      validation,
+      function(x) .ol_as_scalar_integer(.ol_get_nested(x, c("summary", "structural_changes")), NA_integer_),
+      integer(1)
+    )
+    res$snapshot_validation_row_count_changes <- vapply(
+      validation,
+      function(x) .ol_as_scalar_integer(.ol_get_nested(x, c("summary", "row_count_changes")), NA_integer_),
+      integer(1)
+    )
+  }
   
   res
 }

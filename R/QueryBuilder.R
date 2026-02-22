@@ -47,6 +47,15 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param alias Optional alias for the table
     #' @return Self for chaining
     from = function(table, alias = NULL) {
+      private$.validate_name(table, "table")
+      if (!private$.lake$.__enclos_env__$private$.is_table(table)) {
+        available <- tryCatch(private$.lake$tables()$table_name, error = function(e) character(0))
+        hint <- private$.unknown_table_hint(table, available)
+        stop("Unknown table '", table, "'.", hint, call. = FALSE)
+      }
+      if (!is.null(alias)) {
+        private$.validate_name(alias, "alias")
+      }
       private$.from <- list(
         table = table,
         alias = alias %||% table
@@ -65,6 +74,18 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param alias Optional alias for the joined table
     #' @return Self for chaining
     join = function(table, on = NULL, type = "left", alias = NULL) {
+      private$.validate_name(table, "table")
+      type <- match.arg(type, choices = c("left", "inner", "right", "full"))
+      if (!private$.lake$.__enclos_env__$private$.is_table(table)) {
+        available <- tryCatch(private$.lake$tables()$table_name, error = function(e) character(0))
+        hint <- private$.unknown_table_hint(table, available)
+        stop("Unknown join table '", table, "'.", hint, call. = FALSE)
+      }
+      if (!is.null(alias)) {
+        private$.validate_name(alias, "alias")
+      }
+      private$.validate_join_by(on)
+
       private$.joins <- append(private$.joins, list(list(
         table = table,
         on = on,
@@ -212,7 +233,7 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param n Maximum number of rows
     #' @return Self for chaining
     limit = function(n) {
-      private$.limit <- as.integer(n)
+      private$.limit <- private$.validate_nonnegative_integer(n, "n", allow_zero = FALSE)
       self
     },
 
@@ -229,13 +250,14 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param desc Use descending order (default: TRUE)
     #' @return Self for chaining
     top = function(n, by, desc = TRUE) {
+      n <- private$.validate_nonnegative_integer(n, "n", allow_zero = FALSE)
       by_expr <- rlang::enquo(by)
       if (desc) {
         private$.order_by <- list(rlang::expr(dplyr::desc(!!by_expr)))
       } else {
         private$.order_by <- list(by_expr)
       }
-      private$.limit <- as.integer(n)
+      private$.limit <- n
       self
     },
 
@@ -243,7 +265,7 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param n Number of rows to skip
     #' @return Self for chaining
     offset = function(n) {
-      private$.offset <- as.integer(n)
+      private$.offset <- private$.validate_nonnegative_integer(n, "n", allow_zero = TRUE)
       self
     },
 
@@ -267,7 +289,20 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @description Execute the query and return results
     #' @return Data frame of results
     run = function() {
-      private$.execute()
+      tryCatch(
+        private$.execute(),
+        error = function(e) {
+          sql <- tryCatch(self$show_sql(), error = function(e2) NULL)
+          if (is.null(sql)) {
+            stop("Query execution failed: ", conditionMessage(e), call. = FALSE)
+          }
+          stop(
+            "Query execution failed: ", conditionMessage(e),
+            "\nRendered SQL: ", as.character(sql),
+            call. = FALSE
+          )
+        }
+      )
     },
 
     #' @description Alias for run
@@ -280,6 +315,7 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     #' @param name Name to save as
     #' @return Invisible Lake object
     as = function(name) {
+      private$.validate_name(name, "name")
       result <- self$run()
       private$.lake$put(name, result, depends_on = private$.sources)
       invisible(private$.lake)
@@ -308,36 +344,37 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
 
     #' @description Print query builder state
     print = function() {
-      cat("QueryBuilder:\n")
+      lines <- c("QueryBuilder:")
       if (!is.null(private$.from)) {
-        cat("  FROM:", private$.from$table)
+        from_line <- paste0("  FROM: ", private$.from$table)
         if (private$.from$alias != private$.from$table) {
-          cat(" AS", private$.from$alias)
+          from_line <- paste0(from_line, " AS ", private$.from$alias)
         }
-        cat("\n")
+        lines <- c(lines, from_line)
       }
       if (length(private$.joins) > 0) {
-        cat("  JOINS:", length(private$.joins), "\n")
+        lines <- c(lines, paste0("  JOINS: ", length(private$.joins)))
         for (j in private$.joins) {
-          cat("    ", toupper(j$type), "JOIN", j$table, "\n")
+          lines <- c(lines, paste0("    ", toupper(j$type), " JOIN ", j$table))
         }
       }
       if (length(private$.where) > 0) {
-        cat("  WHERE:", length(private$.where), "condition(s)\n")
+        lines <- c(lines, paste0("  WHERE: ", length(private$.where), " condition(s)"))
       }
       if (!is.null(private$.select) && length(private$.select) > 0) {
-        cat("  SELECT:", length(private$.select), "column(s)\n")
+        lines <- c(lines, paste0("  SELECT: ", length(private$.select), " column(s)"))
       }
       if (!is.null(private$.group_by) && length(private$.group_by) > 0) {
-        cat("  GROUP BY:", length(private$.group_by), "column(s)\n")
+        lines <- c(lines, paste0("  GROUP BY: ", length(private$.group_by), " column(s)"))
       }
       if (!is.null(private$.order_by) && length(private$.order_by) > 0) {
-        cat("  ORDER BY:", length(private$.order_by), "column(s)\n")
+        lines <- c(lines, paste0("  ORDER BY: ", length(private$.order_by), " column(s)"))
       }
       if (!is.null(private$.limit)) {
-        cat("  LIMIT:", private$.limit, "\n")
+        lines <- c(lines, paste0("  LIMIT: ", private$.limit))
       }
-      cat("  Sources tracked:", paste(private$.sources, collapse = ", "), "\n")
+      lines <- c(lines, paste0("  Sources tracked: ", paste(private$.sources, collapse = ", ")))
+      writeLines(lines)
       invisible(self)
     }
   ),
@@ -357,6 +394,69 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
     .offset = NULL,
     .distinct = FALSE,
     .sources = character(0),
+
+    .validate_name = function(x, arg = "name") {
+      if (!is.character(x) || length(x) != 1 || !nzchar(x)) {
+        stop(arg, " must be a non-empty character string", call. = FALSE)
+      }
+      invisible(TRUE)
+    },
+
+    .validate_nonnegative_integer = function(x, arg = "value", allow_zero = TRUE) {
+      if (!is.numeric(x) || length(x) != 1 || is.na(x) || !is.finite(x)) {
+        stop(arg, " must be a single finite number", call. = FALSE)
+      }
+      if (x %% 1 != 0) {
+        stop(arg, " must be an integer value", call. = FALSE)
+      }
+      if (allow_zero && x < 0) {
+        stop(arg, " must be >= 0", call. = FALSE)
+      }
+      if (!allow_zero && x <= 0) {
+        stop(arg, " must be > 0", call. = FALSE)
+      }
+      as.integer(x)
+    },
+
+    .validate_join_by = function(on) {
+      if (is.null(on)) {
+        return(invisible(TRUE))
+      }
+      if (!is.character(on) || !length(on) || any(!nzchar(on))) {
+        stop("on must be a non-empty character vector when provided", call. = FALSE)
+      }
+      if (!is.null(names(on)) && any(names(on) == "")) {
+        stop("named join mappings in 'on' must not contain empty names", call. = FALSE)
+      }
+      invisible(TRUE)
+    },
+
+    .suggest_names = function(target, candidates, max_dist = 3L, limit = 3L) {
+      if (!length(candidates) || !is.character(target) || !length(target) || !nzchar(target)) {
+        return(character(0))
+      }
+      candidates <- as.character(candidates)
+      d <- utils::adist(tolower(target), tolower(candidates))[1, ]
+      keep <- which(d <= max_dist)
+      if (!length(keep)) {
+        return(character(0))
+      }
+      ord <- keep[order(d[keep], candidates[keep])]
+      unique(candidates[ord])[seq_len(min(length(ord), limit))]
+    },
+
+    .unknown_table_hint = function(target, available) {
+      if (!length(available)) {
+        return(" No tables are currently stored in the lake.")
+      }
+      available <- sort(unique(as.character(available)))
+      hint <- paste0(" Available tables: ", paste(available, collapse = ", "), ".")
+      similar <- private$.suggest_names(target, available)
+      if (length(similar)) {
+        hint <- paste0(hint, " Closest matches: ", paste(similar, collapse = ", "), ".")
+      }
+      hint
+    },
 
     # Reset all query parts
     .reset = function() {

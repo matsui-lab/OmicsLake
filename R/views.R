@@ -174,7 +174,7 @@ ol_list_views <- function(project = getOption("ol.project")) {
   .ol_ensure_dependencies_table(state)
   ident_deps <- .ol_sql_ident(conn, state, "__ol_dependencies")
   
-  views$dependencies <- sapply(views$view_name, function(vname) {
+  views$dependencies <- vapply(views$view_name, function(vname) {
     deps_query <- sprintf(
       "SELECT parent_name FROM %s WHERE child_name = %s AND child_type = 'view' ORDER BY created_at",
       ident_deps,
@@ -183,7 +183,7 @@ ol_list_views <- function(project = getOption("ol.project")) {
     deps <- DBI::dbGetQuery(conn, deps_query)
     if (nrow(deps) == 0) return("")
     paste(deps$parent_name, collapse = ", ")
-  })
+  }, character(1))
   
   views
 }

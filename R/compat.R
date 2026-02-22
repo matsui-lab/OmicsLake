@@ -55,7 +55,7 @@ NULL
 #'
 #' @export
 show_migration_guide <- function() {
-  cat("
+  writeLines("
 ================================================================================
                     OmicsLake API Migration Guide
 ================================================================================
@@ -180,13 +180,12 @@ BRACKET NOTATION:
 #'
 #' @keywords internal
 .warn_deprecated <- function(old_fn, new_fn, when = "0.2.0") {
-  .Deprecated(
-    new_fn,
-    package = "OmicsLake",
-    msg = sprintf(
-      "'%s' is deprecated.\nUse '%s' instead.\nSee show_migration_guide() for details.",
-      old_fn, new_fn
-    )
+  warning(
+    sprintf(
+      "'%s' is deprecated and will be removed after %s.\nUse '%s' instead.\nSee show_migration_guide() for details.",
+      old_fn, when, new_fn
+    ),
+    call. = FALSE
   )
 }
 
