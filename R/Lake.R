@@ -26,7 +26,7 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Initialize a lake
 #' lake <- Lake$new("my_project")
 #'

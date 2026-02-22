@@ -3,7 +3,7 @@
 #' Automatically tracks dependencies through dplyr operations.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("my_project")
 #'
 #' # Dependencies are automatically tracked through the pipe
@@ -29,7 +29,7 @@ NULL
 #' @return Invisibly returns the data (for potential further piping)
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake$ref("raw_data") |>
 #'   dplyr::filter(quality > 0.5) |>
 #'   dplyr::mutate(normalized = value / mean(value)) |>
@@ -93,7 +93,7 @@ save_as <- function(.data, name, lake = NULL) {
 #' @return A function that accepts data and name, saves to lake
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' write_to <- into(lake)
 #'
 #' df |>
@@ -117,7 +117,7 @@ into <- function(lake) {
 #' @return Invisibly returns the data
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' use_lake("my_project")
 #'
 #' df |>

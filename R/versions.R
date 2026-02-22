@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_save("results", data1)
 #' ol_save("results", data2)
@@ -114,7 +114,7 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_save("results", data1, depends_on = "raw")
 #' ol_tag_object("results", "baseline")

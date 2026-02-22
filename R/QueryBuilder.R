@@ -3,7 +3,7 @@
 #' Provides an intuitive way to construct queries without writing SQL.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("my_project")
 #'
 #' # Basic query

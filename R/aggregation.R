@@ -14,7 +14,7 @@
 #' @return Aggregated results as data.frame (if collect=TRUE) or lazy table (if collect=FALSE)
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #'   ol_aggregate("genes", 
 #'                mean_expr = list(func = "avg", col = "expression"),
 #'                sd_expr = list(func = "stddev", col = "expression"))
@@ -98,7 +98,7 @@ ol_aggregate <- function(table, group_by = NULL, ..., project = getOption("ol.pr
 #' @return Original table with added ranking column
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #'   ol_add_rank("genes", rank_by = "expression", method = "dense_rank")
 #'   
 #'   ol_add_rank("genes", 
@@ -163,7 +163,7 @@ ol_add_rank <- function(table, rank_by, partition_by = NULL, method = "row_numbe
 #' @return Original table with added moving average column
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #'   ol_moving_avg("counts", "expression", window_size = 3, order_by = "gene_id")
 #'   
 #'   ol_moving_avg("counts", "expression", 
@@ -235,7 +235,7 @@ ol_moving_avg <- function(table, column, window_size = 3, partition_by = NULL, o
 #' @return Original table with added cumulative sum column
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #'   ol_cumulative_sum("counts", "value", order_by = "time")
 #'   
 #'   ol_cumulative_sum("counts", "value", 
@@ -299,7 +299,7 @@ ol_cumulative_sum <- function(table, column, partition_by = NULL, order_by,
 #' @return Top N rows
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #'   ol_top_n("genes", n = 10, order_by = "expression")
 #'   
 #'   ol_top_n("genes", n = 5, 

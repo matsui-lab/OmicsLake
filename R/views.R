@@ -14,7 +14,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_write("genes", data.frame(gene_id = 1:100, expr = rnorm(100)))
 #' 
@@ -79,7 +79,7 @@ ol_create_view <- function(name, sql,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_create_view("my_view", "SELECT * FROM genes WHERE expr > 0")
 #' 
@@ -131,7 +131,7 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_create_view("view1", "SELECT * FROM genes WHERE expr > 0")
 #' ol_create_view("view2", "SELECT * FROM genes WHERE expr < 0")

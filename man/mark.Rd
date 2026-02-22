@@ -28,7 +28,7 @@ Useful for tracking external files or intermediate calculations.
 x <- 1
 x
 
-\donttest{
+if (FALSE) {
 lake <- Lake$new("project")
 
 # Mark an external file in the lineage

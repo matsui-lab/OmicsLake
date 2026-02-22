@@ -31,7 +31,7 @@ NULL
 #' Please migrate to the new Lake API.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Old API (deprecated)
 #' ol_init("project")
 #' ol_write("data", df)

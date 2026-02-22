@@ -8,7 +8,7 @@
 #' allows partial queries.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Register a custom adapter
 #' my_adapter <- MyAdapter$new()
 #' register_adapter(my_adapter)

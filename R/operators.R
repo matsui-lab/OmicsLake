@@ -4,7 +4,7 @@
 #'
 #' @name operators
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Pattern matching
 #' df[df$gene %like% "MT-%", ]
 #'
@@ -33,14 +33,11 @@ NULL
   # Convert SQL LIKE pattern to regex
   regex_pattern <- pattern
   # Escape regex special chars except % and _
-
-  regex_pattern <- gsub("([.^$+?{}\\[\\]\\\\|()])", "\\\\\\1", regex_pattern)
+  regex_pattern <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", regex_pattern, perl = TRUE)
   # Convert SQL wildcards to regex
-
-  regex_pattern <- gsub("%", ".*", regex_pattern)
-  regex_pattern <- gsub("_", ".", regex_pattern)
+  regex_pattern <- gsub("%", ".*", regex_pattern, fixed = TRUE)
+  regex_pattern <- gsub("_", ".", regex_pattern, fixed = TRUE)
   # Anchor the pattern
-
   regex_pattern <- paste0("^", regex_pattern, "$")
   grepl(regex_pattern, x, perl = TRUE)
 }
@@ -57,9 +54,9 @@ NULL
 `%ilike%` <- function(x, pattern) {
   regex_pattern <- pattern
 
-  regex_pattern <- gsub("([.^$+?{}\\[\\]\\\\|()])", "\\\\\\1", regex_pattern)
-  regex_pattern <- gsub("%", ".*", regex_pattern)
-  regex_pattern <- gsub("_", ".", regex_pattern)
+  regex_pattern <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", regex_pattern, perl = TRUE)
+  regex_pattern <- gsub("%", ".*", regex_pattern, fixed = TRUE)
+  regex_pattern <- gsub("_", ".", regex_pattern, fixed = TRUE)
   regex_pattern <- paste0("^", regex_pattern, "$")
   grepl(regex_pattern, x, perl = TRUE, ignore.case = TRUE)
 }
@@ -82,6 +79,7 @@ NULL
 
 #' NOT BETWEEN operator
 #'
+#' @name not_between_operator
 #' @param x Numeric vector
 #' @param range Numeric vector of length 2 (min, max)
 #' @return Logical vector
@@ -95,6 +93,7 @@ NULL
 
 #' NOT IN operator
 #'
+#' @name not_in_operator
 #' @param x Vector
 #' @param table Values to exclude
 #' @return Logical vector

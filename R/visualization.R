@@ -20,7 +20,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_save("raw", data)
 #' ol_save("processed", result, depends_on = "raw")

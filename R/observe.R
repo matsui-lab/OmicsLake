@@ -28,7 +28,7 @@
 #' to manually record file operations.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Manual recording within observe()
 #' lineage <- observe({
 #'   record_read("input.csv")
@@ -297,7 +297,7 @@ NULL
 #' @return Invisibly returns the path
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' observe({
 #'   record_read("input.csv")
 #'   data <- read.csv("input.csv")
@@ -339,7 +339,7 @@ record_write <- function(path) {
 #'   \item{lineage}{Data frame of inferred dependencies}
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' result <- observe({
 #'   data <- read.csv("data.csv")
 #'   processed <- data[data$value > 0, ]
@@ -527,7 +527,7 @@ print.lake_observation <- function(x, ...) {
 #' @return The result of evaluating expr
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("my_project")
 #'
 #' observe_to_lake({
@@ -567,7 +567,7 @@ observe_to_lake <- function(expr, lake, prefix = "file:", track_functions = NULL
 #' @return Invisible Lake object
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # In .Rprofile (one-time setup for transparent mode)
 #' OmicsLake::ol_enable_transparent_tracking(project = "rna_project")
 #'
@@ -686,7 +686,7 @@ ol_enable_transparent_tracking <- function(project = NULL,
 #' @return A `lake_observation` object (invisible) with tracked reads/writes/lineage
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_enable_transparent_tracking(project = "rna_project", auto_disable = FALSE)
 #' # ... run normal analysis code ...
 #' ol_disable_transparent_tracking(commit = TRUE)
@@ -796,7 +796,7 @@ ol_disable_transparent_tracking <- function(commit = TRUE) {
 #' @return The result of evaluating `expr`
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' # Track an existing block with the current default lake
 #' use_lake("rna_seq_project")
 #' track_pipeline({
@@ -922,7 +922,7 @@ track_pipeline <- function(expr,
 #' @return The return value of the sourced script (`source(...)$value`)
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' track_script("analysis_pipeline.R", project = "rna_seq_project", snapshot = "run_2026_02_21")
 #' }
 track_script <- function(path,
@@ -1007,7 +1007,7 @@ track_script <- function(path,
 #' @return The result of the expression
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' result <- with_tracking(lake, "analysis_result", {
@@ -1045,7 +1045,7 @@ with_tracking <- function(lake, name, expr) {
 #' @return An ObserveSession object
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #' session <- observe_session(lake)
 #'

@@ -17,7 +17,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' ol_init("myproject")
 #' ol_write("genes", data.frame(gene_id = 1:100, expression = rnorm(100)))
 #' 

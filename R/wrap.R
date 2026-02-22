@@ -8,7 +8,7 @@
 #' record their inputs and outputs to the lineage graph.
 #'
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' # Wrap a function
@@ -41,7 +41,7 @@ NULL
 #' @return A wrapped function with the same signature as fn
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #' lake$put("raw_data", data.frame(x = 1:10))
 #'
@@ -128,7 +128,7 @@ wrap_fn <- function(fn, lake, output_name, input_names = NULL, save_output = TRU
 #' @return The result of calling fn
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' result <- wrap_call(lake, mean, c(1, 2, 3, NA), na.rm = TRUE,
@@ -176,7 +176,7 @@ wrap_call <- function(lake, fn, ..., output = NULL, save = TRUE) {
 #' @return Invisibly returns the data (for piping)
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' # Mark an external file in the lineage
@@ -436,7 +436,7 @@ mark <- function(name, data = NULL, lake = NULL) {
 #' @return Invisible TRUE on success
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' # Store some data
@@ -505,7 +505,7 @@ unlink_dep <- function(from, to, lake = NULL) {
 #' @return A Pipeline object
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' lake <- Lake$new("project")
 #'
 #' pipeline <- create_pipeline(lake, "preprocessing")
@@ -599,7 +599,7 @@ Pipeline <- R6::R6Class("Pipeline",
 #' @return List with result and call trace
 #' @export
 #' @examples
-#' \dontrun{
+#' if (FALSE) {
 #' trace_calls(
 #'   list(read.csv = "input", write.csv = "output"),
 #'   {
