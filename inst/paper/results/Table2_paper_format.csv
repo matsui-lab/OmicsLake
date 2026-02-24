@@ -1,0 +1,6 @@
+"Task","OmicsLake_Time","Baseline_Time","Improvement"
+"Table Import (100MB Parquet vs RDS)","0.017 s","0.524 s","30.8x faster"
+"Aggregation (DuckDB vs dplyr, 1M rows)","0.005 s","0.032 s","6.9x faster"
+"Join (DuckDB vs base merge, 1M rows)","0.094 s","0.561 s","6.0x faster"
+"Version Snapshot (metadata vs file copy)","0.002 s","0.003 s","N/C (semantics differ)"
+"Storage Efficiency (Parquet vs RDS)","35.2 MB","29.5 MB","19.3% larger"

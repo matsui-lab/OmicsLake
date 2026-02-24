@@ -1,0 +1,3 @@
+"Format","Size_MB","Compression_vs_RDS","Savings_Percent"
+"RDS (base R)",29.5326356887817,1,0
+"Parquet (OmicsLake)",35.243613243103,0.837957092681498,-19.3
