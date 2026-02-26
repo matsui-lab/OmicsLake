@@ -136,10 +136,11 @@ fetch <- function(name, ...) {
 #' Get a lazy reference from the default lake
 #'
 #' @param name Table name
+#' @param ref Version reference (default: "@latest")
 #' @return A lazy table reference for use with dplyr
 #' @export
-ref <- function(name) {
-  lake()$ref(name)
+ref <- function(name, ref = "@latest") {
+  lake()$ref(name, ref = ref)
 }
 
 #' Create a snapshot of the default lake

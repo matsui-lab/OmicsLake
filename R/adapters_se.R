@@ -89,7 +89,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
             row_ranges <- NULL
             if (!identical(row_ranges_mode, "none")) {
                 row_ranges <- private$.load_row_ranges(prefix, ref, project,
-                    mode = row_ranges_mode)
+                    mode = row_ranges_mode,
+                    feature_ids = manifest$feature_ids)
             }
             if (!is.null(row_ranges)) {
                 se <- SummarizedExperiment::SummarizedExperiment(
@@ -190,21 +191,14 @@ SEAdapter <- R6::R6Class("SEAdapter",
         },
         .put_col_data = function(prefix, data, project) {
             col_data <- as.data.frame(SummarizedExperiment::colData(data))
-            sample_ids <- colnames(data)
-            if (is.null(sample_ids) || length(sample_ids) != nrow(col_data)) {
-                sample_ids <- rownames(col_data)
-            }
-            if (is.null(sample_ids) || length(sample_ids) != nrow(col_data) ||
-                anyNA(sample_ids) || any(!nzchar(as.character(sample_ids)))) {
-                sample_ids <- paste0("col", seq_len(ncol(data)))
+            sample_ids <- if (!is.null(colnames(data))) {
+                colnames(data)
+            } else {
+                paste0("col", seq_len(ncol(data)))
             }
             if (nrow(col_data) == 0) {
                 col_data <- data.frame(
-                    .__sample_id__ = if (!is.null(colnames(data))) {
-                        colnames(data)
-                    } else {
-                        paste0("col", seq_len(ncol(data)))
-                    },
+                    .__sample_id__ = sample_ids,
                     stringsAsFactors = FALSE
                 )
             } else {
@@ -225,22 +219,14 @@ SEAdapter <- R6::R6Class("SEAdapter",
         },
         .put_row_data = function(prefix, data, project) {
             row_data <- as.data.frame(SummarizedExperiment::rowData(data))
-            feature_ids <- rownames(data)
-            if (is.null(feature_ids) ||
-                length(feature_ids) != nrow(row_data)) {
-                feature_ids <- rownames(row_data)
-            }
-            if (is.null(feature_ids) || length(feature_ids) != nrow(row_data) ||
-                anyNA(feature_ids) || any(!nzchar(as.character(feature_ids)))) {
-                feature_ids <- paste0("row", seq_len(nrow(data)))
+            feature_ids <- if (!is.null(rownames(data))) {
+                rownames(data)
+            } else {
+                paste0("row", seq_len(nrow(data)))
             }
             if (nrow(row_data) == 0) {
                 row_data <- data.frame(
-                    .__feature_id__ = if (!is.null(rownames(data))) {
-                        rownames(data)
-                    } else {
-                        paste0("row", seq_len(nrow(data)))
-                    },
+                    .__feature_id__ = feature_ids,
                     stringsAsFactors = FALSE
                 )
             } else {
@@ -381,6 +367,13 @@ SEAdapter <- R6::R6Class("SEAdapter",
             if (is.null(ids) || length(ids) != nrow(col_data)) {
                 ids <- paste0("col", seq_len(nrow(col_data)))
             }
+            if (!is.null(sample_ids) &&
+                length(sample_ids) == nrow(col_data) &&
+                all(sample_ids %in% ids)) {
+                ord <- match(sample_ids, ids)
+                col_data <- col_data[ord, , drop = FALSE]
+                ids <- as.character(sample_ids)
+            }
             rownames(col_data) <- ids
             col_data
         },
@@ -407,16 +400,32 @@ SEAdapter <- R6::R6Class("SEAdapter",
             if (is.null(ids) || length(ids) != nrow(row_data)) {
                 ids <- paste0("row", seq_len(nrow(row_data)))
             }
+            if (!is.null(feature_ids) &&
+                length(feature_ids) == nrow(row_data) &&
+                all(feature_ids %in% ids)) {
+                ord <- match(feature_ids, ids)
+                row_data <- row_data[ord, , drop = FALSE]
+                ids <- as.character(feature_ids)
+            }
             rownames(row_data) <- ids
             row_data
         },
-        .load_row_ranges = function(prefix, ref, project, mode = "table") {
+        .load_row_ranges = function(prefix, ref, project, mode = "table",
+            feature_ids = NULL) {
             if (identical(mode, "object")) {
-                return(tryCatch(
+                rr <- tryCatch(
                     ol_read_object(paste0(prefix, "rowRanges.object"),
                         ref = ref, project = project),
                     error = function(e) NULL
-                ))
+                )
+                if (is.null(rr) || is.null(feature_ids) || length(feature_ids) == 0) {
+                    return(rr)
+                }
+                rn <- names(rr)
+                if (!is.null(rn) && all(feature_ids %in% rn)) {
+                    rr <- rr[match(feature_ids, rn)]
+                }
+                return(rr)
             }
 
             ranges_df <- tryCatch(
@@ -455,6 +464,12 @@ SEAdapter <- R6::R6Class("SEAdapter",
             )
             if (!is.null(feature_ids)) {
                 names(gr) <- as.character(feature_ids)
+            }
+            if (!is.null(feature_ids) &&
+                length(feature_ids) == length(gr) &&
+                !is.null(names(gr)) &&
+                all(feature_ids %in% names(gr))) {
+                gr <- gr[match(feature_ids, names(gr))]
             }
             gr
         },

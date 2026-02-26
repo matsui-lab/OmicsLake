@@ -121,6 +121,21 @@ LakeAdapter <- R6::R6Class("LakeAdapter",
 
     registered <- FALSE
     for (class_name in c(
+        "SeuratAdapter",
+        "SpatialExperimentAdapter",
+        "RaggedExperimentAdapter",
+        "VCFAdapter",
+        "MethylationAdapter",
+        "ATACAdapter",
+        "ChIPAdapter",
+        "MetabolomicsAdapter",
+        "LipidomicsAdapter",
+        "GlycomicsAdapter",
+        "PhosphoproteomicsAdapter",
+        "TranscriptomicsAdapter",
+        "ProteomicsAdapter",
+        "GenomicsAdapter",
+        "EpigenomicsAdapter",
         "XCMSAdapter",
         "ChromatogramsAdapter",
         "QFeaturesAdapter",
@@ -193,6 +208,7 @@ find_adapter <- function(data) {
 #' @keywords internal
 clear_adapters <- function() {
     .adapter_registry$adapters <- list()
-    .adapter_registry$autoload_attempted <- TRUE
+    # Reset so built-in adapters can be auto-registered on next access.
+    .adapter_registry$autoload_attempted <- FALSE
     invisible(TRUE)
 }

@@ -10,7 +10,7 @@
 - **Version-Aware Lineage** - Dependencies record which version of parent data was used (not just name)
 - **Simple API** - Just `put()`, `get()`, `snap()`, `tree()` - no verbose function names
 - **R-Native Queries** - No SQL required; use formula syntax or dplyr
-- **Bioconductor Ready** - Full SummarizedExperiment and Seurat support
+- **Bioconductor Ready** - SummarizedExperiment/Seurat plus multi-omics adapters (SCE, MAE, Spectra, QFeatures, MsExperiment, XCMS, Spatial/Ragged/VCF, methylation/ATAC/ChIP, metabolomics/lipidomics/glycomics/phosphoproteomics, transcriptomics/proteomics/genomics/epigenomics)
 - **Zero Friction** - Drop into existing workflows with minimal code changes
 - **Time Travel** - Tag versions, create snapshots, restore any state
 

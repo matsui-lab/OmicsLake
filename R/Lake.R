@@ -219,6 +219,9 @@ Lake <- R6::R6Class("Lake",
                    where = NULL,
                    select = NULL,
                    collect = TRUE) {
+      parsed <- private$.split_inline_ref(name, ref)
+      name <- parsed$name
+      ref <- parsed$ref
       private$.validate_name(name)
 
       # Track this read for dependency detection
@@ -295,6 +298,9 @@ Lake <- R6::R6Class("Lake",
     #' @param ref Version reference (default: "@latest")
     #' @return A lazy table reference (tbl_lazy)
     ref = function(name, ref = "@latest") {
+      parsed <- private$.split_inline_ref(name, ref)
+      name <- parsed$name
+      ref <- parsed$ref
       private$.validate_name(name)
       private$.tracker$track_read(name, ref)
       tbl <- private$.get_lazy_data(name, ref)
@@ -350,15 +356,16 @@ Lake <- R6::R6Class("Lake",
       state <- private$.state
       conn <- state$conn
 
-      # Check if it's an adapter-managed object (e.g., SummarizedExperiment)
-      adapter_info <- .ol_get_adapter_info(state, name)
-      if (!is.null(adapter_info)) {
+      # Check if it's an adapter-managed object
+      adapter <- private$.find_adapter_for_stored(name, ref = "@latest")
+      if (!is.null(adapter)) {
+        adapter_info <- .ol_get_adapter_info(state, name, ref = "@latest")
+        components <- private$.list_adapter_components(name, adapter, adapter_info)
+
         # Tag all components atomically
-        prefix <- paste0(name, ".__se__.")
         DBI::dbBegin(conn)
         tryCatch({
-          for (component in adapter_info$components) {
-            full_name <- paste0(prefix, component)
+          for (full_name in components) {
             # Determine if component is table or object
             if (private$.is_table(full_name)) {
               ol_tag(full_name, tag, project = private$.project, .in_transaction = TRUE)
@@ -594,6 +601,44 @@ Lake <- R6::R6Class("Lake",
       ol_list_objects(project = private$.project)
     },
 
+    #' @description Check whether a name exists as table/object
+    #' @param name Data name
+    #' @param type One of "any", "table", or "object"
+    #' @return Logical
+    exists = function(name, type = c("any", "table", "object")) {
+      type <- match.arg(type)
+      parsed <- private$.split_inline_ref(name, "@latest")
+      name <- parsed$name
+      ref <- parsed$ref
+      private$.validate_name(name)
+
+      if (identical(ref, "@latest")) {
+        is_table <- private$.is_table(name)
+        is_object <- private$.is_object(name) ||
+          !is.null(private$.find_adapter_for_stored(name, ref = "@latest"))
+      } else {
+        is_table <- tryCatch({
+          private$.get_lazy_data(name, ref)
+          TRUE
+        }, error = function(e) FALSE)
+
+        is_object <- tryCatch({
+          private$.get_object_data(name, ref)
+          TRUE
+        }, error = function(e) FALSE)
+
+        if (!is_object) {
+          is_object <- !is.null(private$.find_adapter_for_stored(name, ref = ref))
+        }
+      }
+
+      switch(type,
+        "any" = is_table || is_object,
+        "table" = is_table,
+        "object" = is_object
+      )
+    },
+
     #' @description List all data (tables and objects)
     #' @return List with tables and objects data frames
     ls = function() {
@@ -625,6 +670,124 @@ Lake <- R6::R6Class("Lake",
       self$log(name, n)
     },
 
+    #' @description Show one-line health/status summary
+    #' @return One-row data frame
+    status = function() {
+      tables_n <- tryCatch(nrow(self$tables()), error = function(e) NA_integer_)
+      objects_n <- tryCatch(nrow(self$objects()), error = function(e) NA_integer_)
+
+      default_shortcuts <- FALSE
+      if (exists(".lake_env", mode = "environment", inherits = TRUE)) {
+        default_shortcuts <- isTRUE(
+          exists("default", envir = .lake_env, inherits = FALSE) &&
+            identical(.lake_env$default, self)
+        )
+      }
+
+      git_dirty <- NA
+      git_out <- suppressWarnings(
+        tryCatch(
+          system2("git", c("status", "--porcelain"), stdout = TRUE, stderr = FALSE),
+          error = function(e) character(0)
+        )
+      )
+      if (!inherits(git_out, "try-error")) {
+        git_dirty <- length(git_out) > 0
+      }
+
+      data.frame(
+        project = private$.project,
+        tables = as.integer(tables_n),
+        objects = as.integer(objects_n),
+        default_shortcuts = default_shortcuts,
+        git_dirty = git_dirty,
+        stringsAsFactors = FALSE
+      )
+    },
+
+    #' @description Run lightweight diagnostics
+    #' @param verbose If TRUE, print results
+    #' @return Data frame of checks
+    doctor = function(verbose = TRUE) {
+      checks <- data.frame(
+        check = c("backend_state", "tables_access", "objects_access"),
+        ok = c(
+          !is.null(private$.state) && !is.null(private$.state$conn),
+          FALSE,
+          FALSE
+        ),
+        detail = c(
+          "Backend state is initialized",
+          "",
+          ""
+        ),
+        fix = c(
+          "Recreate lake with Lake$new(project) if backend is unavailable.",
+          "",
+          ""
+        ),
+        stringsAsFactors = FALSE
+      )
+
+      tables_probe <- tryCatch(self$tables(), error = function(e) e)
+      checks$ok[2] <- !inherits(tables_probe, "error")
+      checks$detail[2] <- if (inherits(tables_probe, "error")) {
+        conditionMessage(tables_probe)
+      } else {
+        paste0("tables() returned ", nrow(tables_probe), " rows")
+      }
+      checks$fix[2] <- "Ensure project storage exists and table metadata is readable."
+
+      objects_probe <- tryCatch(self$objects(), error = function(e) e)
+      checks$ok[3] <- !inherits(objects_probe, "error")
+      checks$detail[3] <- if (inherits(objects_probe, "error")) {
+        conditionMessage(objects_probe)
+      } else {
+        paste0("objects() returned ", nrow(objects_probe), " rows")
+      }
+      checks$fix[3] <- "Ensure object registry (__ol_objects) is accessible."
+
+      if (isTRUE(verbose)) {
+        print(checks, row.names = FALSE)
+      }
+      checks
+    },
+
+    #' @description Run five-step repair workflow
+    #' @param target Optional data name to focus lineage diagnostics
+    #' @param restore_label Optional snapshot label used for rollback proposals
+    #' @param auto If TRUE, execute auto-supported proposals
+    #' @param enable_strict Enable strict reproducibility mode during auto execution
+    #' @param strict_path Path used when enabling strict reproducibility mode
+    #' @param renv_restore If TRUE, run renv::restore() during auto execution
+    #' @param numeric_tolerance Numeric tolerance used for semantic value comparison
+    #' @param ignore_row_order If TRUE, compare tabular targets ignoring row order
+    #' @param verbose If TRUE, print the five-step report
+    #' @return A \code{lake_repair_report} object
+    repair = function(target = NULL,
+                      restore_label = NULL,
+                      auto = FALSE,
+                      enable_strict = FALSE,
+                      strict_path = getOption("ol.repro.path", getwd()),
+                      renv_restore = FALSE,
+                      numeric_tolerance = 1e-8,
+                      ignore_row_order = TRUE,
+                      verbose = TRUE) {
+      .ol_run_lake_repair(
+        lake = self,
+        project = private$.project,
+        target = target,
+        restore_label = restore_label,
+        auto = auto,
+        enable_strict = enable_strict,
+        strict_path = strict_path,
+        renv_restore = renv_restore,
+        numeric_tolerance = numeric_tolerance,
+        ignore_row_order = ignore_row_order,
+        verbose = verbose
+      )
+    },
+
     # ========== Data Management ==========
 
     #' @description Remove data from the lake
@@ -649,25 +812,31 @@ Lake <- R6::R6Class("Lake",
       conn <- state$conn
 
       # Check if it's an adapter-managed object
-      adapter_info <- .ol_get_adapter_info(state, name)
-      if (!is.null(adapter_info)) {
+      adapter <- private$.find_adapter_for_stored(name, ref = "@latest")
+      if (!is.null(adapter)) {
+        adapter_info <- .ol_get_adapter_info(state, name, ref = "@latest")
+        components <- private$.list_adapter_components(name, adapter, adapter_info)
+
         # Drop all components atomically
-        prefix <- paste0(name, ".__se__.")
         DBI::dbBegin(conn)
         tryCatch({
-          for (component in adapter_info$components) {
-            full_name <- paste0(prefix, component)
-            # Try to drop as table, then as object
-            table_dropped <- tryCatch({
+          for (full_name in components) {
+            # Drop according to actual component type.
+            # ol_drop() uses DROP TABLE IF EXISTS, so we must check type first.
+            is_tbl <- private$.is_table(full_name)
+            is_obj <- private$.is_object(full_name)
+
+            if (is_tbl) {
               ol_drop(full_name, project = private$.project)
-              TRUE
-            }, error = function(e) FALSE)
-            if (!table_dropped) {
-              tryCatch({
-                ol_drop_object(full_name, project = private$.project)
-              }, error = function(e) {
-                # Component may not exist, that's OK
-              })
+            }
+            if (is_obj) {
+              ol_drop_object(full_name, project = private$.project)
+            }
+
+            if (!is_tbl && !is_obj) {
+              # Component may already be absent (e.g., partially dropped legacy data).
+              tryCatch(ol_drop(full_name, project = private$.project), error = function(e) NULL)
+              tryCatch(ol_drop_object(full_name, project = private$.project), error = function(e) NULL)
             }
           }
 
@@ -688,21 +857,19 @@ Lake <- R6::R6Class("Lake",
         return(invisible(self))
       }
 
-      # Try to drop as table first, then as object
-      table_dropped <- tryCatch({
-        ol_drop(name, project = private$.project)
-        TRUE
-      }, error = function(e) {
-        FALSE
-      })
+      # Drop according to actual stored type.
+      is_tbl <- private$.is_table(name)
+      is_obj <- private$.is_object(name)
 
-      if (!table_dropped) {
-        # Try to drop as object
-        tryCatch({
-          ol_drop_object(name, project = private$.project)
-        }, error = function(e) {
-          stop("'", name, "' not found as table or object", call. = FALSE)
-        })
+      if (!is_tbl && !is_obj) {
+        stop("'", name, "' not found as table or object", call. = FALSE)
+      }
+
+      if (is_tbl) {
+        ol_drop(name, project = private$.project)
+      }
+      if (is_obj) {
+        ol_drop_object(name, project = private$.project)
       }
 
       invisible(self)
@@ -859,6 +1026,34 @@ Lake <- R6::R6Class("Lake",
       .ol_validate_name(name, "name")
     },
 
+    # Allow shorthand "name@tag(v1)" / "name@latest" in read-style APIs.
+    .split_inline_ref = function(name, ref = "@latest") {
+      nm <- as.character(name)[1]
+      if (is.na(nm) || !nzchar(nm)) {
+        return(list(name = name, ref = ref))
+      }
+
+      m <- regexec("^(.*)@((?:latest|first)|(?:tag\\([^)]*\\)))$", nm, perl = TRUE)
+      parts <- regmatches(nm, m)[[1]]
+      if (length(parts) == 0) {
+        return(list(name = nm, ref = ref))
+      }
+
+      if (!identical(ref, "@latest")) {
+        stop("Specify reference either in name ('name@tag(x)') or ref argument, not both", call. = FALSE)
+      }
+
+      base_name <- parts[2]
+      if (!nzchar(base_name)) {
+        return(list(name = nm, ref = ref))
+      }
+
+      list(
+        name = base_name,
+        ref = paste0("@", parts[3])
+      )
+    },
+
     # Detect the storage type for data
     .detect_storage_type = function(data) {
       if (inherits(data, "SummarizedExperiment")) {
@@ -886,24 +1081,60 @@ Lake <- R6::R6Class("Lake",
 
     # Store an R object
     .put_object = function(name, data) {
-      ol_save(name, data, project = private$.project)
+      adapter <- find_adapter(data)
+      if (!is.null(adapter)) {
+        private$.put_with_adapter(name, data, adapter)
+      } else {
+        ol_save(name, data, project = private$.project)
+      }
     },
 
     # Store SummarizedExperiment using adapter
     .put_se = function(name, data) {
       adapter <- find_adapter(data)
       if (!is.null(adapter)) {
-        adapter$put(self, name, data)
+        private$.put_with_adapter(name, data, adapter)
       } else {
         # Fallback if adapter not registered
         ol_save(name, data, project = private$.project)
       }
     },
 
-    # Store Seurat object (placeholder for adapter)
+    # Store Seurat object via adapter when available
     .put_seurat = function(name, data) {
-      # For now, save as object; adapter will provide full support
-      ol_save(name, data, project = private$.project)
+      adapter <- find_adapter(data)
+      if (!is.null(adapter)) {
+        private$.put_with_adapter(name, data, adapter)
+      } else {
+        # Fallback if adapter not registered
+        ol_save(name, data, project = private$.project)
+      }
+    },
+
+    # Store via adapter and register for deterministic retrieval/tag/drop
+    .put_with_adapter = function(name, data, adapter) {
+      adapter$put(self, name, data)
+
+      components <- private$.collect_adapter_components(name, adapter)
+      tryCatch({
+        .ol_register_adapter_object(
+          state = private$.state,
+          name = name,
+          adapter_name = adapter$name(),
+          components = components,
+          format_version = 1L
+        )
+      }, error = function(e) {
+        warning(
+          "Adapter storage succeeded but registry update failed for '",
+          name,
+          "': ",
+          conditionMessage(e),
+          call. = FALSE
+        )
+      })
+
+      invisible(TRUE)
     },
 
     # Get lazy reference to table with version support
@@ -951,7 +1182,8 @@ Lake <- R6::R6Class("Lake",
       for (dep in depends_on) {
         parent_name <- dep$name
         parent_ref <- if (!is.null(dep$ref)) dep$ref else "@latest"
-        parent_type <- if (private$.is_object(parent_name)) "object" else "table"
+        is_adapter_parent <- !is.null(private$.find_adapter_for_stored(parent_name, ref = parent_ref))
+        parent_type <- if (private$.is_object(parent_name) || is_adapter_parent) "object" else "table"
 
         .ol_record_dependency(
           state = state,
@@ -997,6 +1229,83 @@ Lake <- R6::R6Class("Lake",
       name %in% objects$name
     },
 
+    # Build fully-qualified component names for adapter-managed objects
+    .list_adapter_components = function(name, adapter, adapter_info = NULL) {
+      components <- character(0)
+
+      if (!is.null(adapter_info) && !is.null(adapter_info$components)) {
+        components <- as.character(adapter_info$components)
+      }
+
+      if (length(components) == 0 && !is.null(adapter)) {
+        components <- private$.collect_adapter_components(name, adapter)
+      } else {
+        components <- vapply(components, function(comp) {
+          private$.resolve_adapter_component_name(name, comp)
+        }, character(1))
+      }
+
+      unique(components[nzchar(components)])
+    },
+
+    # Collect component identifiers from adapter metadata
+    .collect_adapter_components = function(name, adapter) {
+      comp_df <- tryCatch(
+        adapter$components(self, name),
+        error = function(e) data.frame()
+      )
+
+      if (!is.data.frame(comp_df) || nrow(comp_df) == 0) {
+        return(character(0))
+      }
+
+      comp_col <- if ("component_id" %in% names(comp_df)) "component_id" else "component"
+      comps <- as.character(comp_df[[comp_col]])
+      comps <- comps[!is.na(comps) & nzchar(comps)]
+      if (length(comps) == 0 && "component" %in% names(comp_df)) {
+        comps <- as.character(comp_df$component)
+      }
+      unique(comps[nzchar(comps)])
+    },
+
+    # Resolve adapter component identifier to fully-qualified name
+    .resolve_adapter_component_name = function(name, component) {
+      comp <- as.character(component)[1]
+      if (is.na(comp) || !nzchar(comp)) return("")
+
+      # Already fully qualified or direct object/table name
+      if (private$.is_table(comp) || private$.is_object(comp)) {
+        return(comp)
+      }
+      if (startsWith(comp, paste0(name, ".__"))) {
+        return(comp)
+      }
+
+      # Legacy SE-only stored component ids
+      legacy_se <- paste0(name, ".__se__.", comp)
+      if (private$.is_table(legacy_se) || private$.is_object(legacy_se)) {
+        return(legacy_se)
+      }
+
+      # Generic adapter prefix detection: <name>.__<adapter>__.<component>
+      tables <- tryCatch(self$tables()$table_name, error = function(e) character(0))
+      objects <- tryCatch(self$objects()$name, error = function(e) character(0))
+      all_names <- c(tables, objects)
+      if (length(all_names) == 0) {
+        return(comp)
+      }
+
+      esc_name <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", name, perl = TRUE)
+      esc_comp <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", comp, perl = TRUE)
+      pattern <- paste0("^", esc_name, "\\.__[^.]+__\\.", esc_comp, "$")
+      matches <- all_names[grepl(pattern, all_names, perl = TRUE)]
+      if (length(matches) > 0) {
+        return(matches[1])
+      }
+
+      comp
+    },
+
     # Check if name is an adapter-stored object (e.g., SummarizedExperiment)
     # Returns the adapter if found, NULL otherwise
     # Uses deterministic lookup from __ol_adapters registry table
@@ -1005,15 +1314,15 @@ Lake <- R6::R6Class("Lake",
       adapter_info <- .ol_get_adapter_info(state, name, ref)
 
       if (is.null(adapter_info)) {
-        # Fallback: check for legacy SE storage (manifest object exists)
-        # This provides backward compatibility for objects stored before registry
-        manifest_name <- paste0(name, ".__se__.manifest")
-        if (private$.is_object(manifest_name)) {
-          adapters <- get_adapters()
-          for (adapter in adapters) {
-            if (adapter$exists(self, name)) {
-              return(adapter)
-            }
+        # Fallback: probe adapters by on-disk markers (legacy/no-registry data)
+        adapters <- get_adapters()
+        for (adapter in adapters) {
+          exists <- tryCatch(
+            adapter$exists(self, name),
+            error = function(e) FALSE
+          )
+          if (isTRUE(exists)) {
+            return(adapter)
           }
         }
         return(NULL)
@@ -1023,6 +1332,17 @@ Lake <- R6::R6Class("Lake",
       adapters <- get_adapters()
       for (adapter in adapters) {
         if (adapter$name() == adapter_info$adapter_name) {
+          return(adapter)
+        }
+      }
+
+      # Fallback to marker-based detection if adapter registry name is unavailable
+      for (adapter in adapters) {
+        exists <- tryCatch(
+          adapter$exists(self, name),
+          error = function(e) FALSE
+        )
+        if (isTRUE(exists)) {
           return(adapter)
         }
       }
@@ -1075,6 +1395,35 @@ Lake <- R6::R6Class("Lake",
     }
   )
 )
+
+#' @export
+`[.Lake` <- function(x, i, j, ..., drop = TRUE) {
+  if (missing(i)) {
+    stop("Data name must be supplied as the first index, e.g. lake['table']", call. = FALSE)
+  }
+  name <- as.character(i)[1]
+
+  if (missing(j)) {
+    return(x$get(name))
+  }
+
+  data <- x$get(name)
+  where_expr <- substitute(j)
+  dplyr::filter(data, !!where_expr)
+}
+
+#' @export
+`[<-.Lake` <- function(x, i, j, value) {
+  if (missing(i)) {
+    stop("Data name must be supplied as the first index, e.g. lake['table'] <- value", call. = FALSE)
+  }
+  if (!missing(j)) {
+    stop("Column/row sub-assignment is not supported; use lake['name'] <- value", call. = FALSE)
+  }
+  name <- as.character(i)[1]
+  x$put(name, value)
+  x
+}
 
 
 #' @title Dependency Tracker

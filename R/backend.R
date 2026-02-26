@@ -156,19 +156,24 @@
       DBI::dbQuoteString(conn, name)
     )
   } else if (grepl("^@tag\\(", ref)) {
-    # For tagged refs, we need to resolve via the manifest object's tag
-    # The tag was applied to the manifest component, so look up that version
+    # Resolve tagged adapter state generically via refs timestamp of any
+    # adapter component tagged under "<name>.__%".
     tag_name <- sub("^@tag\\((.+)\\)$", "\\1", ref)
-    manifest_name <- paste0(name, ".__se__.manifest")
-
-    # Look up the version_ts for the tagged manifest
     .ol_ensure_refs_table(state)
     refs_ident <- .ol_sql_ident(conn, state, "__ol_refs")
+    name_prefix <- paste0(name, ".__%")
+
+    object_prefix <- paste0("__object__", name_prefix)
     tag_query <- sprintf(
-      "SELECT snapshot FROM %s WHERE table_name = %s AND tag = %s",
+      paste(
+        "SELECT as_of FROM %s WHERE tag = %s",
+        "AND (table_name LIKE %s OR table_name LIKE %s)",
+        "ORDER BY as_of DESC LIMIT 1"
+      ),
       refs_ident,
-      DBI::dbQuoteString(conn, manifest_name),
-      DBI::dbQuoteString(conn, tag_name)
+      DBI::dbQuoteString(conn, tag_name),
+      DBI::dbQuoteString(conn, name_prefix),
+      DBI::dbQuoteString(conn, object_prefix)
     )
     tag_result <- DBI::dbGetQuery(conn, tag_query)
 
@@ -180,13 +185,13 @@
         DBI::dbQuoteString(conn, name)
       )
     } else {
-      # Find adapter registry entry closest to (but not after) the tagged version
-      snapshot_ts <- tag_result$snapshot[1]
+      # Select adapter registry entry valid at tag timestamp
+      tagged_at <- as.character(tag_result$as_of[1])
       query <- sprintf(
         "SELECT adapter_name, format_version, components_json, version_id, created_at FROM %s WHERE name = %s AND created_at <= %s ORDER BY created_at DESC LIMIT 1",
         ident,
         DBI::dbQuoteString(conn, name),
-        DBI::dbQuoteString(conn, snapshot_ts)
+        DBI::dbQuoteString(conn, tagged_at)
       )
     }
   } else {
@@ -439,7 +444,12 @@
 }
 
 .ol_get_backup_table_name <- function(table_name, tag) {
-  paste0("__ol_backup_", gsub("[^a-zA-Z0-9_]", "_", table_name), "_", gsub("[^a-zA-Z0-9_]", "_", tag))
+  paste0(
+    "__ol_backup_",
+    gsub("[^a-zA-Z0-9_]", "_", table_name),
+    "__",
+    gsub("[^a-zA-Z0-9_]", "_", tag)
+  )
 }
 
 .ol_resolve_reference <- function(state, name, ref) {

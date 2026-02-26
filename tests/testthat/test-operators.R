@@ -20,8 +20,12 @@ test_that("%like% handles special characters", {
   result <- values[values %like% "test.%"]
   expect_equal(result, "test.value")
 
-  # Underscore is single char wildcard
+  # Underscore is a single-char wildcard in SQL LIKE
   result <- values[values %like% "test_value"]
+  expect_equal(length(result), 3)
+
+  # Escaped underscore is treated literally
+  result <- values[values %like% "test\\_value"]
   expect_equal(result, "test_value")
 })
 

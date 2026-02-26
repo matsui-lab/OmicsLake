@@ -29,16 +29,52 @@ NULL
 #' @examples
 #' genes <- c("MT-CO1", "MT-CO2", "ACTB", "GAPDH")
 #' genes[genes %like% "MT-%"]
+.ol_like_to_regex <- function(pattern) {
+  pattern <- as.character(pattern)[1]
+  chars <- strsplit(pattern, "", fixed = TRUE)[[1]]
+  out <- character(length(chars))
+  k <- 0L
+  escaped <- FALSE
+
+  for (ch in chars) {
+    if (escaped) {
+      k <- k + 1L
+      out[k] <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", ch, perl = TRUE)
+      escaped <- FALSE
+      next
+    }
+
+    if (identical(ch, "\\")) {
+      escaped <- TRUE
+      next
+    }
+
+    if (identical(ch, "%")) {
+      k <- k + 1L
+      out[k] <- ".*"
+      next
+    }
+
+    if (identical(ch, "_")) {
+      k <- k + 1L
+      out[k] <- "."
+      next
+    }
+
+    k <- k + 1L
+    out[k] <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", ch, perl = TRUE)
+  }
+
+  if (escaped) {
+    k <- k + 1L
+    out[k] <- "\\\\"
+  }
+
+  paste0("^", paste(out[seq_len(k)], collapse = ""), "$")
+}
+
 `%like%` <- function(x, pattern) {
-  # Convert SQL LIKE pattern to regex
-  regex_pattern <- pattern
-  # Escape regex special chars except % and _
-  regex_pattern <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", regex_pattern, perl = TRUE)
-  # Convert SQL wildcards to regex
-  regex_pattern <- gsub("%", ".*", regex_pattern, fixed = TRUE)
-  regex_pattern <- gsub("_", ".", regex_pattern, fixed = TRUE)
-  # Anchor the pattern
-  regex_pattern <- paste0("^", regex_pattern, "$")
+  regex_pattern <- .ol_like_to_regex(pattern)
   grepl(regex_pattern, x, perl = TRUE)
 }
 
@@ -52,12 +88,7 @@ NULL
 #' names <- c("John", "JOHN", "johnny", "Jane")
 #' names[names %ilike% "john%"]
 `%ilike%` <- function(x, pattern) {
-  regex_pattern <- pattern
-
-  regex_pattern <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", regex_pattern, perl = TRUE)
-  regex_pattern <- gsub("%", ".*", regex_pattern, fixed = TRUE)
-  regex_pattern <- gsub("_", ".", regex_pattern, fixed = TRUE)
-  regex_pattern <- paste0("^", regex_pattern, "$")
+  regex_pattern <- .ol_like_to_regex(pattern)
   grepl(regex_pattern, x, perl = TRUE, ignore.case = TRUE)
 }
 
