@@ -1,0 +1,145 @@
+url: https://matsui-lab.github.io/OmicsLake
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left:  [intro, articles, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get Started
+      href: articles/lake_quickstart_EN.html
+    articles:
+      text: Articles
+      menu:
+        - text: "Quick Start (EN)"
+          href: articles/lake_quickstart_EN.html
+        - text: "Comprehensive Guide (EN)"
+          href: articles/omicslake_comprehensive_guide_EN.html
+        - text: "Practical Workflow (EN)"
+          href: articles/omicslake_practical_workflow_EN.html
+        - text: "Layer Use Cases (EN)"
+          href: articles/omicslake_layer_use_cases_EN.html
+        - text: "---"
+        - text: "Quick Start (JP)"
+          href: articles/lake_quickstart.html
+        - text: "Comprehensive Guide (JP)"
+          href: articles/omicslake_comprehensive_guide.html
+        - text: "Practical Workflow (JP)"
+          href: articles/omicslake_practical_workflow.html
+        - text: "Layer Use Cases (JP)"
+          href: articles/omicslake_layer_use_cases.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    news:
+      text: News
+      href: news/index.html
+    github:
+      icon: fa-github
+      href: https://github.com/matsui-lab/OmicsLake
+      aria-label: GitHub
+
+reference:
+  - title: "Core - Lake Class"
+    desc: "Main R6 class for versioned data management"
+    contents:
+      - Lake
+      - lake_exists
+      - lake_status
+      - lake_doctor
+      - lake_repair
+
+  - title: "Version Control"
+    desc: "Snapshots, tags, and time travel"
+    contents:
+      - snap
+      - tag
+      - restore
+      - history
+      - tree
+      - ref
+
+  - title: "Query & Operators"
+    desc: "Query builder and custom operators"
+    contents:
+      - QueryBuilder
+      - sql
+      - from
+      - query
+      - starts_with("%")
+      - is_null
+      - is_not_null
+      - starts_with_str
+      - ends_with_str
+      - contains_str
+      - coalesce
+      - if_else_na
+
+  - title: "dplyr Integration"
+    desc: "Use dplyr verbs with OmicsLake tables"
+    contents:
+      - save_as
+      - into
+
+  - title: "Lineage & Observe"
+    desc: "Lightweight lineage tracking and pipeline recording"
+    contents:
+      - observe
+      - observe_session
+      - observe_to_lake
+      - with_tracking
+      - wrap_fn
+      - wrap_call
+      - mark
+      - link
+      - unlink_dep
+      - deps
+      - create_pipeline
+      - Pipeline
+      - ObserveSession
+      - trace_calls
+
+  - title: "Adapters"
+    desc: "Type-specific storage adapters for Bioconductor containers"
+    contents:
+      - LakeAdapter
+      - SEAdapter
+      - register_adapter
+      - get_adapters
+      - find_adapter
+
+  - title: "Shortcuts"
+    desc: "Convenience functions for the default lake"
+    contents:
+      - use_lake
+      - lake
+      - put
+      - fetch
+      - drop
+      - tables
+      - objects
+      - import_data
+      - export_data
+
+  - title: "Legacy API"
+    desc: "Backward-compatible ol_* functions"
+    contents:
+      - starts_with("ol_")
+
+articles:
+  - title: "English"
+    navbar: ~
+    contents:
+      - lake_quickstart_EN
+      - omicslake_comprehensive_guide_EN
+      - omicslake_practical_workflow_EN
+      - omicslake_layer_use_cases_EN
+  - title: "Japanese"
+    contents:
+      - lake_quickstart
+      - omicslake_comprehensive_guide
+      - omicslake_practical_workflow
+      - omicslake_layer_use_cases

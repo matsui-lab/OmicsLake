@@ -1,0 +1,8 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "OmicsLake: Versioned, On-Disk Omics Data Management for Bioconductor",
+  author   = person("Yusuke", "Matsui"),
+  year     = "2025",
+  url      = "https://github.com/matsui-lab/OmicsLake",
+  note     = "R package version 0.99.0"
+)

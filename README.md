@@ -247,6 +247,6 @@ MIT License. See LICENSE file.
 ## Citation
 
 ```
-Matsui, Y. (2024). OmicsLake: Versioned, Reproducible Omics Data Management for R.
+Matsui, Y. (2025). OmicsLake: Versioned, Reproducible Omics Data Management for R.
 GitHub: https://github.com/matsui-lab/OmicsLake
 ```
