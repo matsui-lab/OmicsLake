@@ -1,0 +1,4 @@
+"Environment","State_Reproducibility","Dependency_Tracking","Cross_Environment","Rollback_Capability","Automation_Level","Human_Overhead","Data_Source"
+"Standard R Script","Ad hoc reconstruction (qualitative)","None automatic","Typically unverified","Manual file replacement","Low","High","Qualitative baseline"
+"Git + Manual Versioning","Manual conventions (qualitative)","Manual","Checklist-based","Code-first + manual data sync","Moderate","Moderate","Qualitative baseline"
+"OmicsLake","100% (verified)","100% (verified)","100% simulated (verified)","100% (verified)","High","Low","Empirical (this study)"

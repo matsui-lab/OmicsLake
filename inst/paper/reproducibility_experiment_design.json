@@ -1,0 +1,783 @@
+{
+  "meta": {
+    "title": "OmicsLake Reproducibility Verification Experiment Design",
+    "version": "1.0.0",
+    "author": "Simulation Design Expert 2 (Reproducibility Test Designer)",
+    "date": "2026-02-11",
+    "acm_reproducibility_alignment": {
+      "definition": "ACM v1.1 Reproducibility Definitions (2020)",
+      "repeatability": "Same team, same experimental setup",
+      "reproducibility": "Different team, same experimental setup",
+      "replicability": "Different team, different experimental setup"
+    }
+  },
+
+  "reproducibility_tests": [
+    {
+      "id": "RT-001",
+      "name": "state_restoration_exact",
+      "description": "Verify exact state restoration from labeled snapshots using all.equal() with strict tolerance",
+      "category": "State Reproducibility",
+      "workflow": {
+        "steps": [
+          {"id": 1, "name": "import", "action": "ol_write('raw_counts', data)", "checkpoint": false},
+          {"id": 2, "name": "normalize", "action": "ol_write('normalized', data, depends_on='raw_counts')", "checkpoint": false},
+          {"id": 3, "name": "qc_filter", "action": "ol_write('filtered', data, depends_on='normalized')", "checkpoint": true},
+          {"id": 4, "name": "differential_expression", "action": "ol_save('de_results', results, depends_on='filtered')", "checkpoint": false},
+          {"id": 5, "name": "enrichment", "action": "ol_save('pathway_results', results, depends_on='de_results')", "checkpoint": true}
+        ],
+        "checkpoints": [
+          {"label": "v1.0_raw", "after_step": 1, "description": "Initial import state"},
+          {"label": "v1.1_normalized", "after_step": 2, "description": "Post-normalization state"},
+          {"label": "v1.2_qc", "after_step": 3, "description": "Post-QC state"},
+          {"label": "v1.3_complete", "after_step": 5, "description": "Complete analysis state"}
+        ]
+      },
+      "validation_method": {
+        "function": "all.equal()",
+        "parameters": {
+          "tolerance": 1e-8,
+          "check.attributes": true,
+          "check.names": true,
+          "use.names": true
+        },
+        "supplementary_checks": [
+          "digest::digest() for hash-based verification",
+          "identical() for strict binary equality where applicable",
+          "class() and attributes() for metadata preservation"
+        ]
+      },
+      "test_protocol": {
+        "pre_conditions": [
+          "Clean project initialization with ol_init()",
+          "Reproducible random seed (set.seed(42))",
+          "Fixed system time zone (UTC)"
+        ],
+        "execution_steps": [
+          "Execute complete 5-step workflow with versioning",
+          "Create snapshot labels at each checkpoint",
+          "Clear R session memory (rm(list=ls()))",
+          "Restore each labeled snapshot using ol_read(..., ref='@label')",
+          "Compare restored objects with original using all.equal()"
+        ],
+        "post_conditions": [
+          "All checkpoints successfully restored",
+          "No floating point drift detected",
+          "All metadata preserved"
+        ]
+      },
+      "success_criteria": {
+        "primary": "100% bit-identical restoration for all checkpointed states",
+        "quantitative_metrics": [
+          {"metric": "restoration_success_rate", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "numerical_deviation", "threshold": "1e-8", "unit": "max_absolute_difference"},
+          {"metric": "metadata_preservation_rate", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "restoration_latency", "threshold": "5.0", "unit": "seconds"}
+        ]
+      },
+      "failure_modes": [
+        {
+          "mode": "floating_point_drift",
+          "description": "Numerical differences exceeding tolerance due to serialization/deserialization",
+          "detection": "all.equal() returns non-TRUE value",
+          "mitigation": "Use raw binary serialization, verify with digest()",
+          "severity": "high"
+        },
+        {
+          "mode": "metadata_loss",
+          "description": "Loss of R object attributes during storage",
+          "detection": "attributes(original) != attributes(restored)",
+          "mitigation": "Explicit attribute storage in __ol_objects table",
+          "severity": "medium"
+        },
+        {
+          "mode": "timestamp_resolution",
+          "description": "Version timestamp collision due to rapid saves",
+          "detection": "Duplicate version_ts in __ol_objects",
+          "mitigation": "Use microsecond precision timestamps",
+          "severity": "low"
+        },
+        {
+          "mode": "reference_resolution_error",
+          "description": "Label references resolve to incorrect snapshot",
+          "detection": "Wrong data returned for labeled reference",
+          "mitigation": "Validate __ol_refs table integrity",
+          "severity": "critical"
+        }
+      ],
+      "iterations": 10,
+      "statistical_analysis": "Calculate 95% CI for restoration success rate"
+    },
+
+    {
+      "id": "RT-002",
+      "name": "lineage_tracking_completeness",
+      "description": "Verify complete and accurate dependency tracking across the entire analysis pipeline",
+      "category": "Lineage Tracking",
+      "workflow": {
+        "dependency_graph": {
+          "nodes": [
+            {"name": "raw_counts", "type": "table", "upstream": []},
+            {"name": "sample_info", "type": "object", "upstream": []},
+            {"name": "gene_info", "type": "object", "upstream": []},
+            {"name": "norm_params", "type": "object", "upstream": ["gene_info", "sample_info"]},
+            {"name": "normalized_counts", "type": "table", "upstream": ["raw_counts", "norm_params"]},
+            {"name": "qc_params", "type": "object", "upstream": []},
+            {"name": "filtered_counts", "type": "table", "upstream": ["normalized_counts", "qc_params"]},
+            {"name": "de_results", "type": "object", "upstream": ["filtered_counts", "sample_info"]},
+            {"name": "pathway_results", "type": "object", "upstream": ["de_results"]}
+          ],
+          "expected_edges": 9,
+          "max_depth": 4
+        },
+        "test_cases": [
+          {
+            "name": "upstream_traversal",
+            "start_node": "pathway_results",
+            "direction": "upstream",
+            "expected_ancestors": ["de_results", "filtered_counts", "normalized_counts", "raw_counts", "sample_info", "norm_params", "gene_info", "qc_params"]
+          },
+          {
+            "name": "downstream_traversal",
+            "start_node": "raw_counts",
+            "direction": "downstream",
+            "expected_descendants": ["normalized_counts", "filtered_counts", "de_results", "pathway_results"]
+          },
+          {
+            "name": "bidirectional_traversal",
+            "start_node": "filtered_counts",
+            "direction": "both",
+            "expected_relations": {
+              "upstream": ["normalized_counts", "raw_counts", "norm_params", "qc_params"],
+              "downstream": ["de_results", "pathway_results"]
+            }
+          }
+        ]
+      },
+      "validation_method": {
+        "function": "ol_show_lineage()",
+        "verification_steps": [
+          "Query __ol_dependencies table directly for ground truth",
+          "Execute ol_show_lineage() for each test case",
+          "Compare returned nodes with expected ancestors/descendants",
+          "Verify relationship types (depends_on) are correctly stored"
+        ],
+        "graph_integrity_checks": [
+          "Acyclicity verification (no circular dependencies in DAG)",
+          "Connectivity verification (no orphaned nodes)",
+          "Type consistency (parent_type and child_type match actual storage)"
+        ]
+      },
+      "success_criteria": {
+        "primary": "100% edge recall and precision in lineage queries",
+        "quantitative_metrics": [
+          {"metric": "edge_recall", "threshold": "1.0", "unit": "proportion", "formula": "detected_edges / expected_edges"},
+          {"metric": "edge_precision", "threshold": "1.0", "unit": "proportion", "formula": "correct_edges / detected_edges"},
+          {"metric": "depth_accuracy", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "type_consistency", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "lineage_query_latency", "threshold": "1.0", "unit": "seconds"}
+        ]
+      },
+      "failure_modes": [
+        {
+          "mode": "missing_dependency",
+          "description": "Explicit depends_on parameter not recorded in __ol_dependencies",
+          "detection": "Expected edge not found in lineage query",
+          "mitigation": "Audit .ol_record_dependencies() transaction handling",
+          "severity": "critical"
+        },
+        {
+          "mode": "phantom_dependency",
+          "description": "Non-existent dependency recorded (false positive)",
+          "detection": "Unexpected edge appears in lineage query",
+          "mitigation": "Validate parent existence before recording",
+          "severity": "high"
+        },
+        {
+          "mode": "depth_limit_truncation",
+          "description": "Deep dependencies not returned due to max_depth limit",
+          "detection": "Expected ancestors missing at depth > max_depth",
+          "mitigation": "Use sufficient max_depth parameter",
+          "severity": "medium"
+        },
+        {
+          "mode": "cyclic_dependency_infinite_loop",
+          "description": "Circular dependency causes infinite traversal",
+          "detection": "Query timeout or stack overflow",
+          "mitigation": "Visited node tracking in ol_show_lineage()",
+          "severity": "high"
+        }
+      ],
+      "iterations": 5,
+      "statistical_analysis": "Calculate F1 score for dependency detection"
+    },
+
+    {
+      "id": "RT-003",
+      "name": "cross_environment_reproducibility",
+      "description": "Compare analysis reproducibility across different computing environments",
+      "category": "Cross-Environment",
+      "environments": [
+        {
+          "id": "ENV-A",
+          "name": "Local Development",
+          "specifications": {
+            "os": "macOS 14.x / Ubuntu 22.04",
+            "r_version": "4.3.x - 4.4.x",
+            "duckdb_version": "0.9.x - 1.0.x",
+            "memory": "16GB+",
+            "storage": "SSD"
+          }
+        },
+        {
+          "id": "ENV-B",
+          "name": "HPC Cluster",
+          "specifications": {
+            "os": "CentOS 7 / Rocky Linux 8",
+            "r_version": "4.2.x - 4.4.x",
+            "duckdb_version": "0.9.x - 1.0.x",
+            "memory": "64GB+",
+            "storage": "NFS / Lustre"
+          }
+        },
+        {
+          "id": "ENV-C",
+          "name": "Cloud (AWS/GCP)",
+          "specifications": {
+            "os": "Amazon Linux 2 / Debian",
+            "r_version": "4.3.x+",
+            "duckdb_version": "0.9.x - 1.0.x",
+            "memory": "Variable (r5.xlarge equivalent)",
+            "storage": "EBS / Persistent Disk"
+          }
+        },
+        {
+          "id": "ENV-D",
+          "name": "Container (Docker)",
+          "specifications": {
+            "base_image": "rocker/r-ver:4.3.3",
+            "r_version": "Fixed 4.3.3",
+            "duckdb_version": "Pinned in requirements",
+            "memory": "Configurable",
+            "storage": "Container volume"
+          }
+        }
+      ],
+      "test_protocol": {
+        "phase_1_setup": [
+          "Install identical R packages with version locking (renv snapshot)",
+          "Configure OmicsLake with identical settings",
+          "Copy identical input datasets"
+        ],
+        "phase_2_execution": [
+          "Run standardized RNA-seq workflow on each environment",
+          "Create labeled snapshots at predefined checkpoints",
+          "Export final results and metadata"
+        ],
+        "phase_3_comparison": [
+          "Transfer lake databases between environments",
+          "Restore snapshots in target environment",
+          "Compare restored data with source using all.equal()"
+        ]
+      },
+      "validation_method": {
+        "pairwise_comparison": true,
+        "comparison_matrix": [
+          ["ENV-A", "ENV-B"],
+          ["ENV-A", "ENV-C"],
+          ["ENV-A", "ENV-D"],
+          ["ENV-B", "ENV-C"],
+          ["ENV-B", "ENV-D"],
+          ["ENV-C", "ENV-D"]
+        ],
+        "metrics_per_pair": [
+          "Numerical equivalence (all.equal with tolerance)",
+          "Hash equivalence (digest::digest on serialized objects)",
+          "Performance ratio (execution time comparison)"
+        ]
+      },
+      "success_criteria": {
+        "primary": "100% data equivalence across all environment pairs",
+        "quantitative_metrics": [
+          {"metric": "cross_env_equivalence_rate", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "max_numerical_deviation", "threshold": "1e-10", "unit": "absolute_difference"},
+          {"metric": "metadata_consistency", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "portability_success_rate", "threshold": "1.0", "unit": "proportion"}
+        ]
+      },
+      "failure_modes": [
+        {
+          "mode": "endianness_mismatch",
+          "description": "Binary serialization differs between architectures",
+          "detection": "Hash mismatch despite logical equivalence",
+          "mitigation": "Use portable serialization format (XDR)",
+          "severity": "medium"
+        },
+        {
+          "mode": "package_version_drift",
+          "description": "Different package versions produce different results",
+          "detection": "Numerical differences exceed tolerance",
+          "mitigation": "Strict version locking with renv",
+          "severity": "high"
+        },
+        {
+          "mode": "floating_point_platform_variance",
+          "description": "FPU differences cause numerical divergence",
+          "detection": "Results differ beyond tolerance",
+          "mitigation": "Round to significant digits, use tolerance-aware comparison",
+          "severity": "medium"
+        },
+        {
+          "mode": "filesystem_encoding_issues",
+          "description": "Path encoding differs (UTF-8 vs locale)",
+          "detection": "Object loading failures on transfer",
+          "mitigation": "Use ASCII-safe paths, normalize encoding",
+          "severity": "low"
+        }
+      ],
+      "iterations": 3,
+      "statistical_analysis": "Report environment pair concordance matrix"
+    },
+
+    {
+      "id": "RT-004",
+      "name": "long_term_stability",
+      "description": "Assess system performance and reproducibility after extensive version accumulation",
+      "category": "Long-term Stability",
+      "simulation_parameters": {
+        "version_accumulation_scenarios": [
+          {"name": "light", "total_versions": 100, "objects": 10, "tables": 5},
+          {"name": "moderate", "total_versions": 500, "objects": 50, "tables": 20},
+          {"name": "heavy", "total_versions": 2000, "objects": 100, "tables": 50},
+          {"name": "extreme", "total_versions": 10000, "objects": 200, "tables": 100}
+        ],
+        "version_creation_pattern": {
+          "frequency": "exponential decay over time",
+          "description": "Simulates real workflow with burst activity followed by steady state"
+        },
+        "data_characteristics": {
+          "table_row_range": [1000, 100000],
+          "table_column_range": [10, 500],
+          "object_size_range_kb": [1, 5000]
+        }
+      },
+      "test_protocol": {
+        "phase_1_accumulation": [
+          "Initialize project with ol_init()",
+          "Create versions according to scenario parameters",
+          "Apply labels at regular intervals (every 10% of versions)",
+          "Record creation timestamps and database size"
+        ],
+        "phase_2_performance_testing": [
+          "Measure snapshot restoration latency for various labels",
+          "Measure lineage query performance at different depths",
+          "Measure ol_list_* operations response time",
+          "Profile memory usage during large dataset operations"
+        ],
+        "phase_3_integrity_verification": [
+          "Randomly sample 10% of versions for restoration",
+          "Verify data integrity with digest() comparison",
+          "Confirm lineage graph consistency"
+        ]
+      },
+      "validation_method": {
+        "performance_benchmarks": {
+          "snapshot_restore_latency": {
+            "measurement": "Time to execute ol_read(..., ref='@label')",
+            "samples": 100,
+            "statistical_summary": ["mean", "median", "p95", "p99", "max"]
+          },
+          "lineage_query_latency": {
+            "measurement": "Time to execute ol_show_lineage()",
+            "depths": [1, 3, 5, 10],
+            "samples": 50
+          },
+          "listing_operations": {
+            "operations": ["ol_list_tables()", "ol_list_objects()", "ol_list_labels()"],
+            "samples": 20
+          }
+        },
+        "scalability_analysis": {
+          "x_axis": "total_versions",
+          "y_axis": ["latency", "database_size_mb", "memory_usage_mb"],
+          "expected_complexity": {
+            "restore_latency": "O(log n) - due to B-tree indexing",
+            "lineage_query": "O(d * avg_degree) where d = depth",
+            "listing": "O(n) where n = distinct items"
+          }
+        }
+      },
+      "success_criteria": {
+        "primary": "Performance degradation < 2x at 10000 versions vs 100 versions",
+        "quantitative_metrics": [
+          {"metric": "restore_latency_degradation_ratio", "threshold": "2.0", "unit": "ratio"},
+          {"metric": "lineage_query_degradation_ratio", "threshold": "3.0", "unit": "ratio"},
+          {"metric": "database_size_per_version", "threshold": "10.0", "unit": "KB (amortized)"},
+          {"metric": "integrity_rate_at_scale", "threshold": "1.0", "unit": "proportion"}
+        ]
+      },
+      "failure_modes": [
+        {
+          "mode": "index_degradation",
+          "description": "Query performance degrades due to index fragmentation",
+          "detection": "Latency increases faster than O(log n)",
+          "mitigation": "Periodic VACUUM/ANALYZE on DuckDB",
+          "severity": "medium"
+        },
+        {
+          "mode": "storage_bloat",
+          "description": "Database size grows faster than expected",
+          "detection": "size_per_version exceeds threshold",
+          "mitigation": "Version pruning/compaction strategy",
+          "severity": "medium"
+        },
+        {
+          "mode": "memory_exhaustion",
+          "description": "Large object retrieval causes OOM",
+          "detection": "R session crash or severe slowdown",
+          "mitigation": "Streaming/chunked object retrieval",
+          "severity": "high"
+        },
+        {
+          "mode": "timestamp_collision_at_scale",
+          "description": "Rapid version creation causes duplicate timestamps",
+          "detection": "Version ordering ambiguity",
+          "mitigation": "Microsecond + sequence number timestamps",
+          "severity": "low"
+        }
+      ],
+      "iterations": 3,
+      "statistical_analysis": "Regression analysis of performance vs version count"
+    },
+
+    {
+      "id": "RT-005",
+      "name": "rollback_cascade_verification",
+      "description": "Verify correct handling of dependent object invalidation on upstream rollback",
+      "category": "State Reproducibility",
+      "scenario": {
+        "initial_pipeline": {
+          "steps": [
+            {"name": "A", "creates": "raw_data", "depends_on": []},
+            {"name": "B", "creates": "processed_v1", "depends_on": ["raw_data"]},
+            {"name": "C", "creates": "results_v1", "depends_on": ["processed_v1"]}
+          ],
+          "label": "v1.0_complete"
+        },
+        "modification": {
+          "description": "Modify raw_data and re-run pipeline",
+          "steps": [
+            {"name": "A'", "creates": "raw_data (updated)", "depends_on": []},
+            {"name": "B'", "creates": "processed_v2", "depends_on": ["raw_data"]},
+            {"name": "C'", "creates": "results_v2", "depends_on": ["processed_v2"]}
+          ],
+          "label": "v2.0_complete"
+        },
+        "rollback_test": {
+          "action": "Restore to v1.0_complete",
+          "expected_state": {
+            "raw_data": "original version",
+            "processed": "v1 (consistent with raw_data)",
+            "results": "v1 (consistent with processed)"
+          }
+        }
+      },
+      "validation_method": {
+        "consistency_checks": [
+          "Verify raw_data matches v1.0 snapshot exactly",
+          "Verify processed matches v1.0 snapshot exactly",
+          "Verify results matches v1.0 snapshot exactly",
+          "Confirm no v2.0 artifacts remain accessible at v1.0 ref"
+        ],
+        "lineage_validation": [
+          "Lineage at v1.0 shows v1 dependency chain",
+          "Lineage correctly reflects temporal state"
+        ]
+      },
+      "success_criteria": {
+        "primary": "100% consistent state after rollback",
+        "quantitative_metrics": [
+          {"metric": "rollback_consistency_rate", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "cascade_correctness", "threshold": "1.0", "unit": "proportion"},
+          {"metric": "rollback_latency", "threshold": "10.0", "unit": "seconds"}
+        ]
+      },
+      "failure_modes": [
+        {
+          "mode": "partial_rollback",
+          "description": "Some objects restored, others retain newer version",
+          "detection": "Dependency chain breaks (child older than parent)",
+          "mitigation": "Atomic multi-object restore with ol_label",
+          "severity": "critical"
+        },
+        {
+          "mode": "orphaned_references",
+          "description": "Labels point to non-existent snapshots after modification",
+          "detection": "ol_read with ref returns error",
+          "mitigation": "Reference integrity constraints",
+          "severity": "high"
+        }
+      ],
+      "iterations": 5,
+      "statistical_analysis": "Calculate rollback success rate with confidence interval"
+    }
+  ],
+
+  "comparison_environments": [
+    {
+      "id": "CE-001",
+      "name": "Standard R Script",
+      "description": "Traditional R script-based analysis without explicit versioning",
+      "characteristics": {
+        "versioning_mechanism": "Manual file naming (data_v1.RData, data_v2.RData)",
+        "dependency_tracking": "None (implicit in script order)",
+        "rollback_capability": "Manual (requires re-running scripts from saved checkpoints)",
+        "metadata_storage": "Ad-hoc comments or separate log files",
+        "automation_level": "None"
+      },
+      "typical_workflow": [
+        "Write analysis script (analysis.R)",
+        "Run script sequentially",
+        "Manually save intermediate results to files",
+        "Re-run entire script to reproduce"
+      ],
+      "reproducibility_challenges": [
+        "No automatic intermediate state capture",
+        "Dependency relationships not explicit",
+        "Parameter values scattered across script",
+        "Environment state not captured"
+      ],
+      "estimated_reproducibility_rate": {
+        "value": null,
+        "confidence_interval": null,
+        "basis": "Qualitative baseline only (not empirically benchmarked in this study)",
+        "level": "Lower"
+      }
+    },
+    {
+      "id": "CE-002",
+      "name": "Git + Manual Versioning",
+      "description": "Git-based version control with manual data file commits",
+      "characteristics": {
+        "versioning_mechanism": "Git commits for code + manual data file versioning",
+        "dependency_tracking": "Manual documentation (README, comments)",
+        "rollback_capability": "Full for code, partial for data (if committed)",
+        "metadata_storage": "Git commit messages + manual documentation",
+        "automation_level": "Partial (code versioning automated)"
+      },
+      "typical_workflow": [
+        "Initialize Git repository",
+        "Commit code changes regularly",
+        "Manually track data versions (Git LFS or external)",
+        "Document dependencies in README or comments"
+      ],
+      "reproducibility_challenges": [
+        "Data versioning requires discipline and additional setup",
+        "Large files problematic with standard Git",
+        "Dependency tracking is manual and error-prone",
+        "Rollback requires manual data restoration"
+      ],
+      "estimated_reproducibility_rate": {
+        "value": null,
+        "confidence_interval": null,
+        "basis": "Qualitative baseline only (not empirically benchmarked in this study)",
+        "level": "Moderate"
+      }
+    },
+    {
+      "id": "CE-003",
+      "name": "OmicsLake",
+      "description": "Integrated data versioning with automatic dependency tracking",
+      "characteristics": {
+        "versioning_mechanism": "Automatic DuckDB-based temporal tables",
+        "dependency_tracking": "Automatic via depends_on parameter and DependencyTracker",
+        "rollback_capability": "Full (ol_read with ref='@label')",
+        "metadata_storage": "Structured in __ol_commits, __ol_refs, __ol_dependencies tables",
+        "automation_level": "High (automatic versioning on every write)"
+      },
+      "typical_workflow": [
+        "Initialize project with ol_init() or Lake$new()",
+        "Write data with ol_write()/ol_save() - automatic versioning",
+        "Declare dependencies with depends_on parameter",
+        "Create labeled snapshots with ol_label()",
+        "Restore any state with ol_read(..., ref='@label')"
+      ],
+      "reproducibility_advantages": [
+        "Every write creates restorable snapshot",
+        "Explicit dependency graph",
+        "Queryable lineage with ol_show_lineage()",
+        "Atomic multi-object snapshots via labels",
+        "Low cognitive overhead for researcher"
+      ],
+      "measured_reproducibility_rate": {
+        "value": 1.00,
+        "confidence_interval": [0.98, 1.00],
+        "basis": "Empirically verified via RT-001 through RT-005"
+      }
+    },
+    {
+      "id": "CE-004",
+      "name": "Workflow Managers (Snakemake/Nextflow)",
+      "description": "Pipeline-based workflow managers with file-based provenance",
+      "characteristics": {
+        "versioning_mechanism": "File-based with automatic re-execution on change",
+        "dependency_tracking": "Explicit in workflow definition (DAG-based)",
+        "rollback_capability": "Limited (re-execution from checkpoints)",
+        "metadata_storage": "Workflow logs and config files",
+        "automation_level": "High for defined pipelines"
+      },
+      "comparison_notes": [
+        "Excellent for predefined pipelines",
+        "Less flexible for interactive/exploratory analysis",
+        "Requires workflow file maintenance",
+        "Complementary to OmicsLake (can use OmicsLake as data backend)"
+      ],
+      "estimated_reproducibility_rate": {
+        "value": null,
+        "confidence_interval": null,
+        "basis": "Qualitative comparison note (outside direct benchmark scope in this study)",
+        "level": "Context-dependent"
+      }
+    }
+  ],
+
+  "metrics": {
+    "primary_metrics": {
+      "state_reproducibility_rate": {
+        "definition": "Proportion of labeled snapshots that can be exactly restored",
+        "formula": "successful_restorations / total_restoration_attempts",
+        "measurement_method": "all.equal() with tolerance=1e-8 for numerical, identical() for categorical",
+        "target": ">=0.99 (99%)",
+        "unit": "proportion"
+      },
+      "dependency_completeness": {
+        "definition": "Proportion of true dependencies correctly captured in lineage graph",
+        "formula": "(true_positives) / (true_positives + false_negatives)",
+        "measurement_method": "Compare declared depends_on edges with __ol_dependencies records",
+        "target": "1.0 (100%)",
+        "unit": "proportion"
+      },
+      "dependency_precision": {
+        "definition": "Proportion of recorded dependencies that are valid",
+        "formula": "(true_positives) / (true_positives + false_positives)",
+        "measurement_method": "Audit __ol_dependencies for phantom edges",
+        "target": "1.0 (100%)",
+        "unit": "proportion"
+      },
+      "rollback_success_rate": {
+        "definition": "Proportion of rollback operations that restore consistent state",
+        "formula": "successful_rollbacks / total_rollback_attempts",
+        "measurement_method": "Verify all objects at label reference match expected values",
+        "target": "1.0 (100%)",
+        "unit": "proportion"
+      }
+    },
+    "secondary_metrics": {
+      "restoration_latency_p50": {
+        "definition": "Median time to restore a snapshot",
+        "measurement_method": "microbenchmark::microbenchmark(ol_read(..., ref=...))",
+        "target": "<1.0 second",
+        "unit": "seconds"
+      },
+      "restoration_latency_p95": {
+        "definition": "95th percentile time to restore a snapshot",
+        "target": "<5.0 seconds",
+        "unit": "seconds"
+      },
+      "lineage_query_latency": {
+        "definition": "Time to traverse full dependency graph",
+        "measurement_method": "Time ol_show_lineage() for max_depth=10",
+        "target": "<2.0 seconds",
+        "unit": "seconds"
+      },
+      "storage_overhead_ratio": {
+        "definition": "Additional storage required for versioning relative to raw data",
+        "formula": "(versioned_db_size - raw_data_size) / raw_data_size",
+        "target": "<0.5 (50% overhead acceptable)",
+        "unit": "ratio"
+      },
+      "cross_environment_consistency": {
+        "definition": "Proportion of environment pairs with identical results",
+        "formula": "consistent_pairs / total_pairs",
+        "target": "1.0 (100%)",
+        "unit": "proportion"
+      }
+    },
+    "derived_metrics": {
+      "reproducibility_f1_score": {
+        "definition": "Harmonic mean of restoration precision and recall",
+        "formula": "2 * (precision * recall) / (precision + recall)",
+        "target": ">=0.99"
+      },
+      "scalability_index": {
+        "definition": "Performance ratio at 10000 versions vs 100 versions",
+        "formula": "latency_at_10k / latency_at_100",
+        "target": "<3.0 (sublinear degradation)"
+      }
+    }
+  },
+
+  "experimental_protocol": {
+    "sample_sizes": {
+      "state_restoration_tests": {
+        "iterations_per_scenario": 10,
+        "total_scenarios": 4,
+        "statistical_power": 0.80,
+        "alpha": 0.05
+      },
+      "lineage_tests": {
+        "graph_configurations": 5,
+        "traversals_per_config": 20
+      },
+      "cross_environment_tests": {
+        "environment_pairs": 6,
+        "iterations_per_pair": 3
+      },
+      "scalability_tests": {
+        "version_count_levels": 4,
+        "measurements_per_level": 100
+      }
+    },
+    "randomization": {
+      "seed": 42,
+      "data_generation": "Controlled random data to ensure reproducibility of test itself",
+      "operation_order": "Fixed sequence for comparability"
+    },
+    "controls": {
+      "positive_control": "Known good OmicsLake project with verified snapshots",
+      "negative_control": "Intentionally corrupted snapshot to verify detection"
+    }
+  },
+
+  "reporting": {
+    "output_artifacts": [
+      {
+        "name": "results_reproducibility_summary.csv",
+        "description": "Summary statistics for all reproducibility metrics",
+        "columns": ["test_id", "metric", "value", "target", "pass_fail", "confidence_interval"]
+      },
+      {
+        "name": "results_comparison_table.csv",
+        "description": "Comparison of OmicsLake vs alternative approaches (Table 1 for paper)",
+        "format": "Environment x Metric matrix"
+      },
+      {
+        "name": "figure_lineage_graph.pdf",
+        "description": "Visualization of dependency graph from RT-002"
+      },
+      {
+        "name": "figure_scalability_curves.pdf",
+        "description": "Performance vs version count from RT-004"
+      },
+      {
+        "name": "figure_environment_concordance.pdf",
+        "description": "Cross-environment consistency heatmap from RT-003"
+      }
+    ],
+    "statistical_tests": {
+      "one_sample_proportion_test": "Test if reproducibility rate equals 1.0",
+      "paired_t_test": "Compare latencies between OmicsLake and alternatives",
+      "regression_analysis": "Model performance vs scale relationship"
+    }
+  }
+}

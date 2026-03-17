@@ -1,0 +1,290 @@
+---
+title: "OmicsLake Case Study: Reproducible RNA-seq Analysis"
+author: "OmicsLake Evaluation Suite"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 8,
+  fig.height = 6,
+  fig.path = "assets/"
+)
+
+library(OmicsLake)
+library(dplyr)
+```
+
+# Overview
+
+This case study demonstrates OmicsLake's reproducibility features through a minimal RNA-seq workflow. We will:
+
+1. Load and version raw count data
+2. Apply two different normalization strategies
+3. Track data lineage through multi-table joins
+4. Compare versions using built-in diff functionality
+5. Explore the complete dependency graph
+
+# Configuration
+
+```{r config}
+# Load evaluation configuration
+config <- ol_eval_load_config("../configs/eval_small.yml")
+
+# Set seed for reproducibility
+set.seed(config$seed)
+
+# Display configuration
+cat("Genes:", config$case_study$n_genes, "\n")
+cat("Samples:", config$case_study$n_samples, "\n")
+```
+
+# Step 1: Initialize Project and Load Data
+
+```{r step1-init}
+# Create a new lake for this case study
+lake <- Lake$new("rnaseq_case_study", root = tempdir())
+
+# Generate synthetic RNA-seq data
+rnaseq <- ol_eval_generate_case_rnaseq(
+  seed = config$seed,
+  n_genes = config$case_study$n_genes,
+  n_samples = config$case_study$n_samples
+)
+
+cat("Generated data dimensions:\n")
+cat("  Counts:", nrow(rnaseq$counts), "genes x", ncol(rnaseq$counts) - 1, "samples\n")
+cat("  Gene info:", nrow(rnaseq$gene_info), "rows\n")
+cat("  Sample info:", nrow(rnaseq$sample_info), "rows\n")
+```
+
+```{r step1-store}
+# Store raw data in the lake
+lake$put("counts", rnaseq$counts)
+lake$put("gene_info", rnaseq$gene_info)
+lake$put("sample_info", rnaseq$sample_info)
+
+# Tag raw counts for reproducibility
+lake$tag("counts", "raw")
+
+# View current state
+lake$tables()
+```
+
+# Step 2: Normalization V1 (Log1p)
+
+The first normalization approach uses simple log(1+x) transformation.
+
+```{r step2-norm-v1}
+# Retrieve raw counts using version reference
+counts_raw <- lake$get("counts@tag(raw)")
+sample_cols <- setdiff(names(counts_raw), "gene_id")
+
+# Apply log1p normalization
+counts_norm <- counts_raw
+for (col in sample_cols) {
+  counts_norm[[col]] <- log1p(counts_norm[[col]])
+}
+
+# Store with explicit lineage
+attr(counts_norm, "lake_sources") <- list(list(name = "counts", ref = "@tag(raw)"))
+lake$put("counts_norm", counts_norm)
+lake$tag("counts_norm", "norm_v1")
+
+# Preview normalized data
+head(counts_norm[, 1:4])
+```
+
+# Step 3: Multi-table Join and Summary
+
+Now we join the normalized counts with gene metadata to create a summary by gene type.
+
+```{r step3-join}
+# Use lazy references for pushdown optimization
+summary_result <- lake$ref("counts_norm@tag(norm_v1)") |>
+  inner_join(
+    lake$ref("gene_info") |> select(gene_id, gene_type),
+    by = "gene_id"
+  ) |>
+  collect()
+
+# Compute mean expression
+summary_result$mean_expr <- rowMeans(
+  summary_result[, sample_cols],
+  na.rm = TRUE
+)
+
+# Aggregate by gene type
+summary_agg <- summary_result |>
+  group_by(gene_type) |>
+  summarise(
+    n_genes = n(),
+    mean_expression = mean(mean_expr, na.rm = TRUE),
+    sd_expression = sd(mean_expr, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Record multi-parent lineage
+attr(summary_agg, "lake_sources") <- list(
+  list(name = "counts_norm", ref = "@tag(norm_v1)"),
+  list(name = "gene_info", ref = "@latest")
+)
+
+lake$put("summary", summary_agg)
+
+print(summary_agg)
+```
+
+# Step 4: Alternative Normalization (V2)
+
+Let's try a different normalization strategy: log1p with median scaling.
+
+```{r step4-norm-v2}
+# Get raw counts again (from tagged version)
+counts_raw <- lake$get("counts@tag(raw)")
+
+# Apply log1p + median scaling
+counts_norm2 <- counts_raw
+for (col in sample_cols) {
+  vals <- log1p(counts_norm2[[col]])
+  med <- median(vals, na.rm = TRUE)
+  if (med > 0) {
+    vals <- vals / med
+  }
+  counts_norm2[[col]] <- vals
+}
+
+# Store and tag as v2
+attr(counts_norm2, "lake_sources") <- list(list(name = "counts", ref = "@tag(raw)"))
+lake$put("counts_norm", counts_norm2)
+lake$tag("counts_norm", "norm_v2")
+
+# Preview
+head(counts_norm2[, 1:4])
+```
+
+```{r step4-summary-v2}
+# Regenerate summary with V2 normalization
+summary_result_v2 <- lake$ref("counts_norm@tag(norm_v2)") |>
+  inner_join(
+    lake$ref("gene_info") |> select(gene_id, gene_type),
+    by = "gene_id"
+  ) |>
+  collect()
+
+summary_result_v2$mean_expr <- rowMeans(
+  summary_result_v2[, sample_cols],
+  na.rm = TRUE
+)
+
+summary_agg_v2 <- summary_result_v2 |>
+  group_by(gene_type) |>
+  summarise(
+    n_genes = n(),
+    mean_expression = mean(mean_expr, na.rm = TRUE),
+    sd_expression = sd(mean_expr, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+attr(summary_agg_v2, "lake_sources") <- list(
+  list(name = "counts_norm", ref = "@tag(norm_v2)"),
+  list(name = "gene_info", ref = "@latest")
+)
+
+lake$put("summary", summary_agg_v2)
+lake$tag("summary", "v2")
+
+print(summary_agg_v2)
+```
+
+# Step 5: Compare Versions
+
+OmicsLake's `diff()` function lets us compare different versions of data.
+
+```{r step5-diff}
+# Compare normalization versions
+diff_result <- lake$diff("counts_norm",
+                         ref1 = "@tag(norm_v2)",
+                         ref2 = "@tag(norm_v1)")
+
+cat("Comparison: counts_norm\n")
+cat("  ref1 (norm_v2):", diff_result$ref1_rows, "rows\n")
+cat("  ref2 (norm_v1):", diff_result$ref2_rows, "rows\n")
+cat("  Row difference:", diff_result$row_diff, "\n")
+```
+
+# Step 6: Lineage Analysis
+
+Explore the complete dependency graph for our analysis.
+
+```{r step6-lineage-deps}
+# Get direct dependencies for summary
+deps <- lake$deps("summary", direction = "up")
+
+cat("Direct dependencies of 'summary':\n")
+print(deps[, c("parent_name", "parent_ref", "parent_version_id")])
+```
+
+```{r step6-lineage-tree}
+# Get full upstream lineage tree
+tree <- lake$tree("summary", direction = "up", depth = 10)
+
+cat("\nComplete upstream lineage:\n")
+print(tree[, c("child_name", "parent_name", "parent_ref")])
+```
+
+```{r step6-impact, eval=FALSE}
+# Analyze impact of changing raw counts
+impact <- lake$impact("counts")
+
+cat("\nDownstream impact of 'counts':\n")
+print(impact[, c("child_name", "parent_name")])
+```
+
+# Validation
+
+Verify that lineage tracking is complete and version-aware.
+
+```{r validation}
+# Check for required columns in lineage
+deps <- lake$deps("summary", direction = "up")
+
+validation <- list(
+  has_deps = nrow(deps) > 0,
+  has_parent_ref = "parent_ref" %in% names(deps),
+  has_parent_version_id = "parent_version_id" %in% names(deps),
+  multi_parent = length(unique(deps$parent_name)) >= 2
+)
+
+cat("Validation Results:\n")
+for (name in names(validation)) {
+  status <- if (validation[[name]]) "PASS" else "FAIL"
+  cat("  ", name, ":", status, "\n")
+}
+```
+
+# Cleanup
+
+```{r cleanup}
+# Remove the test project
+project_path <- file.path(tempdir(), "rnaseq_case_study")
+if (dir.exists(project_path)) {
+  unlink(project_path, recursive = TRUE)
+}
+```
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```

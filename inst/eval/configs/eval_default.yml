@@ -1,0 +1,57 @@
+# OmicsLake Evaluation Suite - Default Configuration
+# This file defines all available parameters with documentation
+
+# Project settings
+project_root: "~/.omicslake_eval"
+seed: 1
+threads: 4
+
+# Dataset sizes for benchmarking
+sizes:
+  small:
+    n_rows: 100000
+    n_cols: 20
+  medium:
+    n_rows: 1000000
+    n_cols: 50
+  large:
+    n_rows: 10000000
+    n_cols: 20
+
+# Number of repetitions for measurements
+reps:
+  bench: 10      # Standard benchmarks
+  heavy: 5       # Heavy operations (large data, complex joins)
+
+# Cache mode settings
+cache_mode:
+  enable: true
+  modes: ["cold", "warm"]
+
+# Workload selection
+workloads:
+  W0_io: true           # I/O and versioning operations
+  W1_queries: true      # Query benchmarks (lazy/pushdown)
+  W2_lineage: true      # Lineage operations
+  W3_case_study: true   # RNA-seq case study
+
+# Baseline comparisons
+baselines:
+  B1_duckdb_dbplyr: true   # Raw DuckDB/dbplyr (no lineage)
+  B2_file_based: true       # File-based workflow (Parquet/CSV)
+
+# Output settings
+outputs:
+  results_dir: "inst/eval/results"
+  formats: ["jsonl", "csv"]
+
+# Case study settings
+case_study:
+  n_genes: 20000
+  n_samples: 6
+
+# Validation settings
+validation:
+  check_pushdown: true       # Verify SQL pushdown in queries
+  check_lineage: true        # Verify lineage completeness
+  strict_mode: false         # Fail on any validation error

@@ -1,0 +1,145 @@
+---
+title: "Figure 4: Reproducibility Workflow Comparison"
+---
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#27ae60',
+    'primaryTextColor': '#ffffff',
+    'primaryBorderColor': '#27ae60',
+    'lineColor': '#7f7f7f',
+    'secondaryColor': '#f39c12',
+    'tertiaryColor': '#e74c3c',
+    'background': '#ffffff',
+    'fontSize': '14px'
+  }
+}}%%
+
+flowchart LR
+    subgraph ApproachA["A. Standard R Script"]
+        direction LR
+        A1["Import"]
+        A2["Normalize"]
+        A3["Filter"]
+        A4["DE Analysis"]
+        A5["Export"]
+
+        A1 --> A2 --> A3 --> A4 --> A5
+
+        A1_v["file_v1.csv"]
+        A2_v["file_v2.csv"]
+        A3_v["file_v3.csv"]
+        A4_v["file_v4.csv"]
+        A5_v["file_final.csv"]
+
+        A1 -.-> A1_v
+        A2 -.-> A2_v
+        A3 -.-> A3_v
+        A4 -.-> A4_v
+        A5 -.-> A5_v
+    end
+
+    subgraph ApproachB["B. Git + Manual Versioning"]
+        direction LR
+        B1["Import"]
+        B2["Normalize"]
+        B3["Filter"]
+        B4["DE Analysis"]
+        B5["Export"]
+
+        B1 --> B2 --> B3 --> B4 --> B5
+
+        B1_v["commit"]
+        B2_v["commit +\ndata_v1/"]
+        B3_v["commit +\ndata_v2/"]
+        B4_v["commit +\ndata_v3/"]
+        B5_v["commit"]
+
+        B1 -.-> B1_v
+        B2 -.-> B2_v
+        B3 -.-> B3_v
+        B4 -.-> B4_v
+        B5 -.-> B5_v
+    end
+
+    subgraph ApproachC["C. OmicsLake"]
+        direction LR
+        C1["Import"]
+        C2["Normalize"]
+        C3["Filter"]
+        C4["DE Analysis"]
+        C5["Export"]
+
+        C1 --> C2 --> C3 --> C4 --> C5
+
+        C_auto["auto-tracked\n(all steps)"]
+        C1 -.-> C_auto
+        C2 -.-> C_auto
+        C3 -.-> C_auto
+        C4 -.-> C_auto
+        C5 -.-> C_auto
+    end
+
+    subgraph Outcomes["Reproducibility Outcomes"]
+        direction TB
+        OutA["Lower\nReproducibility"]
+        OutB["Moderate\nReproducibility"]
+        OutC["Observed 100%\n(RT-001)"]
+    end
+
+    ApproachA --> OutA
+    ApproachB --> OutB
+    ApproachC --> OutC
+
+    subgraph Issues["Issues"]
+        IssueA{{"No dependency\ntracking"}}
+        IssueB{{"Data-code\ndesync risk"}}
+    end
+
+    ApproachA -.-> IssueA
+    ApproachB -.-> IssueB
+
+    subgraph KeyFeatures["OmicsLake Key Features"]
+        direction LR
+        F1["Automatic lineage"]
+        F2["Label-based snapshots"]
+        F3["Instant rollback"]
+        F4["Complete reproducibility"]
+    end
+
+    ApproachC --> KeyFeatures
+
+    %% Styling
+    style ApproachA fill:#fadbd8,stroke:#e74c3c,stroke-width:2px
+    style ApproachB fill:#fef5e7,stroke:#f39c12,stroke-width:2px
+    style ApproachC fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+
+    style A1 fill:#fff,stroke:#e74c3c
+    style A2 fill:#fff,stroke:#e74c3c
+    style A3 fill:#fff,stroke:#e74c3c
+    style A4 fill:#fff,stroke:#e74c3c
+    style A5 fill:#fff,stroke:#e74c3c
+
+    style B1 fill:#fff,stroke:#f39c12
+    style B2 fill:#fff,stroke:#f39c12
+    style B3 fill:#fff,stroke:#f39c12
+    style B4 fill:#fff,stroke:#f39c12
+    style B5 fill:#fff,stroke:#f39c12
+
+    style C1 fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+    style C2 fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+    style C3 fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+    style C4 fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+    style C5 fill:#d5f5e3,stroke:#27ae60,stroke-width:2px
+
+    style OutA fill:#fadbd8,stroke:#e74c3c,color:#e74c3c
+    style OutB fill:#fef5e7,stroke:#f39c12,color:#f39c12
+    style OutC fill:#d5f5e3,stroke:#27ae60,color:#27ae60,stroke-width:3px
+
+    style IssueA fill:#fadbd8,stroke:#e74c3c
+    style IssueB fill:#fef5e7,stroke:#f39c12
+
+    style F1 fill:#d5f5e3,stroke:#27ae60
+    style F2 fill:#d5f5e3,stroke:#27ae60
+    style F3 fill:#d5f5e3,stroke:#27ae60
+    style F4 fill:#d5f5e3,stroke:#27ae60

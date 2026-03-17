@@ -1,0 +1,48 @@
+# OmicsLake Evaluation Suite - Small Configuration
+# Quick evaluation for development/testing (runs in minutes)
+
+project_root: "~/.omicslake_eval_small"
+seed: 1
+threads: 2
+
+sizes:
+  small:
+    n_rows: 10000
+    n_cols: 10
+  medium:
+    n_rows: 50000
+    n_cols: 20
+  large:
+    n_rows: 100000
+    n_cols: 10
+
+reps:
+  bench: 3
+  heavy: 2
+
+cache_mode:
+  enable: false
+  modes: ["warm"]
+
+workloads:
+  W0_io: true
+  W1_queries: true
+  W2_lineage: true
+  W3_case_study: true
+
+baselines:
+  B1_duckdb_dbplyr: true
+  B2_file_based: false
+
+outputs:
+  results_dir: "inst/eval/results"
+  formats: ["jsonl"]
+
+case_study:
+  n_genes: 1000
+  n_samples: 6
+
+validation:
+  check_pushdown: true
+  check_lineage: true
+  strict_mode: false

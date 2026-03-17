@@ -1,0 +1,18 @@
+Package: OmicsLake
+Title: OmicsLake: Versioned, On-Disk Omics Data Management for Bioconductor
+Version: 0.0.0.9000
+Authors@R: person(given = "Yusuke", family = "Matsui", role = c("aut", "cre"), email = "bmhi@users.noreply.github.com")
+Author: Yusuke Matsui
+Maintainer: Yusuke Matsui <bmhi@users.noreply.github.com>
+Description: A lightweight framework for versioned, on-disk omics data management using DuckDB + Arrow + Parquet.
+    Provides simple read/write-style functions and Bioconductor-compatible readers (SummarizedExperiment, MultiAssayExperiment).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.3)
+Imports: jsonlite, digest, arrow, dplyr, dbplyr, DBI, duckdb, Matrix, SummarizedExperiment, S4Vectors, R6, rlang, tools, methods
+Suggests: qs, MultiAssayExperiment, HDF5Array, DelayedArray, knitr, rmarkdown, testthat (>= 3.0.0), igraph, yaml, bench, grDevices, graphics, stats, utils, SingleCellExperiment, GenomicRanges, Spectra, MsExperiment, QFeatures, renv, tibble
+VignetteBuilder: knitr
+biocViews: Infrastructure, DataImport, DataRepresentation
+URL: https://github.com/matsui-lab/OmicsLake
+BugReports: https://github.com/matsui-lab/OmicsLake/issues
+RoxygenNote: 7.3.3

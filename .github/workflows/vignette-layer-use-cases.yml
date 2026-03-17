@@ -1,0 +1,50 @@
+name: vignette-layer-use-cases
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  render-layer-use-cases:
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::BiocManager
+            any::rmarkdown
+          needs: check
+
+      - name: Install tutorial-data packages
+        run: |
+          if (!requireNamespace("BiocManager", quietly = TRUE)) {
+            install.packages("BiocManager", repos = "https://cloud.r-project.org")
+          }
+          needed <- c("MultiAssayExperiment", "Spectra")
+          missing <- needed[!vapply(needed, requireNamespace, logical(1), quietly = TRUE)]
+          if (length(missing)) {
+            BiocManager::install(missing, ask = FALSE, update = FALSE)
+          }
+        shell: Rscript {0}
+
+      - name: Install OmicsLake
+        run: R CMD INSTALL .
+
+      - name: Render layer use-case vignettes (eval=TRUE)
+        run: Rscript tools/check_layer_use_cases_vignettes.R

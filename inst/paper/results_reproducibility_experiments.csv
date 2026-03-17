@@ -1,0 +1,6 @@
+"test_id","test_name","primary_metric","target","pass"
+"RT-001","State Restoration",1,1,TRUE
+"RT-002","Lineage Tracking",1,1,TRUE
+"RT-003","Cross-Environment",1,1,TRUE
+"RT-004","Long-term Stability",0.798594253831383,2,TRUE
+"RT-005","Rollback Cascade",1,1,TRUE

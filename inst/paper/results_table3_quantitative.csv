@@ -1,0 +1,6 @@
+"Metric","OmicsLake_Value","CI_95_Lower","CI_95_Upper","Target","Pass","N"
+"State Restoration Rate","100.0%","88.4%","100.0%",">=99%","PASS",30
+"Dependency Completeness","100.0%","88.4%","100.0%",">=99%","PASS",30
+"Cross-Environment Portability","100.0%","66.4%","100.0%",">=99%","PASS",9
+"Rollback Success Rate","100.0%","47.8%","100.0%",">=99%","PASS",5
+"Performance Degradation (500 vs 50 versions)","0.83x","N/A","N/A","<2.0x","PASS",4

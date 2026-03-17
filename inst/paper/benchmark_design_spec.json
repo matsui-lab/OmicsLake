@@ -1,0 +1,1062 @@
+{
+  "meta": {
+    "title": "OmicsLake Performance Benchmark Design Specification",
+    "version": "1.0.0",
+    "author": "Analyst 1: Benchmark Design Expert",
+    "date": "2026-02-12",
+    "target_journal": "GigaScience",
+    "acm_reproducibility_compliance": true,
+    "statistical_framework": "Frequentist hypothesis testing with effect size reporting"
+  },
+
+  "experimental_design": {
+    "randomization": {
+      "seed": 42,
+      "rationale": "Fixed seed ensures reproducibility of synthetic benchmark data"
+    },
+    "warm_up": {
+      "iterations": 5,
+      "rationale": "JIT compilation warm-up for DuckDB/Arrow, excluded from analysis"
+    },
+    "measurement_iterations": {
+      "default": 30,
+      "minimum": 20,
+      "rationale": "n >= 30 enables Central Limit Theorem assumption for parametric tests; n >= 20 provides adequate power for non-parametric alternatives"
+    },
+    "cache_control": {
+      "cold_start_protocol": "gc(full=TRUE) + Sys.sleep(1) between iterations",
+      "warm_cache_protocol": "Consecutive execution without GC"
+    }
+  },
+
+  "benchmarks": [
+    {
+      "id": "BM-001",
+      "name": "table_io_performance",
+      "category": "I/O Performance",
+      "description": "Compare read/write performance for tabular data across storage formats",
+      "hypothesis": {
+        "H0": "There is no difference in I/O time between OmicsLake (Parquet) and baseline formats",
+        "H1": "OmicsLake (Parquet) provides significantly different (expected: faster) I/O time compared to baseline formats"
+      },
+      "conditions": [
+        {
+          "name": "omicslake_parquet",
+          "method": "arrow::write_parquet() / arrow::read_parquet()",
+          "role": "treatment"
+        },
+        {
+          "name": "base_rds",
+          "method": "saveRDS() / readRDS()",
+          "role": "baseline"
+        },
+        {
+          "name": "datatable_csv",
+          "method": "data.table::fwrite() / data.table::fread()",
+          "role": "alternative"
+        },
+        {
+          "name": "readr_csv",
+          "method": "readr::write_csv() / readr::read_csv()",
+          "role": "alternative"
+        },
+        {
+          "name": "qs_serialization",
+          "method": "qs::qsave() / qs::qread()",
+          "role": "alternative",
+          "note": "Fast R serialization alternative"
+        }
+      ],
+      "data_sizes": [
+        {"label": "small", "rows": 10000, "cols": 50, "approx_mb": 4},
+        {"label": "medium", "rows": 100000, "cols": 100, "approx_mb": 76},
+        {"label": "large", "rows": 1000000, "cols": 100, "approx_mb": 760},
+        {"label": "xlarge", "rows": 5000000, "cols": 50, "approx_mb": 1900}
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "write_time_sec", "unit": "seconds", "aggregation": "median"},
+          {"name": "read_time_sec", "unit": "seconds", "aggregation": "median"},
+          {"name": "total_io_time_sec", "unit": "seconds", "aggregation": "median"}
+        ],
+        "secondary": [
+          {"name": "file_size_mb", "unit": "megabytes"},
+          {"name": "peak_memory_mb", "unit": "megabytes", "measurement": "gc() before/after delta"}
+        ]
+      },
+      "iterations": 30,
+      "statistical_tests": {
+        "primary": {
+          "test": "Wilcoxon signed-rank test",
+          "rationale": "Non-parametric, robust to non-normal timing distributions",
+          "paired": false,
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d",
+          "interpretation": {
+            "negligible": "< 0.2",
+            "small": "0.2 - 0.5",
+            "medium": "0.5 - 0.8",
+            "large": "> 0.8"
+          }
+        },
+        "multiple_comparison_correction": {
+          "method": "Bonferroni",
+          "n_comparisons": 4,
+          "corrected_alpha": 0.0125
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": 0.8,
+        "alpha": 0.05,
+        "calculated_n": 26,
+        "actual_n": 30,
+        "achieved_power": 0.87,
+        "software": "pwr::pwr.t.test(d=0.8, sig.level=0.05, power=0.80, type='two.sample')"
+      },
+      "success_criteria": {
+        "speedup_threshold": 1.5,
+        "p_value_threshold": 0.05,
+        "effect_size_threshold": "medium (d >= 0.5)"
+      }
+    },
+
+    {
+      "id": "BM-002",
+      "name": "aggregation_performance",
+      "category": "Query Performance",
+      "description": "Compare grouped aggregation performance between OmicsLake SQL and dplyr in-memory",
+      "hypothesis": {
+        "H0": "Mean aggregation time is equal between OmicsLake and dplyr",
+        "H1": "OmicsLake provides significantly different (expected: faster) aggregation time"
+      },
+      "conditions": [
+        {
+          "name": "omicslake_sql",
+          "method": "ol_aggregate() via DuckDB SQL",
+          "role": "treatment",
+          "variants": [
+            {"name": "query_only", "description": "Data already in lake, query only"},
+            {"name": "full_pipeline", "description": "Write to lake + query (fair comparison)"}
+          ]
+        },
+        {
+          "name": "dplyr_inmemory",
+          "method": "dplyr::group_by() + dplyr::summarise()",
+          "role": "baseline"
+        },
+        {
+          "name": "datatable_aggregation",
+          "method": "data.table[, .(mean=mean(x)), by=group]",
+          "role": "alternative"
+        },
+        {
+          "name": "base_aggregate",
+          "method": "aggregate()",
+          "role": "alternative"
+        }
+      ],
+      "test_scenarios": [
+        {
+          "name": "gene_expression_summary",
+          "description": "Typical RNA-seq: aggregate expression by gene",
+          "rows": 1000000,
+          "groups": 20000,
+          "aggregation_columns": 6,
+          "functions": ["mean", "sd", "min", "max"]
+        },
+        {
+          "name": "sample_qc_metrics",
+          "description": "QC metrics aggregation by sample",
+          "rows": 500000,
+          "groups": 500,
+          "aggregation_columns": 10,
+          "functions": ["mean", "median", "sum"]
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "aggregation_time_sec", "unit": "seconds", "aggregation": "median"}
+        ],
+        "secondary": [
+          {"name": "memory_delta_mb", "unit": "megabytes"},
+          {"name": "rows_per_second", "unit": "rows/sec", "derived": true}
+        ]
+      },
+      "iterations": 30,
+      "statistical_tests": {
+        "primary": {
+          "test": "Wilcoxon rank-sum test (Mann-Whitney U)",
+          "rationale": "Non-parametric comparison of independent samples",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d",
+          "also_report": "Cliff's delta (non-parametric effect size)"
+        },
+        "multiple_comparison_correction": {
+          "method": "Holm-Bonferroni",
+          "rationale": "Less conservative than Bonferroni, maintains FWER control"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": 0.7,
+        "alpha": 0.05,
+        "calculated_n": 34,
+        "actual_n": 30,
+        "note": "Slightly underpowered for medium effect; increase to 35 if resources allow"
+      },
+      "success_criteria": {
+        "speedup_threshold": 1.2,
+        "description": "OmicsLake query-only should be at least 20% faster than dplyr for data already in lake"
+      }
+    },
+
+    {
+      "id": "BM-003",
+      "name": "join_performance",
+      "category": "Query Performance",
+      "description": "Compare table join performance across methods",
+      "hypothesis": {
+        "H0": "Join performance is equal between DuckDB SQL and R alternatives",
+        "H1": "DuckDB SQL provides significantly different join performance"
+      },
+      "conditions": [
+        {
+          "name": "duckdb_sql_join",
+          "method": "ol_query('SELECT * FROM t1 INNER JOIN t2 USING(id)')",
+          "role": "treatment"
+        },
+        {
+          "name": "base_merge",
+          "method": "base::merge(t1, t2, by='id')",
+          "role": "baseline"
+        },
+        {
+          "name": "dplyr_join",
+          "method": "dplyr::inner_join(t1, t2, by='id')",
+          "role": "alternative"
+        },
+        {
+          "name": "datatable_join",
+          "method": "dt1[dt2, on='id', nomatch=NULL]",
+          "role": "alternative"
+        }
+      ],
+      "test_scenarios": [
+        {
+          "name": "equal_size_join",
+          "left_rows": 1000000,
+          "right_rows": 1000000,
+          "key_cardinality": 1000000,
+          "join_type": "inner"
+        },
+        {
+          "name": "small_to_large_join",
+          "description": "Annotation lookup pattern (metadata join)",
+          "left_rows": 1000000,
+          "right_rows": 10000,
+          "key_cardinality": 10000,
+          "join_type": "left"
+        },
+        {
+          "name": "many_to_many_join",
+          "description": "Gene-sample matrix expansion",
+          "left_rows": 500000,
+          "right_rows": 500000,
+          "key_cardinality": 10000,
+          "join_type": "inner"
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "join_time_sec", "unit": "seconds", "aggregation": "median"}
+        ],
+        "secondary": [
+          {"name": "result_rows", "unit": "count"},
+          {"name": "memory_peak_mb", "unit": "megabytes"}
+        ]
+      },
+      "iterations": 30,
+      "statistical_tests": {
+        "primary": {
+          "test": "Kruskal-Wallis test",
+          "rationale": "Non-parametric ANOVA for multiple groups",
+          "post_hoc": "Dunn's test with Holm correction"
+        },
+        "effect_size": {
+          "measure": "epsilon-squared (eta-squared for non-parametric)"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": "large (f = 0.4)",
+        "alpha": 0.05,
+        "groups": 4,
+        "calculated_n_per_group": 18,
+        "actual_n": 30,
+        "achieved_power": 0.95
+      },
+      "success_criteria": {
+        "duckdb_rank": "Top 2 among all methods"
+      }
+    },
+
+    {
+      "id": "BM-004",
+      "name": "snapshot_versioning_performance",
+      "category": "Versioning Operations",
+      "description": "Compare snapshot/commit overhead between OmicsLake metadata-based versioning and file-based alternatives",
+      "hypothesis": {
+        "H0": "Snapshot creation time is equal between OmicsLake and file copy",
+        "H1": "OmicsLake metadata-based snapshots are significantly faster than full file copies"
+      },
+      "conditions": [
+        {
+          "name": "omicslake_commit",
+          "method": "ol_commit(message, params)",
+          "role": "treatment",
+          "mechanism": "Metadata-only snapshot (no data duplication)"
+        },
+        {
+          "name": "file_copy",
+          "method": "file.copy(source, dest)",
+          "role": "baseline",
+          "mechanism": "Full data duplication"
+        },
+        {
+          "name": "git_lfs_add",
+          "method": "system('git lfs track && git add && git commit')",
+          "role": "alternative",
+          "conditional": true,
+          "skip_if": "git lfs not available"
+        },
+        {
+          "name": "rds_incremental_save",
+          "method": "saveRDS() to timestamped file",
+          "role": "alternative"
+        }
+      ],
+      "test_scenarios": [
+        {
+          "name": "single_table_snapshot",
+          "data_size_mb": 100,
+          "n_tables": 1
+        },
+        {
+          "name": "multi_table_snapshot",
+          "data_size_mb": 500,
+          "n_tables": 10,
+          "description": "Typical analysis state with multiple intermediate results"
+        },
+        {
+          "name": "large_project_snapshot",
+          "data_size_mb": 2000,
+          "n_tables": 50,
+          "n_objects": 100
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "snapshot_time_sec", "unit": "seconds", "aggregation": "median"}
+        ],
+        "secondary": [
+          {"name": "storage_overhead_mb", "unit": "megabytes"},
+          {"name": "restore_time_sec", "unit": "seconds"}
+        ]
+      },
+      "iterations": 30,
+      "statistical_tests": {
+        "primary": {
+          "test": "Wilcoxon signed-rank test",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.90,
+        "expected_effect_size": 1.5,
+        "rationale": "Metadata-only vs full copy expected to show very large difference",
+        "alpha": 0.05,
+        "calculated_n": 10,
+        "actual_n": 30,
+        "achieved_power": 0.99
+      },
+      "success_criteria": {
+        "speedup_threshold": 10,
+        "description": "Metadata-based snapshot expected 10-100x faster than file copy"
+      }
+    },
+
+    {
+      "id": "BM-005",
+      "name": "storage_efficiency",
+      "category": "Storage",
+      "description": "Compare storage efficiency (compression ratio, disk usage) across formats",
+      "hypothesis": {
+        "H0": "Storage size is equal between Parquet and RDS",
+        "H1": "Parquet provides significantly smaller storage footprint"
+      },
+      "conditions": [
+        {
+          "name": "parquet_snappy",
+          "method": "arrow::write_parquet(compression='snappy')",
+          "role": "treatment"
+        },
+        {
+          "name": "parquet_zstd",
+          "method": "arrow::write_parquet(compression='zstd')",
+          "role": "treatment"
+        },
+        {
+          "name": "parquet_gzip",
+          "method": "arrow::write_parquet(compression='gzip')",
+          "role": "treatment"
+        },
+        {
+          "name": "rds_default",
+          "method": "saveRDS(compress=TRUE)",
+          "role": "baseline"
+        },
+        {
+          "name": "rds_xz",
+          "method": "saveRDS(compress='xz')",
+          "role": "alternative"
+        },
+        {
+          "name": "csv_uncompressed",
+          "method": "write.csv()",
+          "role": "reference"
+        }
+      ],
+      "data_types": [
+        {
+          "name": "numeric_dense",
+          "description": "Expression matrix (float64, few zeros)",
+          "sparsity": 0.05
+        },
+        {
+          "name": "numeric_sparse",
+          "description": "Single-cell count matrix (many zeros)",
+          "sparsity": 0.90
+        },
+        {
+          "name": "mixed_types",
+          "description": "Sample metadata (strings, factors, numerics)",
+          "column_types": {"character": 0.4, "numeric": 0.4, "factor": 0.2}
+        },
+        {
+          "name": "integer_counts",
+          "description": "Raw read counts (integer only)",
+          "range": [0, 100000]
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "file_size_mb", "unit": "megabytes"},
+          {"name": "compression_ratio", "unit": "ratio", "formula": "uncompressed_size / compressed_size"}
+        ],
+        "secondary": [
+          {"name": "write_throughput_mbps", "unit": "MB/second"},
+          {"name": "read_throughput_mbps", "unit": "MB/second"}
+        ]
+      },
+      "iterations": 10,
+      "statistical_tests": {
+        "primary": {
+          "test": "Paired t-test",
+          "rationale": "Same data, different formats - paired design",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d for paired samples"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": 1.0,
+        "alpha": 0.05,
+        "calculated_n": 12,
+        "actual_n": 10,
+        "note": "Slightly underpowered; compression differences are typically very large"
+      },
+      "success_criteria": {
+        "compression_improvement": 0.4,
+        "description": "Parquet should achieve at least 40% size reduction vs RDS"
+      }
+    },
+
+    {
+      "id": "BM-006",
+      "name": "scalability_analysis",
+      "category": "Scalability",
+      "description": "Measure performance scaling with increasing data size and version count",
+      "hypothesis": {
+        "H0": "Query latency scales linearly with version count",
+        "H1": "Query latency scales sub-linearly (O(log n)) due to DuckDB indexing"
+      },
+      "scaling_dimensions": [
+        {
+          "name": "data_size_scaling",
+          "dimension": "rows",
+          "levels": [1000, 10000, 100000, 1000000, 5000000, 10000000],
+          "expected_complexity": "O(n) for full scan, O(1) for indexed lookup"
+        },
+        {
+          "name": "version_count_scaling",
+          "dimension": "versions",
+          "levels": [10, 100, 500, 1000, 2000, 5000, 10000],
+          "expected_complexity": "O(log n) for version lookup due to B-tree index"
+        },
+        {
+          "name": "table_count_scaling",
+          "dimension": "tables",
+          "levels": [5, 10, 25, 50, 100, 200],
+          "expected_complexity": "O(1) for single table access, O(n) for listing"
+        }
+      ],
+      "operations_to_measure": [
+        {"operation": "ol_read", "description": "Single table read"},
+        {"operation": "ol_read with ref", "description": "Historical version access"},
+        {"operation": "ol_list_tables", "description": "Table enumeration"},
+        {"operation": "ol_show_lineage", "description": "Dependency graph traversal"},
+        {"operation": "ol_query", "description": "SQL query execution"}
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "latency_p50", "unit": "seconds"},
+          {"name": "latency_p95", "unit": "seconds"},
+          {"name": "latency_p99", "unit": "seconds"}
+        ],
+        "secondary": [
+          {"name": "database_size_mb", "unit": "megabytes"},
+          {"name": "memory_usage_mb", "unit": "megabytes"}
+        ]
+      },
+      "iterations_per_level": 20,
+      "statistical_tests": {
+        "primary": {
+          "test": "Linear regression on log-transformed data",
+          "model": "log(latency) ~ log(scale_factor)",
+          "metrics": ["R-squared", "slope coefficient (complexity exponent)"]
+        },
+        "complexity_classification": {
+          "O(1)": "slope < 0.1",
+          "O(log n)": "0.1 <= slope < 0.5",
+          "O(n)": "0.5 <= slope < 1.5",
+          "O(n^2)": "slope >= 1.5"
+        }
+      },
+      "success_criteria": {
+        "version_lookup_complexity": "O(log n) or better",
+        "max_degradation_ratio": 3.0,
+        "description": "Performance at max scale should be within 3x of baseline scale"
+      }
+    },
+
+    {
+      "id": "BM-007",
+      "name": "bioconductor_object_performance",
+      "category": "Bioconductor Integration",
+      "description": "Performance for storing/retrieving Bioconductor-specific data structures",
+      "hypothesis": {
+        "H0": "OmicsLake SE storage time equals native RDS serialization",
+        "H1": "OmicsLake provides comparable or better performance for structured omics data"
+      },
+      "conditions": [
+        {
+          "name": "omicslake_decomposed",
+          "method": "ol_write() with automatic SE decomposition",
+          "role": "treatment"
+        },
+        {
+          "name": "rds_serialization",
+          "method": "saveRDS(se)",
+          "role": "baseline"
+        },
+        {
+          "name": "hdf5_storage",
+          "method": "HDF5Array::saveHDF5SummarizedExperiment()",
+          "role": "alternative",
+          "conditional": true,
+          "skip_if": "HDF5Array not available"
+        }
+      ],
+      "test_objects": [
+        {
+          "name": "small_se",
+          "type": "SummarizedExperiment",
+          "genes": 1000,
+          "samples": 50,
+          "assays": 1
+        },
+        {
+          "name": "medium_se",
+          "type": "SummarizedExperiment",
+          "genes": 20000,
+          "samples": 200,
+          "assays": 3
+        },
+        {
+          "name": "large_se",
+          "type": "SummarizedExperiment",
+          "genes": 50000,
+          "samples": 500,
+          "assays": 2
+        },
+        {
+          "name": "single_cell_se",
+          "type": "SummarizedExperiment",
+          "genes": 30000,
+          "cells": 10000,
+          "assays": 1,
+          "sparsity": 0.95
+        },
+        {
+          "name": "multi_assay_experiment",
+          "type": "MultiAssayExperiment",
+          "experiments": 5,
+          "samples_per_experiment": 100
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "write_time_sec", "unit": "seconds"},
+          {"name": "read_time_sec", "unit": "seconds"}
+        ],
+        "secondary": [
+          {"name": "storage_size_mb", "unit": "megabytes"},
+          {"name": "metadata_preservation", "unit": "boolean", "description": "All attributes restored correctly"}
+        ]
+      },
+      "iterations": 20,
+      "statistical_tests": {
+        "primary": {
+          "test": "Wilcoxon signed-rank test (paired)",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": 0.6,
+        "alpha": 0.05,
+        "calculated_n": 24,
+        "actual_n": 20,
+        "note": "Acceptable power for medium effect detection"
+      },
+      "success_criteria": {
+        "performance_parity": true,
+        "description": "OmicsLake should be within 20% of RDS performance while providing versioning benefits"
+      }
+    },
+
+    {
+      "id": "BM-008",
+      "name": "memory_efficiency",
+      "category": "Resource Usage",
+      "description": "Compare peak memory usage during operations",
+      "hypothesis": {
+        "H0": "Peak memory usage is equal between OmicsLake and in-memory R operations",
+        "H1": "OmicsLake's lazy evaluation reduces peak memory usage"
+      },
+      "conditions": [
+        {
+          "name": "omicslake_lazy",
+          "method": "ol_ref() + dplyr operations + collect()",
+          "role": "treatment"
+        },
+        {
+          "name": "r_inmemory",
+          "method": "Full data load + dplyr operations",
+          "role": "baseline"
+        }
+      ],
+      "test_scenarios": [
+        {
+          "name": "filter_aggregate_pipeline",
+          "description": "Filter large table, then aggregate",
+          "data_size_mb": 500,
+          "filter_selectivity": 0.1,
+          "expected_memory_reduction": "10x (only filtered rows in memory)"
+        },
+        {
+          "name": "join_with_small_table",
+          "description": "Join large table with small lookup",
+          "left_size_mb": 500,
+          "right_size_mb": 5,
+          "expected_memory_reduction": "Minimal (join result similar to input)"
+        },
+        {
+          "name": "multi_table_aggregation",
+          "description": "Aggregate across multiple tables",
+          "n_tables": 10,
+          "table_size_mb": 50,
+          "expected_memory_reduction": "Significant (process tables sequentially)"
+        }
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "peak_memory_mb", "unit": "megabytes", "measurement": "gc()$max.used after operation"},
+          {"name": "memory_efficiency_ratio", "unit": "ratio", "formula": "baseline_peak / treatment_peak"}
+        ],
+        "secondary": [
+          {"name": "gc_count", "unit": "count"},
+          {"name": "allocation_count", "unit": "count", "requires": "profmem package"}
+        ]
+      },
+      "iterations": 15,
+      "statistical_tests": {
+        "primary": {
+          "test": "Paired t-test on log-transformed memory values",
+          "rationale": "Memory usage often follows log-normal distribution",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "Cohen's d"
+        }
+      },
+      "power_analysis": {
+        "target_power": 0.80,
+        "expected_effect_size": 1.0,
+        "alpha": 0.05,
+        "calculated_n": 12,
+        "actual_n": 15
+      },
+      "success_criteria": {
+        "memory_reduction_threshold": 1.5,
+        "description": "Lazy evaluation should reduce peak memory by at least 50% for filterable queries"
+      }
+    },
+
+    {
+      "id": "BM-009",
+      "name": "concurrent_access_performance",
+      "category": "Concurrency",
+      "description": "Performance under simulated concurrent read access",
+      "hypothesis": {
+        "H0": "Read performance is unaffected by concurrent access",
+        "H1": "Concurrent access introduces measurable overhead"
+      },
+      "conditions": [
+        {
+          "name": "single_reader",
+          "concurrent_readers": 1,
+          "role": "baseline"
+        },
+        {
+          "name": "light_concurrency",
+          "concurrent_readers": 4,
+          "role": "treatment"
+        },
+        {
+          "name": "heavy_concurrency",
+          "concurrent_readers": 8,
+          "role": "treatment"
+        }
+      ],
+      "test_protocol": {
+        "method": "parallel::mclapply() with multiple reader processes",
+        "operation": "ol_read() on same table",
+        "data_size_mb": 100,
+        "note": "DuckDB allows multiple concurrent readers but single writer"
+      },
+      "metrics": {
+        "primary": [
+          {"name": "avg_read_latency_sec", "unit": "seconds"},
+          {"name": "throughput_reads_per_sec", "unit": "reads/second"}
+        ],
+        "secondary": [
+          {"name": "latency_variance", "unit": "seconds^2"},
+          {"name": "error_rate", "unit": "proportion"}
+        ]
+      },
+      "iterations": 20,
+      "statistical_tests": {
+        "primary": {
+          "test": "One-way ANOVA",
+          "post_hoc": "Tukey HSD",
+          "alpha": 0.05
+        },
+        "effect_size": {
+          "measure": "eta-squared"
+        }
+      },
+      "success_criteria": {
+        "degradation_threshold": 2.0,
+        "description": "8-reader performance should be within 2x of single-reader baseline"
+      }
+    },
+
+    {
+      "id": "BM-010",
+      "name": "lineage_query_performance",
+      "category": "Lineage Operations",
+      "description": "Performance of dependency graph traversal operations",
+      "hypothesis": {
+        "H0": "Lineage query time is independent of graph complexity",
+        "H1": "Lineage query time increases with graph depth and width"
+      },
+      "graph_configurations": [
+        {
+          "name": "linear_chain",
+          "structure": "A -> B -> C -> ... -> N",
+          "depths": [5, 10, 20, 50],
+          "width": 1
+        },
+        {
+          "name": "wide_shallow",
+          "structure": "A -> [B1, B2, ..., Bn] (single level)",
+          "depth": 2,
+          "widths": [5, 10, 25, 50, 100]
+        },
+        {
+          "name": "balanced_tree",
+          "structure": "Binary tree",
+          "depths": [3, 5, 7, 10],
+          "branching_factor": 2
+        },
+        {
+          "name": "realistic_workflow",
+          "structure": "RNA-seq pipeline DAG (9 nodes, 9 edges)",
+          "reference": "RT-002 from reproducibility_experiment_design.json"
+        }
+      ],
+      "operations": [
+        {"name": "upstream_traversal", "function": "ol_show_lineage(direction='upstream')"},
+        {"name": "downstream_traversal", "function": "ol_show_lineage(direction='downstream')"},
+        {"name": "full_graph", "function": "ol_show_lineage(direction='both')"}
+      ],
+      "metrics": {
+        "primary": [
+          {"name": "traversal_time_ms", "unit": "milliseconds"}
+        ],
+        "secondary": [
+          {"name": "nodes_visited", "unit": "count"},
+          {"name": "edges_traversed", "unit": "count"}
+        ]
+      },
+      "iterations": 50,
+      "statistical_tests": {
+        "primary": {
+          "test": "Linear regression",
+          "model": "log(time) ~ log(nodes) + log(edges)",
+          "metrics": ["R-squared", "coefficients"]
+        }
+      },
+      "success_criteria": {
+        "max_latency_ms": 1000,
+        "description": "Lineage query should complete within 1 second for realistic workflows"
+      }
+    }
+  ],
+
+  "power_analysis_summary": {
+    "methodology": "A priori power analysis using G*Power equivalent calculations",
+    "target_power": 0.80,
+    "alpha": 0.05,
+    "effect_size_convention": {
+      "small": 0.2,
+      "medium": 0.5,
+      "large": 0.8
+    },
+    "sample_size_rationale": {
+      "n_30": "Default: satisfies CLT, detects large effects with >85% power",
+      "n_20": "Resource-constrained: acceptable for large effects, marginal for medium",
+      "n_50": "Scalability tests: higher n for regression precision"
+    },
+    "power_calculations_r_code": "# Example power calculation\n# library(pwr)\n# pwr.t.test(d = 0.8, sig.level = 0.05, power = 0.80, type = 'two.sample')\n# Result: n = 26 per group\n# We use n = 30 for margin"
+  },
+
+  "multiple_comparison_strategy": {
+    "family_wise_error_rate": 0.05,
+    "primary_method": "Bonferroni correction",
+    "alternative_methods": [
+      {
+        "name": "Holm-Bonferroni",
+        "use_case": "When Bonferroni is too conservative"
+      },
+      {
+        "name": "Benjamini-Hochberg FDR",
+        "use_case": "When controlling false discovery rate is preferred over FWER"
+      }
+    ],
+    "comparison_families": [
+      {
+        "family": "I/O benchmarks",
+        "n_comparisons": 4,
+        "corrected_alpha": 0.0125
+      },
+      {
+        "family": "Aggregation benchmarks",
+        "n_comparisons": 3,
+        "corrected_alpha": 0.0167
+      },
+      {
+        "family": "Join benchmarks",
+        "n_comparisons": 3,
+        "corrected_alpha": 0.0167
+      }
+    ]
+  },
+
+  "reporting_requirements": {
+    "descriptive_statistics": [
+      "median (primary measure of central tendency for timing data)",
+      "mean (for comparison with other studies)",
+      "standard deviation",
+      "interquartile range (IQR)",
+      "95% confidence interval"
+    ],
+    "inferential_statistics": [
+      "Test statistic (W for Wilcoxon, U for Mann-Whitney)",
+      "p-value (both uncorrected and Bonferroni-corrected)",
+      "Effect size with interpretation (Cohen's d, Cliff's delta)",
+      "95% confidence interval for effect size"
+    ],
+    "visualization_requirements": [
+      {
+        "type": "box_plot",
+        "use": "Distribution comparison across conditions",
+        "elements": ["median", "IQR", "outliers"]
+      },
+      {
+        "type": "bar_chart",
+        "use": "Speedup ratios",
+        "elements": ["point estimate", "95% CI error bars"]
+      },
+      {
+        "type": "line_plot",
+        "use": "Scalability analysis",
+        "elements": ["log-log scale", "regression line", "confidence band"]
+      },
+      {
+        "type": "heatmap",
+        "use": "Storage efficiency comparison",
+        "elements": ["compression ratio by format and data type"]
+      }
+    ],
+    "tables_for_paper": [
+      {
+        "table_id": "Table 2",
+        "location": "main.tex line 219-233",
+        "content": "Performance benchmark results (median +/- 95% CI)",
+        "columns": ["Operation", "OmicsLake", "Baseline", "Speedup", "p-value"]
+      },
+      {
+        "table_id": "Supplementary Table S1",
+        "content": "Complete benchmark results with all statistics"
+      }
+    ]
+  },
+
+  "execution_environment": {
+    "hardware_requirements": {
+      "minimum": {
+        "ram_gb": 16,
+        "cores": 4,
+        "storage_type": "SSD"
+      },
+      "recommended": {
+        "ram_gb": 64,
+        "cores": 16,
+        "storage_type": "NVMe SSD"
+      },
+      "reference_system": {
+        "description": "AMD Ryzen 9 7950X, 128GB RAM (as specified in main.tex)",
+        "note": "All reported results should specify exact hardware"
+      }
+    },
+    "software_requirements": {
+      "R_version": ">= 4.3",
+      "required_packages": [
+        {"name": "OmicsLake", "version": "current"},
+        {"name": "arrow", "version": ">= 14.0"},
+        {"name": "duckdb", "version": ">= 0.9"},
+        {"name": "dplyr", "version": ">= 1.1"},
+        {"name": "bench", "version": ">= 1.1"},
+        {"name": "data.table", "version": ">= 1.14"}
+      ],
+      "optional_packages": [
+        {"name": "qs", "purpose": "Alternative serialization comparison"},
+        {"name": "SummarizedExperiment", "purpose": "Bioconductor benchmarks"},
+        {"name": "HDF5Array", "purpose": "HDF5 comparison"},
+        {"name": "profmem", "purpose": "Memory allocation profiling"},
+        {"name": "pwr", "purpose": "Power analysis verification"}
+      ]
+    },
+    "reproducibility_measures": [
+      "Record sessionInfo() at start of each benchmark run",
+      "Use renv for package version locking",
+      "Set fixed random seed (42) for all data generation",
+      "Run benchmarks in fresh R session",
+      "Report system load during benchmarks"
+    ]
+  },
+
+  "quality_assurance": {
+    "sanity_checks": [
+      "Verify benchmark data generation reproducibility (digest hash)",
+      "Confirm operation correctness before timing (check output validity)",
+      "Detect and report outliers (> 3 IQR from median)",
+      "Monitor system load during benchmarks (warn if > 50% CPU by other processes)"
+    ],
+    "known_confounds": [
+      {
+        "confound": "filesystem_cache",
+        "mitigation": "Report both cold and warm cache results separately"
+      },
+      {
+        "confound": "garbage_collection",
+        "mitigation": "Force GC before each iteration, include GC time in total"
+      },
+      {
+        "confound": "jit_compilation",
+        "mitigation": "Warm-up iterations excluded from analysis"
+      },
+      {
+        "confound": "background_processes",
+        "mitigation": "Run on dedicated machine, report system state"
+      }
+    ],
+    "reporting_biases_to_avoid": [
+      "Cherry-picking favorable runs",
+      "Selective reporting of metrics",
+      "Omitting failed conditions",
+      "Asymmetric treatment of OmicsLake vs baselines"
+    ]
+  },
+
+  "integration_with_existing_files": {
+    "01_performance_benchmark.R": {
+      "status": "Partially implemented",
+      "implemented": ["BM-001", "BM-002", "BM-003", "BM-004", "BM-005 (partial)"],
+      "to_add": ["BM-006", "BM-007", "BM-008", "BM-009", "BM-010"],
+      "improvements_needed": [
+        "Add qs comparison to I/O benchmark",
+        "Add scalability analysis",
+        "Add Bioconductor object benchmarks",
+        "Add memory profiling",
+        "Add concurrent access tests"
+      ]
+    },
+    "reproducibility_experiment_design.json": {
+      "cross_reference": {
+        "RT-004_long_term_stability": "Aligned with BM-006 scalability_analysis",
+        "RT-002_lineage_tracking": "Aligned with BM-010 lineage_query_performance"
+      }
+    },
+    "main.tex_Table_2": {
+      "placeholder_location": "Lines 219-233",
+      "data_source": "Results from BM-001, BM-002, BM-003, BM-004",
+      "format": "median +/- 95% CI"
+    }
+  }
+}

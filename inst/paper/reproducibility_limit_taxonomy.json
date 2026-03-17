@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "OmicsLake Reproducibility Limit Taxonomy",
+    "version": "1.0.0",
+    "date": "2026-02-22",
+    "objective": "Evaluate known boundary conditions for fair reproducibility-tool assessment, including false positives, attribution gaps, and rollback precondition failures."
+  },
+  "scenarios": [
+    {
+      "id": "LT-001",
+      "category": "Semantic Equivalence",
+      "title": "Row order permutation only",
+      "root_cause": "Rows are permuted while value set is unchanged.",
+      "fairness_risk": "Hash-only drift checks can treat semantically equivalent tables as breakage.",
+      "ground_truth_breakage": false,
+      "expected_detection": false,
+      "expected_auto_restore": null,
+      "known_limit": false,
+      "limit_focus": "false_positive_semantic_equivalence",
+      "baseline_snapshot": true,
+      "restore_label": "v1"
+    },
+    {
+      "id": "LT-002",
+      "category": "Numeric Tolerance",
+      "title": "Sub-femtoscale numeric jitter",
+      "root_cause": "Tiny floating-point perturbation is below practical analysis tolerance.",
+      "fairness_risk": "Bit-level comparisons can flag negligible noise as reproducibility failure.",
+      "ground_truth_breakage": false,
+      "expected_detection": false,
+      "expected_auto_restore": null,
+      "known_limit": false,
+      "limit_focus": "false_positive_numeric_tolerance",
+      "baseline_snapshot": true,
+      "restore_label": "v1"
+    },
+    {
+      "id": "LT-003",
+      "category": "External Dependency",
+      "title": "Untracked external factor file drift",
+      "root_cause": "A local file outside OmicsLake changes and influences recomputation.",
+      "fairness_risk": "Drift is detectable, but root-cause attribution may remain coarse without explicit external dependency tracking.",
+      "ground_truth_breakage": true,
+      "expected_detection": true,
+      "expected_auto_restore": true,
+      "known_limit": false,
+      "limit_focus": "cause_attribution_gap_external_dependency",
+      "baseline_snapshot": true,
+      "restore_label": "v1"
+    },
+    {
+      "id": "LT-004",
+      "category": "Rollback Preconditions",
+      "title": "Rollback requested without snapshot label",
+      "root_cause": "No prior snapshot exists, but rollback is requested.",
+      "fairness_risk": "Auto-repair cannot restore to a missing reference point.",
+      "ground_truth_breakage": true,
+      "expected_detection": true,
+      "expected_auto_restore": false,
+      "known_limit": true,
+      "limit_focus": "rollback_precondition_gap",
+      "baseline_snapshot": false,
+      "restore_label": "v1"
+    },
+    {
+      "id": "LT-005",
+      "category": "Stochastic Analysis",
+      "title": "Random-noise recomputation without fixed seed",
+      "root_cause": "Analysis includes a stochastic step with no seed management.",
+      "fairness_risk": "Tool should still detect drift and allow rollback when snapshots exist.",
+      "ground_truth_breakage": true,
+      "expected_detection": true,
+      "expected_auto_restore": true,
+      "known_limit": false,
+      "limit_focus": "control_detectable_breakage",
+      "baseline_snapshot": true,
+      "restore_label": "v1"
+    }
+  ]
+}

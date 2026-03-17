@@ -1,0 +1,6 @@
+"Test_ID","Test_Name","Category","N","Successes","Primary_Metric","CI_Lower","CI_Upper","Target","Pass"
+"RT-001","State Restoration","State Reproducibility",30,30,1,0.884296691777972,1,1,TRUE
+"RT-002","Lineage Tracking","Lineage Tracking",30,30,1,0.884296691777972,1,1,TRUE
+"RT-003","Cross-Environment","Cross-Environment",9,9,1,0.663732883120057,1,1,TRUE
+"RT-004","Long-term Stability","Long-term Stability",4,NA,0.832358634323133,NA,NA,2,TRUE
+"RT-005","Rollback Cascade","State Reproducibility",5,5,1,0.478176249895019,1,1,TRUE

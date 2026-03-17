@@ -1,0 +1,8 @@
+"figure_id","source_file","submission_file","required","placement","status","caption_short"
+"Figure1","figure1_architecture.pdf","Figure1_Architecture.pdf",TRUE,"Main manuscript","copied","Four-layer architecture linking API, metadata lineage, DuckDB persistence, and Parquet export."
+"Figure2","figure2_lineage_workflow.pdf","Figure2_LineageWorkflow.pdf",TRUE,"Main manuscript","copied","Automatic lineage propagation in a dplyr pipeline from source tables to saved output."
+"Figure3","figure3_performance_benchmarks.pdf","Figure3_PerformanceBenchmarks.pdf",TRUE,"Main manuscript","copied","OmicsLake vs baseline runtime across import, aggregation, join, and snapshot operations."
+"Figure4","figure4_reproducibility_workflow.pdf","Figure4_ReproducibilityWorkflow.pdf",TRUE,"Main manuscript","copied","Conceptual workflow comparison: standard scripts, Git+manual data versioning, OmicsLake."
+"Figure5","figure5_reproducibility_grouped.pdf","Figure5_ReproducibilityComparison.pdf",TRUE,"Main manuscript","copied","Capability-level reproducibility matrix (qualitative baselines + observed OmicsLake RT outcomes)."
+"Figure6","figure6_storage_combined.pdf","Figure6_StorageEfficiency.pdf",TRUE,"Main manuscript","copied","Parquet vs RDS storage comparison across scale and data-type scenarios."
+"FigureS1","figureS1_lineage_graph.pdf","FigureS1_LineageGraph.pdf",TRUE,"Supplementary","copied","RNA-seq lineage DAG with typed nodes/edges for reproducibility and provenance tracing."

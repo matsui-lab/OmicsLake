@@ -1,0 +1,7 @@
+"env_pair","n_tests","data_equivalence_rate","lineage_identical_rate","edge_match_rate"
+"LocalDev->Docker",3,1,1,1
+"LocalDev->HPC",3,1,1,1
+"LocalDev->Cloud",3,1,1,1
+"Docker->HPC",3,1,1,1
+"Docker->Cloud",3,1,1,1
+"HPC->Cloud",3,1,1,1

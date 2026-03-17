@@ -1,0 +1,165 @@
+% Figure 1: OmicsLake Architecture Diagram
+% This TikZ code can be embedded directly in LaTeX documents
+% Requires: \usepackage{tikz}
+%           \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+\begin{tikzpicture}[
+    % Define styles
+    layer/.style={
+        draw=black!70,
+        fill=white,
+        rounded corners=3pt,
+        minimum width=12cm,
+        minimum height=1.8cm,
+        font=\small
+    },
+    component/.style={
+        draw=black!80,
+        fill=#1,
+        rounded corners=2pt,
+        minimum width=2.5cm,
+        minimum height=1cm,
+        font=\footnotesize\sffamily,
+        align=center
+    },
+    method/.style={
+        draw=black!50,
+        fill=gray!10,
+        rounded corners=1pt,
+        minimum width=1.2cm,
+        minimum height=0.5cm,
+        font=\scriptsize\ttfamily
+    },
+    arrow/.style={
+        ->,
+        >=Stealth,
+        thick,
+        black!70
+    },
+    bidiarrow/.style={
+        <->,
+        >=Stealth,
+        thick,
+        black!70
+    },
+    label/.style={
+        font=\footnotesize\bfseries,
+        text=black!80
+    },
+    sublabel/.style={
+        font=\scriptsize,
+        text=black!60
+    }
+]
+
+% ============================================================
+% Layer 1: User API (top)
+% ============================================================
+\node[layer, fill=blue!5] (api_layer) at (0, 6) {};
+\node[label, anchor=west] at (-5.8, 6.6) {User API Layer};
+\node[sublabel, anchor=west] at (-5.8, 6.2) {Lake R6 Class};
+
+% API methods
+\node[method] (put) at (-4, 5.8) {put()};
+\node[method] (get) at (-2.5, 5.8) {get()};
+\node[method] (ref) at (-1, 5.8) {ref()};
+\node[method] (snap) at (0.5, 5.8) {snap()};
+\node[method] (tree) at (2, 5.8) {tree()};
+\node[method] (restore) at (3.5, 5.8) {restore()};
+
+% Additional methods row
+\node[method] (from) at (-4, 5.2) {from()};
+\node[method] (join) at (-2.5, 5.2) {join()};
+\node[method] (tag) at (-1, 5.2) {tag()};
+\node[method] (diff) at (0.5, 5.2) {diff()};
+\node[method] (deps) at (2, 5.2) {deps()};
+\node[method] (plot) at (3.5, 5.2) {plot()};
+
+% ============================================================
+% Layer 2: Query & Transform (middle-top)
+% ============================================================
+\node[layer, fill=green!5] (query_layer) at (0, 3.8) {};
+\node[label, anchor=west] at (-5.8, 4.5) {Query \& Transform Layer};
+
+% Query components
+\node[component=green!15] (qb) at (-3.5, 3.6) {QueryBuilder\\(fluent API)};
+\node[component=green!15] (dplyr) at (-0.5, 3.6) {dplyr\\Integration};
+\node[component=green!15] (formula) at (2.5, 3.6) {Formula\\Syntax};
+
+% ============================================================
+% Layer 3: Metadata & Lineage (middle)
+% ============================================================
+\node[layer, fill=orange!5] (meta_layer) at (0, 2) {};
+\node[label, anchor=west] at (-5.8, 2.7) {Metadata Layer};
+
+% Metadata components
+\node[component=orange!15] (lineage) at (-3.5, 1.8) {Lineage\\Tracking};
+\node[component=orange!15] (versions) at (-0.5, 1.8) {Version\\History};
+\node[component=orange!15] (refs) at (2.5, 1.8) {Tags \&\\Snapshots};
+
+% ============================================================
+% Layer 4: Storage Backend (bottom)
+% ============================================================
+\node[layer, fill=purple!5] (storage_layer) at (0, 0.2) {};
+\node[label, anchor=west] at (-5.8, 0.9) {Storage Layer};
+
+% Storage components
+\node[component=purple!15] (duckdb) at (-3.5, 0) {DuckDB\\(SQL Engine)};
+\node[component=purple!15] (arrow) at (-0.5, 0) {Apache Arrow\\(In-memory)};
+\node[component=purple!15] (parquet) at (2.5, 0) {Parquet\\(On-disk)};
+
+% ============================================================
+% Layer 5: Bioconductor Integration (side)
+% ============================================================
+\node[component=cyan!15, minimum height=5cm, minimum width=2.2cm] (bioc) at (5.2, 3) {Bioconductor\\Adapters};
+
+% Bioc sub-components (stacked vertically)
+\node[method, minimum width=1.8cm] (se) at (5.2, 4.2) {SE};
+\node[method, minimum width=1.8cm] (seurat) at (5.2, 3.5) {Seurat};
+\node[method, minimum width=1.8cm] (matrix) at (5.2, 2.8) {Matrix};
+\node[method, minimum width=1.8cm] (df) at (5.2, 2.1) {data.frame};
+
+\node[sublabel] at (5.2, 1.3) {Full fidelity};
+\node[sublabel] at (5.2, 1.0) {preservation};
+
+% ============================================================
+% Connections between layers
+% ============================================================
+% API to Query layer
+\draw[arrow] (put.south) -- ++(0,-0.3) -| (qb.north);
+\draw[arrow] (get.south) -- ++(0,-0.3);
+\draw[arrow] (ref.south) -- ++(0,-0.4) -| (dplyr.north);
+\draw[arrow] (from.south) -- ++(0,-0.1) -| (qb.north west);
+
+% Query to Metadata layer
+\draw[arrow] (qb.south) -- (lineage.north);
+\draw[arrow] (dplyr.south) -- (versions.north);
+\draw[arrow] (formula.south) -- (refs.north);
+
+% Metadata to Storage layer
+\draw[arrow] (lineage.south) -- (duckdb.north);
+\draw[arrow] (versions.south) -- (arrow.north);
+\draw[arrow] (refs.south) -- (parquet.north);
+
+% Horizontal connections in storage layer
+\draw[bidiarrow] (duckdb.east) -- (arrow.west);
+\draw[bidiarrow] (arrow.east) -- (parquet.west);
+
+% Bioconductor connections
+\draw[bidiarrow, dashed] (api_layer.east) -- ++(0.5,0) |- (bioc.north west);
+\draw[bidiarrow, dashed] (bioc.south west) -| ++(-.5,0) |- (storage_layer.east);
+
+% ============================================================
+% Data flow annotation
+% ============================================================
+\node[sublabel, rotate=90, anchor=south] at (-6.5, 3) {Data Flow};
+\draw[arrow, black!40] (-6.3, 5.5) -- (-6.3, 0.5);
+
+% ============================================================
+% Internal tables annotation
+% ============================================================
+\node[sublabel, anchor=north] at (0, -0.8) {
+    Internal: \_\_ol\_refs, \_\_ol\_objects, \_\_ol\_commits, \_\_ol\_dependencies
+};
+
+\end{tikzpicture}

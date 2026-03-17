@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "title": "OmicsLake Reproducibility Breakage Taxonomy",
+    "version": "1.0.0",
+    "date": "2026-02-22",
+    "objective": "Classify reproducibility breakages and verify that OmicsLake can detect, explain, and safely resolve them."
+  },
+  "scenarios": [
+    {
+      "id": "BX-001",
+      "category": "Input Drift",
+      "title": "Input table silently replaced",
+      "root_cause": "Raw count values are replaced without explicit provenance updates.",
+      "conventional_bottleneck": "The change is often noticed only after downstream plots/tables diverge; root-cause search is manual and slow.",
+      "expected_resolution_mode": "auto_rollback"
+    },
+    {
+      "id": "BX-002",
+      "category": "Schema Drift",
+      "title": "Input schema/type drift",
+      "root_cause": "Input field type/shape changes and downstream summaries no longer match previous output semantics.",
+      "conventional_bottleneck": "Schema drift can pass silently when code coerces types; impact is discovered late.",
+      "expected_resolution_mode": "auto_rollback"
+    },
+    {
+      "id": "BX-003",
+      "category": "Parameter Drift",
+      "title": "Analysis parameter changed",
+      "root_cause": "Filtering threshold is altered between runs without clear audit trail.",
+      "conventional_bottleneck": "Parameter provenance is dispersed across scripts/notebooks and difficult to compare.",
+      "expected_resolution_mode": "auto_rollback"
+    },
+    {
+      "id": "BX-004",
+      "category": "Artifact Loss",
+      "title": "Critical intermediate removed or overwritten",
+      "root_cause": "A key derived artifact is removed/replaced during iterative analysis.",
+      "conventional_bottleneck": "Recovery depends on ad-hoc backups or rerunning large sections manually.",
+      "expected_resolution_mode": "auto_rollback"
+    },
+    {
+      "id": "BX-005",
+      "category": "Provenance Gap",
+      "title": "Git provenance context missing",
+      "root_cause": "Execution occurs outside a valid Git repository context.",
+      "conventional_bottleneck": "Code state at analysis time cannot be reconstructed reliably.",
+      "expected_resolution_mode": "guided_manual"
+    },
+    {
+      "id": "BX-006",
+      "category": "Environment Gap",
+      "title": "renv lockfile missing",
+      "root_cause": "Package lockfile is absent, so package versions cannot be pinned mechanically.",
+      "conventional_bottleneck": "Environment reconstruction relies on manual package history and memory.",
+      "expected_resolution_mode": "guided_manual"
+    }
+  ]
+}

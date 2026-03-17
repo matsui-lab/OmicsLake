@@ -1,0 +1,30 @@
+{
+  "title": "OmicsLake: Versioned Data Management with Automatic Lineage Tracking for Reproducible Bioinformatics",
+  "description": "Supplementary data, benchmark scripts, and reproducibility validation code for the OmicsLake paper submitted to GigaScience.",
+  "creators": [
+    {
+      "name": "Matsui, Yusuke",
+      "affiliation": "Department of Medical Informatics, Nagasaki University",
+      "orcid": "0000-0000-0000-0000"
+    }
+  ],
+  "keywords": [
+    "bioinformatics",
+    "reproducibility",
+    "data versioning",
+    "lineage tracking",
+    "R package",
+    "DuckDB",
+    "Parquet"
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/matsui-lab/OmicsLake",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+\begin{thebibliography}{23}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Peng(2011)]{peng2011reproducible}
+Roger~D Peng.
+\newblock Reproducible research in computational science.
+\newblock \emph{Science}, 334\penalty0 (6060):\penalty0 1226--1227, 2011.
+
+\bibitem[Sandve et~al.(2013)Sandve, Nekrutenko, Taylor, and Hovig]{sandve2013ten}
+Geir~Kjetil Sandve, Anton Nekrutenko, James Taylor, and Eivind Hovig.
+\newblock Ten simple rules for reproducible computational research.
+\newblock \emph{PLoS computational biology}, 9\penalty0 (10):\penalty0 e1003285, 2013.
+
+\bibitem[Love et~al.(2014)Love, Huber, and Anders]{love2014moderated}
+Michael~I Love, Wolfgang Huber, and Simon Anders.
+\newblock Moderated estimation of fold change and dispersion for rna-seq data with deseq2.
+\newblock \emph{Genome biology}, 15\penalty0 (12):\penalty0 1--21, 2014.
+
+\bibitem[Huber et~al.(2015)Huber, Carey, Gentleman, Anders, Carlson, Carvalho, Bravo, Davis, Gatto, Girke, et~al.]{huber2015orchestrating}
+Wolfgang Huber, Vincent~J Carey, Robert Gentleman, Simon Anders, Marc Carlson, Benilton~S Carvalho, Hector~Corrada Bravo, Sean Davis, Laurent Gatto, Thomas Girke, et~al.
+\newblock Orchestrating high-throughput genomic analysis with bioconductor.
+\newblock \emph{Nature methods}, 12\penalty0 (2):\penalty0 115--121, 2015.
+
+\bibitem[Gentleman et~al.(2004)Gentleman, Carey, Bates, Bolstad, Dettling, Dudoit, Ellis, Gautier, Ge, Gentry, et~al.]{gentleman2004bioconductor}
+Robert~C Gentleman, Vincent~J Carey, Douglas~M Bates, Ben Bolstad, Marcel Dettling, Sandrine Dudoit, Byron Ellis, Laurent Gautier, Yongchao Ge, Jeff Gentry, et~al.
+\newblock Bioconductor: open software development for computational biology and bioinformatics.
+\newblock \emph{Genome biology}, 5\penalty0 (10):\penalty0 1--16, 2004.
+
+\bibitem[Morgan et~al.(2009)Morgan, Obenchain, Hester, and Pag{\`e}s]{morgan2009summarizedexperiment}
+Martin Morgan, Valerie Obenchain, Jim Hester, and Herv{\'e} Pag{\`e}s.
+\newblock Summarizedexperiment for coordinate representation of genomic data.
+\newblock \emph{Bioconductor}, 2009.
+
+\bibitem[K{\"o}ster and Rahmann(2012)]{koster2012snakemake}
+Johannes K{\"o}ster and Sven Rahmann.
+\newblock Snakemake—a scalable bioinformatics workflow engine.
+\newblock \emph{Bioinformatics}, 28\penalty0 (19):\penalty0 2520--2522, 2012.
+
+\bibitem[Di~Tommaso et~al.(2017)Di~Tommaso, Chatzou, Floden, Barja, Palumbo, and Notredame]{di2017nextflow}
+Paolo Di~Tommaso, Maria Chatzou, Evan~W Floden, Pablo~Prieto Barja, Emilio Palumbo, and Cedric Notredame.
+\newblock Nextflow enables reproducible computational workflows.
+\newblock \emph{Nature biotechnology}, 35\penalty0 (4):\penalty0 316--319, 2017.
+
+\bibitem[Landau(2021)]{landau2021targets}
+William~Michael Landau.
+\newblock The targets r package: a dynamic make-like function-oriented pipeline toolkit for reproducibility and high-performance computing.
+\newblock \emph{Journal of Open Source Software}, 6\penalty0 (57):\penalty0 2959, 2021.
+\newblock \doi{10.21105/joss.02959}.
+
+\bibitem[Landau(2018)]{landau2018drake}
+William~Michael Landau.
+\newblock The drake r package: a pipeline toolkit for reproducibility and high-performance computing.
+\newblock \emph{Journal of Open Source Software}, 3\penalty0 (21):\penalty0 550, 2018.
+\newblock \doi{10.21105/joss.00550}.
+
+\bibitem[Wickham et~al.(2024{\natexlab{a}})Wickham, Reddy, Henry, and M\"uller]{memoise2024}
+Hadley Wickham, Jim Reddy, Lionel Henry, and Kirill M\"uller.
+\newblock memoise: Memoisation of functions.
+\newblock \url{https://cran.r-project.org/package=memoise}, 2024{\natexlab{a}}.
+\newblock R package version 2.0.1.
+
+\bibitem[Wickham et~al.(2024{\natexlab{b}})Wickham, Luraschi, Ruiz, and Ushey]{pins2024}
+Hadley Wickham, Javier Luraschi, Edgar Ruiz, and Kevin Ushey.
+\newblock pins: Pin, discover and share resources.
+\newblock \url{https://pins.rstudio.com/}, 2024{\natexlab{b}}.
+\newblock R package version 1.3.0.
+
+\bibitem[{Git LFS contributors}(2024)]{gitlfs2024}
+{Git LFS contributors}.
+\newblock Git large file storage.
+\newblock \url{https://git-lfs.com/}, 2024.
+\newblock Accessed: 2026-02-23.
+
+\bibitem[{Iterative}(2020)]{dvc2020}
+{Iterative}.
+\newblock Dvc: Data version control - git for data \& models.
+\newblock \url{https://dvc.org/}, 2020.
+
+\bibitem[Ushey and Wickham(2024)]{ushey2024renv}
+Kevin Ushey and Hadley Wickham.
+\newblock renv: Project environments.
+\newblock \url{https://rstudio.github.io/renv/}, 2024.
+\newblock R package version 1.0.0.
+
+\bibitem[Baker(2016)]{baker2016reproducibility}
+Monya Baker.
+\newblock 1,500 scientists lift the lid on reproducibility.
+\newblock \emph{Nature}, 533\penalty0 (7604):\penalty0 452--454, 2016.
+
+\bibitem[Fanelli(2018)]{fanelli2018opinion}
+Daniele Fanelli.
+\newblock Opinion: Is science really facing a reproducibility crisis, and do we need it to?
+\newblock \emph{Proceedings of the National Academy of Sciences}, 115\penalty0 (11):\penalty0 2628--2631, 2018.
+
+\bibitem[{ACM}(2020)]{acm2020artifact}
+{ACM}.
+\newblock Artifact review and badging version 1.1, 2020.
+\newblock URL \url{https://www.acm.org/publications/policies/artifact-review-and-badging-current}.
+\newblock Accessed: 2024.
+
+\bibitem[Raasveldt and M{\"u}hleisen(2019)]{raasveldt2019duckdb}
+Mark Raasveldt and Hannes M{\"u}hleisen.
+\newblock Duckdb: an embeddable analytical database.
+\newblock \emph{Proceedings of the 2019 International Conference on Management of Data}, pages 1981--1984, 2019.
+
+\bibitem[{Apache Arrow developers}(2016)]{arrow2016}
+{Apache Arrow developers}.
+\newblock Apache arrow: A cross-language development platform for in-memory analytics.
+\newblock \url{https://arrow.apache.org/}, 2016.
+
+\bibitem[Wilkinson et~al.(2016)Wilkinson, Dumontier, Aalbersberg, Appleton, Axton, Baak, Blomberg, Boiten, da~Silva~Santos, Bourne, et~al.]{wilkinson2016fair}
+Mark~D Wilkinson, Michel Dumontier, IJsbrand~Jan Aalbersberg, Gabrielle Appleton, Myles Axton, Arie Baak, Niklas Blomberg, Jan-Willem Boiten, Luiz~Bonino da~Silva~Santos, Philip~E Bourne, et~al.
+\newblock The fair guiding principles for scientific data management and stewardship.
+\newblock \emph{Scientific data}, 3\penalty0 (1):\penalty0 1--9, 2016.
+
+\bibitem[Matsui(2026{\natexlab{a}})]{omicslake2026repo}
+Yusuke Matsui.
+\newblock Omicslake source code repository.
+\newblock \url{https://github.com/matsui-lab/OmicsLake}, 2026{\natexlab{a}}.
+\newblock Accessed: 2026-02-22.
+
+\bibitem[Matsui(2026{\natexlab{b}})]{omicslake2026snapshot}
+Yusuke Matsui.
+\newblock Omicslake manuscript reproducibility snapshot (git revision 9ff7a9968b74eff68d6980c5f4cb9762336fb37e).
+\newblock \url{https://github.com/matsui-lab/OmicsLake/archive/9ff7a9968b74eff68d6980c5f4cb9762336fb37e.tar.gz}, 2026{\natexlab{b}}.
+\newblock SWHID: swh:1:rev:9ff7a9968b74eff68d6980c5f4cb9762336fb37e; Accessed: 2026-02-22.
+
+\end{thebibliography}

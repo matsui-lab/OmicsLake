@@ -1,0 +1,3 @@
+"mode","scenario_count","detected_rate","visualized_rate","safe_execution_rate","median_diag_runtime_sec","median_auto_runtime_sec","restored_rate_among_broken","manual_proposal_rate","actionable_proposal_rate","guardrail_rate"
+"auto_rollback",4,1,1,1,0.345,0.33,1,1,1,1
+"guided_manual",2,1,1,1,0.174,0.192,NA,1,1,1

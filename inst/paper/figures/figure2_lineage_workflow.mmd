@@ -1,0 +1,107 @@
+---
+title: "Figure 2: Automatic Lineage Tracking in dplyr Pipelines"
+---
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#1f77b4',
+    'primaryTextColor': '#ffffff',
+    'primaryBorderColor': '#1f77b4',
+    'lineColor': '#7f7f7f',
+    'secondaryColor': '#2ca02c',
+    'tertiaryColor': '#ff7f0e',
+    'background': '#ffffff',
+    'fontSize': '14px'
+  }
+}}%%
+
+flowchart TB
+    subgraph Pipeline["A. dplyr Pipeline with Automatic Dependency Tracking"]
+        direction LR
+
+        subgraph Step1["Step 1: Reference"]
+            ref1["ref('counts')"]
+            attr1[/"lake_source: 'counts'"/]
+        end
+
+        subgraph Step2["Step 2: Filter"]
+            filter["filter(quality > 0.8)"]
+            attr2[/"lake_source: 'counts'"/]
+        end
+
+        subgraph Step3["Step 3: Join"]
+            ref2["ref('metadata')"]
+            join["left_join()"]
+            attr3[/"lake_source: ['counts', 'metadata']"/]
+        end
+
+        subgraph Step4["Step 4: Summarize"]
+            summarize["summarize(mean_expr)"]
+            attr4[/"lake_source: ['counts', 'metadata']"/]
+        end
+
+        subgraph Step5["Step 5: Save"]
+            saveas["save_as('summary')"]
+            deprec{{"depends_on: auto-detected"}}
+        end
+
+        ref1 --> |"|>"| filter
+        ref1 -.-> attr1
+        filter --> |"|>"| join
+        filter -.-> attr2
+        ref2 --> join
+        join --> |"|>"| summarize
+        join -.-> attr3
+        summarize --> |"|>"| saveas
+        summarize -.-> attr4
+        attr4 -.-> |"records"| deprec
+    end
+
+    subgraph DataSources["B. Data Sources in Lake"]
+        direction LR
+        counts[("counts")]
+        metadata[("metadata")]
+        summary[("summary")]
+
+        counts --> |"derived_from"| summary
+        metadata --> |"derived_from"| summary
+    end
+
+    subgraph LineageGraph["C. Resulting Lineage Graph (tree view)"]
+        direction TB
+        ln_summary(("summary"))
+        ln_counts(("counts"))
+        ln_meta(("metadata"))
+
+        ln_counts --> ln_summary
+        ln_meta --> ln_summary
+    end
+
+    %% Cross-panel connections
+    saveas --> |"creates"| summary
+
+    %% Styling
+    style ref1 fill:#ff7f0e,stroke:#ff7f0e,color:#fff
+    style ref2 fill:#ff7f0e,stroke:#ff7f0e,color:#fff
+    style filter fill:#2ca02c,stroke:#2ca02c,color:#fff
+    style join fill:#2ca02c,stroke:#2ca02c,color:#fff
+    style summarize fill:#2ca02c,stroke:#2ca02c,color:#fff
+    style saveas fill:#1f77b4,stroke:#1f77b4,color:#fff
+
+    style attr1 fill:#9467bd,stroke:#9467bd,color:#fff,stroke-dasharray: 5 5
+    style attr2 fill:#9467bd,stroke:#9467bd,color:#fff,stroke-dasharray: 5 5
+    style attr3 fill:#9467bd,stroke:#9467bd,color:#fff,stroke-dasharray: 5 5
+    style attr4 fill:#9467bd,stroke:#9467bd,color:#fff,stroke-dasharray: 5 5
+    style deprec fill:#d62728,stroke:#d62728,color:#fff
+
+    style counts fill:#1f77b4,stroke:#1f77b4,color:#fff
+    style metadata fill:#1f77b4,stroke:#1f77b4,color:#fff
+    style summary fill:#1f77b4,stroke:#333,color:#fff,stroke-width:3px
+
+    style ln_counts fill:#aec7e8,stroke:#1f77b4,color:#333
+    style ln_meta fill:#aec7e8,stroke:#1f77b4,color:#333
+    style ln_summary fill:#1f77b4,stroke:#333,color:#fff,stroke-width:2px
+
+    style Pipeline fill:#f0f7ff,stroke:#1f77b4
+    style DataSources fill:#f0fff0,stroke:#2ca02c
+    style LineageGraph fill:#fff7f0,stroke:#ff7f0e

@@ -1,0 +1,107 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+name: R-CMD-check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'devel', http-user-agent: 'release'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - name: Check for placeholder values
+        run: |
+          if grep -q "example\.org\|your-org" DESCRIPTION; then
+            echo "ERROR: Placeholder values found in DESCRIPTION"
+            exit 1
+          fi
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr
+          needs: coverage
+
+      - name: Test coverage
+        run: |
+          covr::codecov(
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(Sys.getenv("RUNNER_TEMP"), "package")
+          )
+        shell: Rscript {0}
+
+  benchmark-validation:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Validate benchmark iterations
+        run: |
+          Rscript -e '
+            files <- list.files("inst/paper", pattern = "benchmark.*\\.R$", full.names = TRUE)
+            for (f in files) {
+              content <- readLines(f)
+              iter_lines <- grep("iterations\\s*=\\s*\\d+", content, value = TRUE)
+              for (line in iter_lines) {
+                iter_val <- as.numeric(gsub(".*iterations\\s*=\\s*(\\d+).*", "\\1", line))
+                if (!is.na(iter_val) && iter_val < 30) {
+                  stop(sprintf("Insufficient iterations in %s: %d < 30", f, iter_val))
+                }
+              }
+            }
+            cat("All benchmark iterations >= 30: PASSED\n")
+          '

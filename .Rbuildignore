@@ -1,0 +1,15 @@
+(^|/)\.DS_Store$
+(^|/)\.git($|/)
+(^|/)\.gitignore$
+(^|/)\.github($|/)
+(^|/)\.zenodo\.json$
+(^|/)results($|/)
+(^|/)inst/paper($|/)
+(^|/)tools/public($|/)
+(^|/)docs($|/)
+(^|/)\.Rcheck($|/)
+(^|/)\.\.?Rcheck($|/)
+(^|/)OmicsLake\.Rcheck($|/)
+(^|/)OmicsLake\.BiocCheck($|/)
+(^|/)OmicsLake_.*\.tar\.gz$
+^cran-comments\.md$

@@ -1,0 +1,733 @@
+---
+title: "OmicsLake Layer-by-Layer Use Cases"
+author: "OmicsLake Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+    %\VignetteIndexEntry{OmicsLake Layer-by-Layer Use Cases}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = "#>",
+    eval = isTRUE(getOption("omicslake.vignette.eval", FALSE))
+)
+
+pkg_ready <- function(pkgs) {
+    all(vapply(pkgs, requireNamespace, logical(1), quietly = TRUE))
+}
+
+record_check <- function(layer, available, latest_readable = NA,
+    tag_readable = NA, version_delta_detected = NA, note = "") {
+    data.frame(
+        layer = layer,
+        available = available,
+        latest_readable = latest_readable,
+        tag_readable = tag_readable,
+        version_delta_detected = version_delta_detected,
+        note = note,
+        stringsAsFactors = FALSE
+    )
+}
+```
+
+# Introduction
+
+This vignette demonstrates OmicsLake effectiveness with representative,
+practical workflows per omics layer.
+Each section follows the same structure:
+
+1. Build an object for a typical analysis task
+2. Save with `lake$put()` and freeze milestones with `lake$tag()`
+3. Save a new version and reproduce historical state using `@tag(...)`
+
+## Before you run all chunks
+
+To keep package checks stable, this vignette defaults to `eval = FALSE`
+behavior.
+To execute all chunks locally, run:
+
+```r
+options(omicslake.vignette.eval = TRUE)
+```
+
+## Covered layers
+
+- Bulk RNA-seq: `SummarizedExperiment`
+- Single-cell RNA-seq: `SingleCellExperiment`
+- Multi-omics cohort: `MultiAssayExperiment`
+- Proteomics/Metabolomics raw MS: `Spectra`
+- Proteomics quantification graph: `QFeatures`
+- Integrated LC-MS container: `MsExperiment`
+
+# Initialization
+
+```{r init}
+library(OmicsLake)
+
+set.seed(42)
+lake_root <- file.path(tempdir(), "omicslake_vignettes")
+dir.create(lake_root, recursive = TRUE, showWarnings = FALSE)
+
+lake <- Lake$new("omicslake_layer_use_cases_en", root = lake_root)
+use_case_checks <- list()
+created_objects <- character(0)
+```
+
+# 1. Bulk RNA-seq (SummarizedExperiment)
+
+Use case: freeze raw counts and add a normalized version while preserving
+reproducibility.
+
+```{r usecase_se}
+if (pkg_ready(c("SummarizedExperiment", "S4Vectors"))) {
+    counts <- matrix(
+        rpois(24, lambda = 80),
+        nrow = 6,
+        ncol = 4,
+        dimnames = list(
+            paste0("gene", 1:6),
+            c("ctrl_1", "ctrl_2", "case_1", "case_2")
+        )
+    )
+
+    se <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = counts),
+        colData = S4Vectors::DataFrame(
+            condition = c("ctrl", "ctrl", "case", "case"),
+            row.names = colnames(counts)
+        )
+    )
+
+    lake$put("bulk_rnaseq_se", se)
+    lake$tag("bulk_rnaseq_se", "raw_qc_passed")
+
+    se_norm <- se
+    SummarizedExperiment::assay(se_norm, "logcounts") <- log2(counts + 1)
+    S4Vectors::metadata(se_norm)$normalization <- "log2(count + 1)"
+    lake$put("bulk_rnaseq_se", se_norm)
+
+    se_raw <- lake$get("bulk_rnaseq_se", ref = "@tag(raw_qc_passed)")
+    se_latest <- lake$get("bulk_rnaseq_se")
+
+    cat("raw assayNames:",
+        paste(SummarizedExperiment::assayNames(se_raw), collapse = ", "),
+        "\n")
+    cat("latest assayNames:",
+        paste(SummarizedExperiment::assayNames(se_latest), collapse = ", "),
+        "\n")
+
+    created_objects <- union(created_objects, "bulk_rnaseq_se")
+    use_case_checks$se <- record_check(
+        layer = "SummarizedExperiment",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = !("logcounts" %in%
+            SummarizedExperiment::assayNames(se_raw)) &&
+            ("logcounts" %in% SummarizedExperiment::assayNames(se_latest)),
+        note = "raw -> normalized transition is reproducible"
+    )
+} else {
+    use_case_checks$se <- record_check(
+        layer = "SummarizedExperiment",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 2. Single-cell RNA-seq (SingleCellExperiment)
+
+Use case: freeze a post-QC SCE and update clustering outputs in a new version.
+
+```{r usecase_sce}
+if (pkg_ready(c("SingleCellExperiment", "SummarizedExperiment", "S4Vectors"))) {
+    sc_counts <- matrix(
+        rpois(40, lambda = 5),
+        nrow = 10,
+        ncol = 4,
+        dimnames = list(paste0("g", 1:10), paste0("cell", 1:4))
+    )
+
+    sce <- SingleCellExperiment::SingleCellExperiment(
+        assays = list(counts = sc_counts),
+        colData = S4Vectors::DataFrame(
+            donor = c("D1", "D1", "D2", "D2"),
+            row.names = colnames(sc_counts)
+        )
+    )
+
+    SingleCellExperiment::reducedDim(sce, "PCA") <- matrix(
+        c(0.1, 0.2, 0.2, 0.3, 0.8, 0.7, 0.6, 0.5),
+        ncol = 2,
+        dimnames = list(colnames(sc_counts), c("PC1", "PC2"))
+    )
+    SingleCellExperiment::sizeFactors(sce) <- c(0.95, 1.00, 1.05, 1.10)
+
+    adt <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = matrix(
+            c(20, 18, 21, 17, 8, 6, 7, 5),
+            nrow = 2,
+            ncol = 4,
+            dimnames = list(c("CD3", "CD19"), colnames(sc_counts))
+        ))
+    )
+    SingleCellExperiment::altExp(sce, "ADT") <- adt
+
+    lake$put("pbmc_sce", sce, depends_on = "bulk_rnaseq_se")
+    lake$tag("pbmc_sce", "pre_cluster")
+
+    sce_v2 <- sce
+    SingleCellExperiment::colLabels(sce_v2) <- c("T", "T", "B", "B")
+    SingleCellExperiment::reducedDim(sce_v2, "UMAP") <- matrix(
+        c(1.2, 1.0, -1.1, -0.9, 0.4, 0.6, -0.3, -0.2),
+        ncol = 2,
+        dimnames = list(colnames(sc_counts), c("UMAP1", "UMAP2"))
+    )
+    lake$put("pbmc_sce", sce_v2)
+
+    sce_pre <- lake$get("pbmc_sce", ref = "@tag(pre_cluster)")
+    sce_latest <- lake$get("pbmc_sce")
+
+    cat("pre_cluster reducedDims:",
+        paste(names(SingleCellExperiment::reducedDims(sce_pre)), collapse = ", "),
+        "\n")
+    cat("latest reducedDims:",
+        paste(names(SingleCellExperiment::reducedDims(sce_latest)), collapse = ", "),
+        "\n")
+    created_objects <- union(created_objects, "pbmc_sce")
+    use_case_checks$sce <- record_check(
+        layer = "SingleCellExperiment",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = !("UMAP" %in%
+            names(SingleCellExperiment::reducedDims(sce_pre))) &&
+            ("UMAP" %in% names(SingleCellExperiment::reducedDims(sce_latest))),
+        note = "pre_cluster tag preserves pre-UMAP state"
+    )
+} else {
+    use_case_checks$sce <- record_check(
+        layer = "SingleCellExperiment",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 3. Multi-omics cohort (MultiAssayExperiment)
+
+Use case: integrate RNA/protein at patient level and version integration updates.
+
+```{r usecase_mae}
+if (pkg_ready(c("MultiAssayExperiment", "SummarizedExperiment", "S4Vectors"))) {
+    rna_mat <- matrix(
+        rpois(16, lambda = 100),
+        nrow = 4,
+        ncol = 4,
+        dimnames = list(paste0("gene", 1:4), paste0("r", 1:4))
+    )
+    prot_mat <- matrix(
+        rnorm(16, mean = 25, sd = 5),
+        nrow = 4,
+        ncol = 4,
+        dimnames = list(paste0("prot", 1:4), paste0("p", 1:4))
+    )
+
+    se_rna <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(counts = rna_mat)
+    )
+    se_prot <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(intensity = prot_mat)
+    )
+
+    col_data <- S4Vectors::DataFrame(
+        response = c("R", "NR", "R", "NR"),
+        age = c(62L, 70L, 59L, 66L),
+        row.names = paste0("patient", 1:4)
+    )
+
+    sample_map <- S4Vectors::DataFrame(
+        assay = factor(
+            c(rep("rna", 4), rep("protein", 4)),
+            levels = c("rna", "protein")
+        ),
+        primary = rep(paste0("patient", 1:4), 2),
+        colname = c(colnames(rna_mat), colnames(prot_mat))
+    )
+
+    mae <- MultiAssayExperiment::MultiAssayExperiment(
+        experiments = list(rna = se_rna, protein = se_prot),
+        colData = col_data,
+        sampleMap = sample_map
+    )
+
+    lake$put("cohort_mae", mae, depends_on = c("bulk_rnaseq_se", "pbmc_sce"))
+    lake$tag("cohort_mae", "integration_v1")
+
+    S4Vectors::metadata(mae)$integration <- "combat + quantile"
+    lake$put("cohort_mae", mae)
+
+    mae_v1 <- lake$get("cohort_mae", ref = "@tag(integration_v1)")
+    mae_latest <- lake$get("cohort_mae")
+
+    cat("MAE experiments:",
+        paste(names(MultiAssayExperiment::experiments(mae_v1)), collapse = ", "),
+        "\n")
+    cat("latest integration method:",
+        S4Vectors::metadata(mae_latest)$integration,
+        "\n")
+    created_objects <- union(created_objects, "cohort_mae")
+    use_case_checks$mae <- record_check(
+        layer = "MultiAssayExperiment",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = is.null(S4Vectors::metadata(mae_v1)$integration) &&
+            identical(S4Vectors::metadata(mae_latest)$integration,
+                "combat + quantile"),
+        note = "integration metadata differs between tagged and latest"
+    )
+} else {
+    use_case_checks$mae <- record_check(
+        layer = "MultiAssayExperiment",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 4. Proteomics / Metabolomics raw MS (Spectra)
+
+Use case: freeze raw spectra and compare against a re-annotated version.
+
+```{r usecase_spectra}
+if (pkg_ready(c("Spectra", "S4Vectors"))) {
+    make_spectra <- function(spectra_data, peaks_list) {
+        df <- as.data.frame(spectra_data)
+        df$mz <- I(lapply(peaks_list, function(x) as.numeric(x[, "mz"])))
+        df$intensity <- I(lapply(peaks_list, function(x) {
+            as.numeric(x[, "intensity"])
+        }))
+        backend <- Spectra::backendInitialize(Spectra::MsBackendMemory(),
+            data = df)
+        Spectra::Spectra(backend)
+    }
+
+    peaks_a <- cbind(mz = c(445.34, 446.28), intensity = c(1400, 620))
+    peaks_b <- cbind(mz = c(512.22, 513.77, 514.11), intensity = c(2200, 910, 330))
+
+    proteomics_sp <- make_spectra(
+        spectra_data = S4Vectors::DataFrame(
+            msLevel = c(2L, 2L),
+            rtime = c(120.4, 123.0),
+            precursorMz = c(700.33, 808.44),
+            sample = c("prot_1", "prot_2")
+        ),
+        peaks_list = list(peaks_a, peaks_b)
+    )
+
+    metabolomics_sp <- make_spectra(
+        spectra_data = S4Vectors::DataFrame(
+            msLevel = 1L,
+            rtime = 300.2,
+            sample = "met_1",
+            polarity = 1L
+        ),
+        peaks_list = list(cbind(mz = c(155.07, 181.05), intensity = c(980, 410)))
+    )
+
+    lake$put("proteomics_ms", proteomics_sp)
+    lake$put("metabolomics_ms", metabolomics_sp)
+    lake$tag("proteomics_ms", "search_input")
+
+    sp_v2_df <- as.data.frame(Spectra::spectraData(proteomics_sp))
+    sp_v2_df$sample <- c("prot_1_reannot", "prot_2_reannot")
+    proteomics_sp_v2 <- make_spectra(
+        spectra_data = S4Vectors::DataFrame(sp_v2_df),
+        peaks_list = Spectra::peaksData(proteomics_sp)
+    )
+    lake$put("proteomics_ms", proteomics_sp_v2)
+
+    sp_tag <- lake$get("proteomics_ms", ref = "@tag(search_input)")
+    sp_latest <- lake$get("proteomics_ms")
+
+    cat("search_input samples:",
+        paste(as.character(Spectra::spectraData(sp_tag)$sample), collapse = ", "),
+        "\n")
+    cat("latest samples:",
+        paste(as.character(Spectra::spectraData(sp_latest)$sample), collapse = ", "),
+        "\n")
+    created_objects <- union(created_objects, c("proteomics_ms", "metabolomics_ms"))
+    use_case_checks$spectra <- record_check(
+        layer = "Spectra",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = !identical(
+            as.character(Spectra::spectraData(sp_tag)$sample),
+            as.character(Spectra::spectraData(sp_latest)$sample)
+        ),
+        note = "re-annotation changes are reversible by tag"
+    )
+} else {
+    use_case_checks$spectra <- record_check(
+        layer = "Spectra",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 5. Proteomics quantification graph (QFeatures)
+
+Use case: manage PSM→peptide→protein levels as one versioned object.
+
+```{r usecase_qfeatures}
+if (pkg_ready(c("QFeatures", "SummarizedExperiment", "S4Vectors",
+    "MultiAssayExperiment"))) {
+    qf <- NULL
+
+    available <- tryCatch(utils::data(package = "QFeatures")$results,
+        error = function(e) NULL)
+    if (!is.null(available) && "feat1" %in% available[, "Item"]) {
+        data("feat1", package = "QFeatures", envir = environment())
+        qf <- get("feat1", envir = environment())
+    }
+
+    if (is.null(qf)) {
+        psm <- SummarizedExperiment::SummarizedExperiment(
+            assays = list(intensity = matrix(
+                c(10, 12, 8, 9),
+                nrow = 2,
+                ncol = 2,
+                dimnames = list(c("pepA", "pepB"), c("s1", "s2"))
+            )),
+            rowData = S4Vectors::DataFrame(id = c("id1", "id2"),
+                row.names = c("pepA", "pepB"))
+        )
+        pep <- SummarizedExperiment::SummarizedExperiment(
+            assays = list(intensity = matrix(
+                c(6, 7, 4, 5),
+                nrow = 2,
+                ncol = 2,
+                dimnames = list(c("prot1", "prot2"), c("s1", "s2"))
+            )),
+            rowData = S4Vectors::DataFrame(id = c("id1", "id2"),
+                row.names = c("prot1", "prot2"))
+        )
+        qf <- QFeatures::QFeatures(
+            assays = list(psms = psm, peptides = pep),
+            colData = S4Vectors::DataFrame(condition = c("A", "B"),
+                row.names = c("s1", "s2"))
+        )
+    }
+
+    lake$put("protein_qf", qf, depends_on = "proteomics_ms")
+    lake$tag("protein_qf", "quant_v1")
+
+    qf_v2 <- qf
+    first_assay <- names(MultiAssayExperiment::experiments(qf_v2))[1]
+    assay_mat <- SummarizedExperiment::assay(qf_v2[[first_assay]], 1)
+    assay_mat[1, 1] <- assay_mat[1, 1] * 1.1
+    SummarizedExperiment::assay(qf_v2[[first_assay]], 1) <- assay_mat
+    lake$put("protein_qf", qf_v2)
+
+    qf_prev <- lake$get("protein_qf", ref = "@tag(quant_v1)")
+    qf_latest <- lake$get("protein_qf")
+
+    first_assay_prev <- names(MultiAssayExperiment::experiments(qf_prev))[1]
+    first_assay_latest <- names(MultiAssayExperiment::experiments(qf_latest))[1]
+
+    prev_value <- SummarizedExperiment::assay(qf_prev[[first_assay_prev]], 1)[1, 1]
+    latest_value <- SummarizedExperiment::assay(qf_latest[[first_assay_latest]], 1)[1, 1]
+
+    cat("quant_v1 first value:", prev_value, "\n")
+    cat("latest first value:", latest_value, "\n")
+    created_objects <- union(created_objects, "protein_qf")
+    use_case_checks$qfeatures <- record_check(
+        layer = "QFeatures",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = isTRUE(latest_value != prev_value),
+        note = "quantification change is traceable by tag"
+    )
+} else {
+    use_case_checks$qfeatures <- record_check(
+        layer = "QFeatures",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 6. Integrated LC-MS container (MsExperiment)
+
+Use case: deliver raw spectra, feature table, and sample metadata as one unit.
+
+```{r usecase_msexperiment}
+if (pkg_ready(c("MsExperiment", "Spectra", "SummarizedExperiment", "S4Vectors"))) {
+    make_spectra <- function(spectra_data, peaks_list) {
+        df <- as.data.frame(spectra_data)
+        df$mz <- I(lapply(peaks_list, function(x) as.numeric(x[, "mz"])))
+        df$intensity <- I(lapply(peaks_list, function(x) {
+            as.numeric(x[, "intensity"])
+        }))
+        backend <- Spectra::backendInitialize(Spectra::MsBackendMemory(),
+            data = df)
+        Spectra::Spectra(backend)
+    }
+
+    spectra_obj <- make_spectra(
+        spectra_data = S4Vectors::DataFrame(
+            msLevel = c(2L, 2L),
+            rtime = c(200.0, 212.5),
+            sample = c("s1", "s2")
+        ),
+        peaks_list = list(
+            cbind(mz = c(300.2, 301.1), intensity = c(900, 410)),
+            cbind(mz = c(450.3, 452.0), intensity = c(1300, 520))
+        )
+    )
+
+    qdata <- SummarizedExperiment::SummarizedExperiment(
+        assays = list(intensity = matrix(
+            c(100, 120, 80, 95),
+            nrow = 2,
+            ncol = 2,
+            dimnames = list(c("feature1", "feature2"), c("s1", "s2"))
+        ))
+    )
+
+    sample_df <- S4Vectors::DataFrame(
+        batch = c("B1", "B1"),
+        injection_order = c(1L, 2L),
+        row.names = c("s1", "s2")
+    )
+
+    mse <- MsExperiment::MsExperiment(
+        experimentFiles = MsExperiment::MsExperimentFiles(),
+        spectra = spectra_obj,
+        qdata = qdata,
+        sampleData = sample_df,
+        otherData = S4Vectors::List(source = "demo_lcms")
+    )
+
+    lake$put("lcms_mse", mse,
+        depends_on = c("proteomics_ms", "metabolomics_ms", "protein_qf"))
+    lake$tag("lcms_mse", "feature_table_v1")
+
+    sample_df_v2 <- sample_df
+    sample_df_v2$batch <- c("B2", "B2")
+    mse_v2 <- MsExperiment::MsExperiment(
+        experimentFiles = MsExperiment::MsExperimentFiles(),
+        spectra = spectra_obj,
+        qdata = qdata,
+        sampleData = sample_df_v2,
+        otherData = S4Vectors::List(source = "demo_lcms")
+    )
+    lake$put("lcms_mse", mse_v2)
+
+    mse_old <- lake$get("lcms_mse", ref = "@tag(feature_table_v1)")
+    mse_latest <- lake$get("lcms_mse")
+
+    cat("feature_table_v1 batch:",
+        paste(as.character(MsExperiment::sampleData(mse_old)$batch), collapse = ", "),
+        "\n")
+    cat("latest batch:",
+        paste(as.character(MsExperiment::sampleData(mse_latest)$batch), collapse = ", "),
+        "\n")
+    created_objects <- union(created_objects, "lcms_mse")
+    use_case_checks$msexperiment <- record_check(
+        layer = "MsExperiment",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = !identical(
+            as.character(MsExperiment::sampleData(mse_old)$batch),
+            as.character(MsExperiment::sampleData(mse_latest)$batch)
+        ),
+        note = "sample metadata revision is version-controlled"
+    )
+} else {
+    use_case_checks$msexperiment <- record_check(
+        layer = "MsExperiment",
+        available = FALSE,
+        note = "required packages are missing"
+    )
+}
+```
+
+# 7. Cross-layer release manifest
+
+Use case: publish one table that declares release objects and their lineage.
+
+```{r release_manifest}
+release_manifest <- data.frame(
+    layer = c("bulk", "single-cell", "multi-omics", "raw-ms", "quant", "lcms"),
+    object_name = c(
+        "bulk_rnaseq_se", "pbmc_sce", "cohort_mae",
+        "proteomics_ms", "protein_qf", "lcms_mse"
+    ),
+    release_tag = c(
+        "raw_qc_passed", "pre_cluster", "integration_v1",
+        "search_input", "quant_v1", "feature_table_v1"
+    ),
+    stringsAsFactors = FALSE
+)
+
+lake$put(
+    "release_manifest",
+    release_manifest,
+    depends_on = release_manifest$object_name[
+        release_manifest$object_name %in% created_objects
+    ]
+)
+
+lineage <- lake$tree("release_manifest", direction = "up", depth = 2)
+head(lineage)
+```
+
+# 8. Validation with Tutorial-Derived Data
+
+## 8.1 Official MultiAssayExperiment data (`miniACC`)
+
+```{r tutorial_miniacc}
+if (pkg_ready(c("MultiAssayExperiment", "S4Vectors"))) {
+    data("miniACC", package = "MultiAssayExperiment")
+
+    lake$put("tutorial_miniacc_mae", miniACC, depends_on = "cohort_mae")
+    lake$tag("tutorial_miniacc_mae", "tutorial_raw")
+
+    miniACC_v2 <- miniACC
+    S4Vectors::metadata(miniACC_v2)$omicslake_note <- "tutorial_curated_v2"
+    lake$put("tutorial_miniacc_mae", miniACC_v2)
+
+    miniacc_tag <- lake$get("tutorial_miniacc_mae", ref = "@tag(tutorial_raw)")
+    miniacc_latest <- lake$get("tutorial_miniacc_mae")
+
+    cat("miniACC experiments:",
+        length(MultiAssayExperiment::experiments(miniacc_latest)),
+        "\n")
+    cat("miniACC samples:",
+        nrow(MultiAssayExperiment::colData(miniacc_latest)),
+        "\n")
+
+    created_objects <- union(created_objects, "tutorial_miniacc_mae")
+    use_case_checks$tutorial_miniacc <- record_check(
+        layer = "Tutorial miniACC (MAE)",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = is.null(
+            S4Vectors::metadata(miniacc_tag)$omicslake_note
+        ) && identical(
+            S4Vectors::metadata(miniacc_latest)$omicslake_note,
+            "tutorial_curated_v2"
+        ),
+        note = "official MultiAssayExperiment sample data is versioned"
+    )
+} else {
+    use_case_checks$tutorial_miniacc <- record_check(
+        layer = "Tutorial miniACC (MAE)",
+        available = FALSE,
+        note = "MultiAssayExperiment is unavailable"
+    )
+}
+```
+
+## 8.2 Official Spectra data (`fft_spectrum`)
+
+```{r tutorial_fft_spectrum}
+if (pkg_ready(c("Spectra"))) {
+    data("fft_spectrum", package = "Spectra")
+
+    depends <- if ("proteomics_ms" %in% created_objects) "proteomics_ms" else NULL
+    lake$put("tutorial_fft_spectra", fft_spectrum, depends_on = depends)
+    lake$tag("tutorial_fft_spectra", "tutorial_raw")
+
+    fft_v2 <- fft_spectrum
+    Spectra::spectraData(fft_v2)$processing <- "fft_filter_v2"
+    lake$put("tutorial_fft_spectra", fft_v2)
+
+    fft_tag <- lake$get("tutorial_fft_spectra", ref = "@tag(tutorial_raw)")
+    fft_latest <- lake$get("tutorial_fft_spectra")
+
+    raw_sd <- as.data.frame(Spectra::spectraData(fft_tag))
+    latest_sd <- as.data.frame(Spectra::spectraData(fft_latest))
+    raw_proc <- if ("processing" %in% names(raw_sd)) {
+        as.character(raw_sd$processing)
+    } else {
+        rep(NA_character_, nrow(raw_sd))
+    }
+    latest_proc <- if ("processing" %in% names(latest_sd)) {
+        as.character(latest_sd$processing)
+    } else {
+        rep(NA_character_, nrow(latest_sd))
+    }
+
+    cat("fft_spectrum records:", nrow(latest_sd), "\n")
+
+    created_objects <- union(created_objects, "tutorial_fft_spectra")
+    use_case_checks$tutorial_fft <- record_check(
+        layer = "Tutorial fft_spectrum (Spectra)",
+        available = TRUE,
+        latest_readable = TRUE,
+        tag_readable = TRUE,
+        version_delta_detected = !identical(raw_proc, latest_proc),
+        note = "official Spectra sample data supports tag-based rollback"
+    )
+} else {
+    use_case_checks$tutorial_fft <- record_check(
+        layer = "Tutorial fft_spectrum (Spectra)",
+        available = FALSE,
+        note = "Spectra is unavailable"
+    )
+}
+```
+
+# 9. Automated Effectiveness Checks
+
+```{r effectiveness_dashboard}
+checks_df <- do.call(rbind, use_case_checks)
+
+logical_to_int <- function(x) {
+    ifelse(is.na(x), 0L, as.integer(x))
+}
+
+checks_df$achieved <- logical_to_int(checks_df$latest_readable) +
+    logical_to_int(checks_df$tag_readable) +
+    logical_to_int(checks_df$version_delta_detected)
+checks_df$target <- ifelse(checks_df$available, 3L, 0L)
+checks_df$status <- ifelse(
+    !checks_df$available,
+    "SKIPPED",
+    ifelse(checks_df$achieved == checks_df$target, "PASS", "PARTIAL")
+)
+
+checks_df <- checks_df[, c(
+    "layer", "status", "achieved", "target", "available",
+    "latest_readable", "tag_readable", "version_delta_detected", "note"
+)]
+checks_df
+```
+
+# Summary
+
+This vignette demonstrates three key outcomes:
+
+- Core Bioconductor containers across omics layers are managed with one API
+- Tagged milestones preserve historical states for strict reproducibility
+- Cross-layer dependencies are explicit and auditable via `depends_on`
+- A built-in score table (including tutorial data) reports reproducibility criteria per layer
+
+## Session Information
+
+```{r session_info}
+sessionInfo()
+```

@@ -1,0 +1,4 @@
+"Environment","State_Reproducibility","Dependency_Tracking","Rollback_Capability","Transfer_Verification","Automation","Evidence"
+"Standard R Script","Ad hoc reconstruction (qualitative)","None automatic","Manual file replacement","Typically unverified","None","Qualitative baseline"
+"Git + Manual","Manual conventions (qualitative)","Manual","Code-first + manual data sync","Checklist-based","Partial","Qualitative baseline"
+"OmicsLake","Observed 100% (RT-001)","Observed 100% (RT-002)","Observed 100% (RT-005)","Observed 100% simulated (RT-003)","Full","Empirical in this study"

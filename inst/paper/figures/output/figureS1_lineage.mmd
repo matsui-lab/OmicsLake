@@ -1,0 +1,81 @@
+---
+title: "Supplementary Figure S1: Data Lineage Graph"
+---
+graph LR
+  subgraph Step1["Step 1: Import"]
+    raw_counts[(raw_counts)]
+    gene_info([gene_info])
+    sample_info([sample_info])
+  end
+
+  subgraph Step2["Step 2: Normalization"]
+    norm_params{{norm_params}}
+    normalized_counts[(normalized_counts)]
+  end
+
+  subgraph Step3["Step 3: QC"]
+    qc_params{{qc_params}}
+    filtered_counts[(filtered_counts)]
+  end
+
+  subgraph Step4["Step 4: DE Analysis"]
+    de_params{{de_params}}
+    de_results([de_results])
+  end
+
+  subgraph Step5["Step 5: Pathway"]
+    enrichment_params{{enrichment_params}}
+    pathway_results([pathway_results])
+  end
+
+  subgraph Version["Version Control"]
+    commit1((Commit 1))
+    commit2((Commit 2))
+    commit3((Commit 3))
+    commit4((Commit 4))
+    commit5((Commit 5))
+    v1_complete[["v1.0_complete"]]
+  end
+
+  %% Data dependencies
+  raw_counts --> normalized_counts
+  gene_info --> norm_params
+  sample_info --> norm_params
+  normalized_counts --> filtered_counts
+  filtered_counts --> de_results
+  sample_info --> de_results
+  de_results --> pathway_results
+
+  %% Commit snapshots
+  raw_counts -.-> commit1
+  gene_info -.-> commit1
+  sample_info -.-> commit1
+  normalized_counts -.-> commit2
+  norm_params -.-> commit2
+  filtered_counts -.-> commit3
+  qc_params -.-> commit3
+  de_results -.-> commit4
+  de_params -.-> commit4
+  pathway_results -.-> commit5
+  enrichment_params -.-> commit5
+  commit5 ==> v1_complete
+
+  %% Styling
+  style raw_counts fill:#1f77b4,stroke:#333,color:#fff
+  style normalized_counts fill:#1f77b4,stroke:#333,color:#fff
+  style filtered_counts fill:#1f77b4,stroke:#333,color:#fff
+  style gene_info fill:#2ca02c,stroke:#333,color:#fff
+  style sample_info fill:#2ca02c,stroke:#333,color:#fff
+  style de_results fill:#2ca02c,stroke:#333,color:#fff
+  style pathway_results fill:#2ca02c,stroke:#333,color:#fff
+  style norm_params fill:#ff7f0e,stroke:#333,color:#fff
+  style qc_params fill:#ff7f0e,stroke:#333,color:#fff
+  style de_params fill:#ff7f0e,stroke:#333,color:#fff
+  style enrichment_params fill:#ff7f0e,stroke:#333,color:#fff
+  style commit1 fill:#7f7f7f,stroke:#333,color:#fff
+  style commit2 fill:#7f7f7f,stroke:#333,color:#fff
+  style commit3 fill:#7f7f7f,stroke:#333,color:#fff
+  style commit4 fill:#7f7f7f,stroke:#333,color:#fff
+  style commit5 fill:#7f7f7f,stroke:#333,color:#fff
+  style v1_complete fill:#9467bd,stroke:#333,color:#fff
+

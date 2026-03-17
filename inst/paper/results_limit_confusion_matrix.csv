@@ -1,0 +1,5 @@
+"truth","predicted","count"
+"breakage","detected",3
+"breakage","not_detected",0
+"no_breakage","detected",0
+"no_breakage","not_detected",2

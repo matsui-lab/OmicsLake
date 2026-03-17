@@ -1,0 +1,19 @@
+# R CMD check output
+..Rcheck/
+*.Rcheck/
+
+# R session data
+.RData
+.Rhistory
+
+# Temporary files
+*~
+.DS_Store
+
+# Build artifacts
+*.tar.gz
+*.zip
+# Large benchmark data files (exceed GitHub 100MB limit)
+inst/paper/benchmark_datasets/dataset_100MB.csv
+inst/paper/benchmark_datasets/*.db
+inst/paper/benchmark_datasets/**/*.db

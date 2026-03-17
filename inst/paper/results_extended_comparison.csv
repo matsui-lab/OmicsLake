@@ -1,0 +1,15 @@
+"Benchmark","Method","Median_sec","IQR_sec","Interval_95","N"
+"Import (Read)","arrow::read_parquet",0.0143,5e-04,"[0.0139, 0.0200]",30
+"Import (Read)","readRDS",0.523,0.0033,"[0.5205, 0.5290]",30
+"Import (Read)","data.table::fread",0.1928,0.0028,"[0.1897, 0.2015]",30
+"Import (Read)","arrow::write_parquet",0.164,0.0033,"[0.1608, 0.1714]",30
+"Import (Read)","saveRDS",2.3732,0.0147,"[2.3615, 2.3989]",30
+"Import (Read)","data.table::fwrite",0.2185,0.0028,"[0.2160, 0.2242]",30
+"Aggregation","dplyr::summarise",0.0314,9e-04,"[0.0304, 0.0328]",30
+"Aggregation","OmicsLake::ol_aggregate",0.005,4e-04,"[0.0049, 0.0057]",30
+"Aggregation","data.table",0.0404,7e-04,"[0.0395, 0.0415]",30
+"Aggregation","base::aggregate",0.3031,0.0398,"[0.2811, 0.3590]",30
+"Join","base::merge",0.6538,0.0111,"[0.6340, 0.6832]",30
+"Join","dplyr::inner_join",0.0804,0.002,"[0.0778, 0.0856]",30
+"Join","OmicsLake::ol_query (DuckDB)",0.1049,0.0022,"[0.1009, 0.1091]",30
+"Join","data.table",0.0366,0.001,"[0.0352, 0.0402]",30

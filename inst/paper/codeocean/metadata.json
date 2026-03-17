@@ -1,0 +1,5 @@
+{
+  "name": "OmicsLake Reproducibility Capsule",
+  "description": "Reproducibility validation for OmicsLake paper",
+  "keywords": ["bioinformatics", "reproducibility", "R", "DuckDB"]
+}

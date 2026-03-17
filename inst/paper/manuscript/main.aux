@@ -1,0 +1,200 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{peng2011reproducible,sandve2013ten}
+\citation{love2014moderated}
+\citation{huber2015orchestrating,gentleman2004bioconductor}
+\citation{morgan2009summarizedexperiment}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{koster2012snakemake}
+\citation{di2017nextflow}
+\citation{landau2021targets}
+\citation{landau2018drake}
+\citation{memoise2024}
+\citation{pins2024}
+\citation{gitlfs2024}
+\citation{dvc2020}
+\citation{ushey2024renv}
+\@writefile{toc}{\contentsline {paragraph}{(A) Workflow Provenance Systems}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{(B) Artifact Caching}{2}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{(C) Data Catalogs and Storage Backends}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{(D) Data Versioning with Lineage (OmicsLake)}{2}{section*.4}\protected@file@percent }
+\citation{baker2016reproducibility,fanelli2018opinion}
+\citation{acm2020artifact}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Problem space categorization: existing tools address different aspects of reproducibility}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:problem_space}{{1}{3}{Problem space categorization: existing tools address different aspects of reproducibility}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Feature comparison of data versioning approaches for bioinformatics workflows}}{3}{table.2}\protected@file@percent }
+\newlabel{tab:tool_comparison}{{2}{3}{Feature comparison of data versioning approaches for bioinformatics workflows}{table.2}{}}
+\citation{raasveldt2019duckdb}
+\citation{arrow2016}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Implementation}{4}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Architecture}{4}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Storage and Exchange Layer: DuckDB + Parquet}{4}{section*.5}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}Parquet export with compression options}{4}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Data Transfer: Apache Arrow}{4}{section*.6}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}Internal data flow for put() operation (active table write path)}{4}{lstlisting.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Design Choice: R6 Classes}{5}{section*.7}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}Automatic resource cleanup via finalize()}{5}{lstlisting.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Terminology}{5}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Core API}{5}{subsection.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces OmicsLake Core API Functions. Complexity estimates assume typical workloads with sequential table scans; actual performance depends on data characteristics, available indexes, and system resources.}}{6}{table.3}\protected@file@percent }
+\newlabel{tab:api}{{3}{6}{OmicsLake Core API Functions. Complexity estimates assume typical workloads with sequential table scans; actual performance depends on data characteristics, available indexes, and system resources}{table.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Type Detection and Storage Routing}{6}{section*.9}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}Automatic type detection in put()}{6}{lstlisting.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Lazy Evaluation via ref()}{6}{section*.10}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}Lazy evaluation enables query pushdown}{6}{lstlisting.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference Syntax}{7}{section*.11}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}Version reference syntax examples}{7}{lstlisting.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Data Model and Storage Semantics}{7}{subsection.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Internal metadata model used for restoration and lineage tracking}}{7}{table.4}\protected@file@percent }
+\newlabel{tab:data_model}{{4}{7}{Internal metadata model used for restoration and lineage tracking}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Automatic Dependency Tracking}{8}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{S3 Method Dispatch for Lineage Propagation}{8}{section*.12}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {7}Creating tracked references}{8}{lstlisting.7}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {8}S3 method preserving lineage through filter()}{8}{lstlisting.8}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {9}Join operations merge lineage sources}{8}{lstlisting.9}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {10}Automatic lineage tracking through dplyr pipelines}{8}{lstlisting.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The DependencyTracker Class}{9}{section*.13}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {11}DependencyTracker implementation}{9}{lstlisting.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Lineage Storage and Query}{9}{section*.14}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {12}BFS lineage traversal (simplified)}{9}{lstlisting.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scope and Limitations of Automatic Tracking}{10}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Lineage Coverage Map}{10}{section*.16}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Automatic lineage tracking coverage for common bioinformatics operations}}{10}{table.5}\protected@file@percent }
+\newlabel{tab:lineage_coverage}{{5}{10}{Automatic lineage tracking coverage for common bioinformatics operations}{table.5}{}}
+\citation{morgan2009summarizedexperiment}
+\@writefile{toc}{\contentsline {paragraph}{Practical Impact on Typical Workflows}{11}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Best Practices for Manual Annotation}{11}{section*.18}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {13}Wrapper function for automatic lineage at Bioconductor boundaries}{11}{lstlisting.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Bioconductor Integration}{11}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{SummarizedExperiment Support}{12}{section*.19}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {14}Storing and retrieving SummarizedExperiment objects}{12}{lstlisting.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Current Limitations and Future Work}{12}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}State Consistency Verification and Diagnostics}{13}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Equivalence Checks Used in Validation}{13}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Operational Diagnostics}{13}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scope}{13}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{13}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Performance Benchmarks}{13}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Performance benchmark results (n=30 iterations, median [empirical 95\% interval across repeated runs; 2.5th--97.5th percentiles])}}{13}{table.6}\protected@file@percent }
+\newlabel{tab:benchmarks}{{6}{13}{Performance benchmark results (n=30 iterations, median [empirical 95\% interval across repeated runs; 2.5th--97.5th percentiles])}{table.6}{}}
+\citation{acm2020artifact}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Reproducibility Validation}{14}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Success Threshold Rationale}{14}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}State Restoration Accuracy (RT-001)}{14}{subsubsection.3.2.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces RT-001: State restoration validation results ($n = 30$ iterations)}}{15}{table.7}\protected@file@percent }
+\newlabel{tab:rt001}{{7}{15}{RT-001: State restoration validation results ($n = 30$ iterations)}{table.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Verification Method Selection}{15}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Lineage Tracking Completeness (RT-002)}{15}{subsubsection.3.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.3}Simulated Cross-Environment Transfer (RT-003)}{15}{subsubsection.3.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces RT-003 transfer configurations used in this study}}{16}{table.8}\protected@file@percent }
+\newlabel{tab:rt003_config}{{8}{16}{RT-003 transfer configurations used in this study}{table.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{Potential Sources of Cross-Environment Variation}{16}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.4}Long-term Stability (RT-004)}{16}{subsubsection.3.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.5}Rollback Cascade Verification (RT-005)}{16}{subsubsection.3.2.5}\protected@file@percent }
+\citation{koster2012snakemake}
+\citation{di2017nextflow}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Reproducibility comparison across workflow approaches (qualitative baseline columns, empirical OmicsLake column)}}{17}{table.9}\protected@file@percent }
+\newlabel{tab:reproducibility_summary}{{9}{17}{Reproducibility comparison across workflow approaches (qualitative baseline columns, empirical OmicsLake column)}{table.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Storage Efficiency}{17}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Discussion}{17}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Impact on Bioinformatics Practice}{17}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Supporting Exploratory Analysis}{17}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Practical Scenarios}{17}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Integration with Existing Practices}{18}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Technical Trade-offs}{18}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Embedded vs. Client-Server Database}{18}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Lazy vs. Eager Evaluation}{18}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Automatic vs. Explicit Lineage}{18}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Storage Format Trade-offs}{18}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Memory Constraints and Append Semantics}{18}{section*.34}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {15}Chunked processing for large datasets}{19}{lstlisting.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Complementary Tool Ecosystem}{19}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Snapshot Storage Cost}{19}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Statistical Considerations and Limitations}{19}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Sample Size and Confidence Intervals}{19}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Detection Power}{19}{section*.38}\protected@file@percent }
+\citation{wilkinson2016fair}
+\citation{acm2020artifact}
+\@writefile{toc}{\contentsline {paragraph}{Generalizability}{20}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Environmental Scope}{20}{section*.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Alignment with FAIR Principles}{20}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Alignment with ACM Reproducibility Definitions}{20}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.5.1}Repeatability (Same Team, Same Setup)}{20}{subsubsection.4.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.5.2}Reproducibility (Different Team, Same Setup)}{21}{subsubsection.4.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.5.3}Replicability (Different Team, Different Setup)}{21}{subsubsection.4.5.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces OmicsLake alignment with ACM Reproducibility Definitions v1.1}}{21}{table.10}\protected@file@percent }
+\newlabel{tab:acm_alignment}{{10}{21}{OmicsLake alignment with ACM Reproducibility Definitions v1.1}{table.10}{}}
+\citation{omicslake2026repo}
+\citation{omicslake2026snapshot}
+\citation{omicslake2026repo,omicslake2026snapshot}
+\@writefile{toc}{\contentsline {section}{\numberline {5}List of Abbreviations}{22}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Software Availability}{22}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Data Availability}{22}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Ethics Approval and Consent to Participate}{22}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Consent for Publication}{22}{section.9}\protected@file@percent }
+\bibstyle{unsrtnat}
+\bibdata{references}
+\bibcite{peng2011reproducible}{{1}{2011}{{Peng}}{{}}}
+\bibcite{sandve2013ten}{{2}{2013}{{Sandve et~al.}}{{Sandve, Nekrutenko, Taylor, and Hovig}}}
+\bibcite{love2014moderated}{{3}{2014}{{Love et~al.}}{{Love, Huber, and Anders}}}
+\bibcite{huber2015orchestrating}{{4}{2015}{{Huber et~al.}}{{Huber, Carey, Gentleman, Anders, Carlson, Carvalho, Bravo, Davis, Gatto, Girke, et~al.}}}
+\bibcite{gentleman2004bioconductor}{{5}{2004}{{Gentleman et~al.}}{{Gentleman, Carey, Bates, Bolstad, Dettling, Dudoit, Ellis, Gautier, Ge, Gentry, et~al.}}}
+\bibcite{morgan2009summarizedexperiment}{{6}{2009}{{Morgan et~al.}}{{Morgan, Obenchain, Hester, and Pag{\`e}s}}}
+\bibcite{koster2012snakemake}{{7}{2012}{{K{\"o}ster and Rahmann}}{{}}}
+\bibcite{di2017nextflow}{{8}{2017}{{Di~Tommaso et~al.}}{{Di~Tommaso, Chatzou, Floden, Barja, Palumbo, and Notredame}}}
+\bibcite{landau2021targets}{{9}{2021}{{Landau}}{{}}}
+\bibcite{landau2018drake}{{10}{2018}{{Landau}}{{}}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Competing Interests}{23}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Funding}{23}{section.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {12}Authors' Contributions}{23}{section.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {13}Acknowledgements}{23}{section.13}\protected@file@percent }
+\bibcite{memoise2024}{{11}{2024{}}{{Wickham et~al.}}{{Wickham, Reddy, Henry, and M\"uller}}}
+\bibcite{pins2024}{{12}{2024{}}{{Wickham et~al.}}{{Wickham, Luraschi, Ruiz, and Ushey}}}
+\bibcite{gitlfs2024}{{13}{2024}{{Git LFS contributors}}{{}}}
+\bibcite{dvc2020}{{14}{2020}{{Iterative}}{{}}}
+\bibcite{ushey2024renv}{{15}{2024}{{Ushey and Wickham}}{{}}}
+\bibcite{baker2016reproducibility}{{16}{2016}{{Baker}}{{}}}
+\bibcite{fanelli2018opinion}{{17}{2018}{{Fanelli}}{{}}}
+\bibcite{acm2020artifact}{{18}{2020}{{ACM}}{{}}}
+\bibcite{raasveldt2019duckdb}{{19}{2019}{{Raasveldt and M{\"u}hleisen}}{{}}}
+\bibcite{arrow2016}{{20}{2016}{{Apache Arrow developers}}{{}}}
+\bibcite{wilkinson2016fair}{{21}{2016}{{Wilkinson et~al.}}{{Wilkinson, Dumontier, Aalbersberg, Appleton, Axton, Baak, Blomberg, Boiten, da~Silva~Santos, Bourne, et~al.}}}
+\bibcite{omicslake2026repo}{{22}{2026{}}{{Matsui}}{{}}}
+\bibcite{omicslake2026snapshot}{{23}{2026{}}{{Matsui}}{{}}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces OmicsLake system architecture. The layered design comprises four tiers: (1) \textbf  {User API Layer} providing core methods---\texttt  {put()}, \texttt  {get()}, \texttt  {snap()}, \texttt  {restore()}, and \texttt  {tree()}---for data operations; (2) \textbf  {Lake R6 Class} implementing central coordination with \texttt  {DependencyTracker} for lineage capture and \texttt  {lake\_tbl} S3 class for dplyr integration; (3) \textbf  {Metadata Layer} persisting state information in internal tables (\texttt  {\_\_ol\_objects} for object payloads and \texttt  {version\_ts}, \texttt  {\_\_ol\_refs} for labels/snapshots, \texttt  {\_\_ol\_dependencies} for lineage edges); and (4) \textbf  {Storage/Exchange Layer} using DuckDB for primary local persistence and OLAP query execution, Apache Arrow for efficient memory transfer (zero-copy specifically between Arrow and DuckDB), and Parquet for export/interchange of tabular artifacts. Bioconductor adapters (right panel) enable native integration with SummarizedExperiment and other R/Bioconductor data structures.}}{26}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{26}{OmicsLake system architecture. The layered design comprises four tiers: (1) \textbf {User API Layer} providing core methods---\texttt {put()}, \texttt {get()}, \texttt {snap()}, \texttt {restore()}, and \texttt {tree()}---for data operations; (2) \textbf {Lake R6 Class} implementing central coordination with \texttt {DependencyTracker} for lineage capture and \texttt {lake\_tbl} S3 class for dplyr integration; (3) \textbf {Metadata Layer} persisting state information in internal tables (\texttt {\_\_ol\_objects} for object payloads and \texttt {version\_ts}, \texttt {\_\_ol\_refs} for labels/snapshots, \texttt {\_\_ol\_dependencies} for lineage edges); and (4) \textbf {Storage/Exchange Layer} using DuckDB for primary local persistence and OLAP query execution, Apache Arrow for efficient memory transfer (zero-copy specifically between Arrow and DuckDB), and Parquet for export/interchange of tabular artifacts. Bioconductor adapters (right panel) enable native integration with SummarizedExperiment and other R/Bioconductor data structures}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Automatic lineage tracking in dplyr pipelines. Panel A shows metadata propagation through dplyr verbs. Panel B shows source datasets in the lake. Panel C shows resulting lineage edges for downstream provenance queries.}}{27}{figure.2}\protected@file@percent }
+\newlabel{fig:lineage_workflow}{{2}{27}{Automatic lineage tracking in dplyr pipelines. Panel A shows metadata propagation through dplyr verbs. Panel B shows source datasets in the lake. Panel C shows resulting lineage edges for downstream provenance queries}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Performance benchmark visualization for import, aggregation, join, and snapshot operations. Bars indicate median runtime; error bars show the empirical 2.5th--97.5th percentile interval across repeated runs (\(n=30\)). All timings reflect warm-cache conditions; cold-start timings would be higher for all methods (see Section~3.1).}}{28}{figure.3}\protected@file@percent }
+\newlabel{fig:performance_benchmarks}{{3}{28}{Performance benchmark visualization for import, aggregation, join, and snapshot operations. Bars indicate median runtime; error bars show the empirical 2.5th--97.5th percentile interval across repeated runs (\(n=30\)). All timings reflect warm-cache conditions; cold-start timings would be higher for all methods (see Section~3.1)}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Conceptual reproducibility workflow comparison across standard scripts, Git + manual data versioning, and OmicsLake-based analysis.}}{29}{figure.4}\protected@file@percent }
+\newlabel{fig:repro_workflow}{{4}{29}{Conceptual reproducibility workflow comparison across standard scripts, Git + manual data versioning, and OmicsLake-based analysis}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Capability-level reproducibility comparison across workflows. Baseline workflows are shown qualitatively, while OmicsLake metrics correspond to observed RT outcomes reported in Table~\ref {tab:reproducibility_summary}.}}{30}{figure.5}\protected@file@percent }
+\newlabel{fig:repro_comparison}{{5}{30}{Capability-level reproducibility comparison across workflows. Baseline workflows are shown qualitatively, while OmicsLake metrics correspond to observed RT outcomes reported in Table~\ref {tab:reproducibility_summary}}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Storage efficiency analysis comparing Parquet and RDS across dataset scales and representative data types.}}{31}{figure.6}\protected@file@percent }
+\newlabel{fig:storage_efficiency}{{6}{31}{Storage efficiency analysis comparing Parquet and RDS across dataset scales and representative data types}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Supplementary Figure S1. Data lineage DAG with node-type annotations and edge semantics used in RT-002 validation.}}{32}{figure.7}\protected@file@percent }
+\newlabel{fig:s1_lineage}{{7}{32}{Supplementary Figure S1. Data lineage DAG with node-type annotations and edge semantics used in RT-002 validation}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Supplementary Figure S2 (optional). Consolidated dashboard of scorecard attainment ratios, scope-level pass rates, and limit-boundary detection outcomes.}}{33}{figure.8}\protected@file@percent }
+\newlabel{fig:s2_dashboard}{{8}{33}{Supplementary Figure S2 (optional). Consolidated dashboard of scorecard attainment ratios, scope-level pass rates, and limit-boundary detection outcomes}{figure.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Supplementary Materials}{34}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Supplementary Table S1: Complete Benchmark Results}{34}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Supplementary Figure S1: Lineage Visualization}{34}{subsection.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Supplementary Figure S2: Major Results Dashboard (Optional)}{34}{subsection.A.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}Supplementary Table S3: Additional Join Baselines}{34}{subsection.A.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Supplementary join benchmark comparisons (same host/configuration as Table~\ref {tab:benchmarks})}}{34}{table.11}\protected@file@percent }
+\newlabel{tab:s3_join}{{11}{34}{Supplementary join benchmark comparisons (same host/configuration as Table~\ref {tab:benchmarks})}{table.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.5}Supplementary Code: Reproducibility Test Protocol}{34}{subsection.A.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Verification Method Guidelines}{35}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.6}Supplementary Table S2: SummarizedExperiment Storage Characteristics}{35}{subsection.A.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Design Rationale: Wide vs. Long Format}{35}{section*.44}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces SummarizedExperiment storage characteristics across dataset scales}}{36}{table.12}\protected@file@percent }
+\newlabel{tab:se_storage}{{12}{36}{SummarizedExperiment storage characteristics across dataset scales}{table.12}{}}
+\@writefile{toc}{\contentsline {paragraph}{Performance Characteristics}{36}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Recommendations}{36}{section*.46}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Round-trip Fidelity Verification}{36}{section*.47}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces SummarizedExperiment round-trip fidelity verification}}{36}{table.13}\protected@file@percent }
+\newlabel{tab:se_roundtrip}{{13}{36}{SummarizedExperiment round-trip fidelity verification}{table.13}{}}
+\gdef \@abspage@last{36}

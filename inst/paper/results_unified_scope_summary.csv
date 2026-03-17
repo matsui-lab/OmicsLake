@@ -1,0 +1,5 @@
+"scope","metric_count","pass_count","pass_rate"
+"common",8,8,1
+"auto_rollback",2,2,1
+"guided_manual",3,3,1
+"limit_boundary",4,4,1
