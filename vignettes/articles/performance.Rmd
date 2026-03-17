@@ -1,0 +1,167 @@
+---
+title: "Performance Tips & Scaling"
+description: >
+  Optimize OmicsLake for large datasets and complex workflows
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Lazy vs Eager Evaluation
+
+The most impactful optimization: use `ref()` instead of `get()`.
+
+```r
+# Slow: loads entire table into R memory
+df <- lake$get("expression_matrix")          # 1M rows loaded
+result <- dplyr::filter(df, padj < 0.05)     # Filtered in R
+
+# Fast: DuckDB handles the filtering
+result <- lake$ref("expression_matrix") |>    # No data loaded yet
+  dplyr::filter(padj < 0.05) |>              # Pushed to DuckDB
+  dplyr::collect()                            # Only matching rows loaded
+```
+
+With `ref()`, DuckDB's query optimizer pushes filters and column selections down to the storage layer. For a 1M-row table where only 1% matches, this loads ~10K rows instead of 1M.
+
+## Query Optimization
+
+### Select only needed columns
+
+```r
+# Reads all columns
+lake$ref("wide_table") |> dplyr::collect()
+
+# Reads only 3 columns (much faster for wide tables)
+lake$ref("wide_table") |>
+  dplyr::select(gene_id, sample_A, padj) |>
+  dplyr::collect()
+```
+
+### Combine filters before collect
+
+```r
+# All filters pushed to DuckDB in a single scan
+lake$ref("results") |>
+  dplyr::filter(padj < 0.05) |>
+  dplyr::filter(abs(log2FoldChange) > 1) |>
+  dplyr::filter(baseMean > 100) |>
+  dplyr::collect()
+```
+
+### Use aggregations in DuckDB
+
+```r
+# Aggregation runs in DuckDB (fast, memory-efficient)
+lake$ref("expression") |>
+  dplyr::group_by(gene_type) |>
+  dplyr::summarize(
+    n = dplyr::n(),
+    mean_expr = mean(expression),
+    .groups = "drop"
+  ) |>
+  dplyr::collect()
+```
+
+## Chunked Processing
+
+For datasets that exceed available RAM:
+
+```r
+# Read and store in chunks
+chunk_size <- 1e6
+total_rows <- 50e6
+
+for (i in seq(1, total_rows, by = chunk_size)) {
+  chunk <- read_csv_chunk("large_file.csv", skip = i - 1, n_max = chunk_size)
+  lake$put("large_table", chunk,
+           mode = ifelse(i == 1, "create", "append"))
+}
+
+lake$snap("large_data_imported")
+```
+
+Once stored, use `ref()` to query without loading everything:
+
+```r
+# DuckDB handles the 50M rows internally
+lake$ref("large_table") |>
+  dplyr::filter(chromosome == "chr1") |>
+  dplyr::summarize(mean_value = mean(score)) |>
+  dplyr::collect()
+```
+
+## Parquet Compression
+
+Choose compression based on your priorities:
+
+| Codec | Ratio | Speed | Best for |
+|-------|-------|-------|----------|
+| **Snappy** | Good | Fastest | Interactive use, frequent reads |
+| **Zstd** | Better | Fast | Balanced (recommended default) |
+| **LZ4** | Good | Very fast | Speed-critical, streaming |
+| **Gzip** | Best | Slow | Archival, minimum storage |
+
+```r
+# Export with Zstd (good balance)
+lake$export("counts", "counts.parquet", compression = "zstd")
+
+# Export with Snappy (fastest reads)
+lake$export("counts", "counts_fast.parquet", compression = "snappy")
+```
+
+Typical storage savings over RDS: **55--58%** for numeric tabular data.
+
+## Snapshot Storage Management
+
+Each snapshot copies all active tables. Monitor usage:
+
+```r
+lake_status()
+# Tables: 8, Objects: 3, Snapshots: 12
+# Database size: 1.2 GB
+```
+
+### Strategies to manage storage
+
+1. **Snapshot selectively**: Only snap at major analysis boundaries, not after every operation
+2. **Remove old snapshots**: Drop backup tables for obsolete labels
+3. **Export and archive**: Export completed analyses to Parquet, then start a fresh lake
+4. **Use objects for models**: R objects are stored as BLOBs (not duplicated per snapshot)
+
+## Memory Management
+
+The `put()` function converts data to an Arrow table before writing to DuckDB. This requires the full dataset in memory.
+
+```r
+# For large data, use chunked put (see above)
+# Or force garbage collection between operations
+gc()
+lake$put("large_data", data)
+gc()
+```
+
+### Monitor memory
+
+```r
+# Check R memory usage
+pryr::mem_used()
+
+# Check DuckDB memory
+DBI::dbGetQuery(lake$.__enclos_env__$private$.state$conn,
+                "SELECT * FROM duckdb_memory()")
+```
+
+## Benchmark Reference
+
+Performance measured on Apple M4 Max, 36 GB RAM, NVMe SSD ($n=30$ iterations):
+
+| Operation | OmicsLake | Baseline | Speedup |
+|-----------|-----------|----------|---------|
+| Import (100 MB Parquet) | 0.014 s | 0.523 s (RDS) | **36.6x** |
+| Aggregation (1M rows) | 0.005 s | 0.031 s (dplyr) | **6.2x** |
+| Join (1M × 1M) | 0.105 s | 0.654 s (merge) | **6.2x** |
+| Snapshot (1M rows) | 0.033 s | 0.008 s (file.copy) | 0.24x* |
+
+*Snapshot is slower than file copy because it performs in-database materialization with metadata bookkeeping. These are not semantically equivalent operations.

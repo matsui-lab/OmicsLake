@@ -1,0 +1,252 @@
+---
+title: "Tutorial: Mastering Lineage Tracking"
+description: >
+  Learn automatic and manual dependency tracking for complete provenance
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Why Lineage Matters
+
+When a reviewer asks *"which normalized counts did you use for Figure 3?"* or a collaborator asks *"did this result use the batch-corrected or uncorrected data?"*, lineage provides the answer automatically.
+
+OmicsLake tracks **dataset-level dependencies**: which tables were used to produce which outputs.
+
+## Automatic Tracking with dplyr
+
+### How it works
+
+When you call `lake$ref("name")`, OmicsLake returns a **lazy reference** with a `lake_tbl` S3 class. This class carries source metadata through all dplyr operations:
+
+```r
+# ref() attaches source metadata
+tbl <- lake$ref("counts")    # class: lake_tbl, source: "counts"
+
+# dplyr verbs preserve it
+filtered <- tbl |>
+  dplyr::filter(gene_type == "protein_coding")
+# class: lake_tbl, source: "counts"   (preserved!)
+
+# Joins merge sources from both tables
+joined <- tbl |>
+  dplyr::left_join(lake$ref("metadata"), by = "sample_id")
+# class: lake_tbl, source: c("counts", "metadata")   (merged!)
+```
+
+### save_as() records the edges
+
+The `save_as()` pipe terminator persists the result and writes lineage edges:
+
+```r
+lake$ref("raw_counts") |>
+  dplyr::left_join(lake$ref("sample_info"), by = "sample_id") |>
+  dplyr::filter(quality_score > 0.8) |>
+  dplyr::group_by(condition) |>
+  dplyr::summarize(mean_expr = mean(expression)) |>
+  save_as("condition_summary", lake)
+```
+
+This records two edges: `raw_counts → condition_summary` and `sample_info → condition_summary`.
+
+### Visualizing the graph
+
+```r
+lake$tree("condition_summary")
+# condition_summary
+#   ├── raw_counts
+#   └── sample_info
+
+# Upstream: what does this dataset depend on?
+deps("condition_summary", direction = "upstream")
+
+# Downstream: what depends on raw_counts?
+deps("raw_counts", direction = "downstream")
+```
+
+## Understanding the Lineage Graph
+
+Lineage is stored in the `__ol_dependencies` table with edges like:
+
+```
+child_name          parent_name       relationship_type
+condition_summary   raw_counts        derived_from
+condition_summary   sample_info       derived_from
+de_results          condition_summary derived_from
+```
+
+The `tree()` method performs breadth-first traversal to reconstruct the full DAG:
+
+```
+raw_counts ──┐
+              ├──→ condition_summary ──→ de_results ──→ volcano_data
+sample_info ──┘
+```
+
+## Manual Annotation with depends_on
+
+### When you need it
+
+Automatic tracking only works with dplyr operations on `lake_tbl` objects. You need manual annotation for:
+
+- **Bioconductor functions**: DESeq2, edgeR, limma, Seurat
+- **Base R operations**: `merge()`, `[` subsetting, `apply()`
+- **After `collect()`**: Once materialized, lineage metadata is lost
+
+### Basic usage
+
+```r
+# After running DESeq2
+dds <- DESeq2::DESeq(lake$get("count_matrix"))
+res <- DESeq2::results(dds)
+
+lake$put("deseq_results", as.data.frame(res),
+         depends_on = "count_matrix")
+```
+
+### Multiple parents
+
+```r
+# Integration that depends on three sources
+lake$put("integrated", integrated_data,
+         depends_on = c("rnaseq_normalized", "proteomics_filtered", "metadata"))
+```
+
+### Best practice: annotate at package boundaries
+
+```r
+# ✓ Good: annotate right after Bioconductor function
+raw <- lake$get("raw_counts")
+normalized <- edgeR::calcNormFactors(edgeR::DGEList(counts = raw))
+lake$put("normalized", as.data.frame(normalized$counts),
+         depends_on = "raw_counts")
+
+# ✗ Bad: forget to annotate
+raw <- lake$get("raw_counts")
+normalized <- edgeR::calcNormFactors(edgeR::DGEList(counts = raw))
+lake$put("normalized", as.data.frame(normalized$counts))
+# Lineage edge is missing!
+```
+
+## Lightweight Mode
+
+For existing scripts you don't want to rewrite, three options:
+
+### observe() --- non-invasive session tracking
+
+```r
+session <- observe(lake)
+
+raw <- lake$get("counts")
+normalized <- normalize(raw)
+lake$put("normalized", normalized)
+
+session$finish()
+# Operations logged; dependencies inferred from get/put pairs
+```
+
+### wrap_fn() --- wrap existing functions
+
+```r
+tracked_deseq <- wrap_fn(function(counts) {
+  dds <- DESeq2::DESeqDataSetFromMatrix(counts, colData, ~condition)
+  DESeq2::DESeq(dds)
+}, reads = "counts", writes = "deseq_results")
+
+tracked_deseq(lake$get("counts"))
+```
+
+### with_tracking() --- context manager
+
+```r
+with_tracking(lake, {
+  counts <- lake$get("raw_counts")
+  metadata <- lake$get("sample_info")
+
+  merged <- merge(counts, metadata, by = "sample_id")
+  filtered <- merged[merged$quality > 0.8, ]
+
+  lake$put("qc_filtered", filtered)
+})
+# Dependencies: raw_counts → qc_filtered, sample_info → qc_filtered
+```
+
+## Common Patterns
+
+### Pattern 1: Mixed dplyr + Bioconductor pipeline
+
+```r
+# Step 1: dplyr preprocessing (auto-tracked)
+lake$ref("raw_counts") |>
+  dplyr::filter(total_count > 10) |>
+  save_as("filtered_counts", lake)
+
+# Step 2: DESeq2 (manual annotation)
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = lake$get("filtered_counts"),
+  colData = lake$get("sample_info"),
+  design = ~condition
+)
+res <- DESeq2::results(DESeq2::DESeq(dds))
+lake$put("de_results", as.data.frame(res),
+         depends_on = c("filtered_counts", "sample_info"))
+
+# Step 3: dplyr post-processing (auto-tracked)
+lake$ref("de_results") |>
+  dplyr::filter(padj < 0.05, abs(log2FoldChange) > 1) |>
+  save_as("significant_genes", lake)
+
+lake$tree("significant_genes")
+# significant_genes
+#   └── de_results
+#         ├── filtered_counts
+#         │     └── raw_counts
+#         └── sample_info
+```
+
+### Pattern 2: Multi-branch analysis
+
+```r
+# Two analysts, same starting data
+lake$ref("normalized") |>
+  dplyr::filter(gene_biotype == "protein_coding") |>
+  save_as("protein_coding", lake)
+
+lake$ref("normalized") |>
+  dplyr::filter(gene_biotype == "lncRNA") |>
+  save_as("lncrna", lake)
+
+# Both tracked back to the same source
+lake$tree("protein_coding")  # → normalized
+lake$tree("lncrna")          # → normalized
+```
+
+## Troubleshooting Lineage
+
+### Missing edges
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `save_as()` shows no parents | Used `get()` instead of `ref()` | Use `lake$ref()` for tracked references |
+| Edge missing after `collect()` | dplyr ops after materialization | Call `save_as()` before or right after `collect()` |
+| Bioconductor step has no parents | No `depends_on` specified | Add `depends_on` parameter to `put()` |
+
+### Verifying completeness
+
+```r
+# Check all dependencies of a dataset
+deps("final_result", direction = "upstream", max_depth = 10)
+
+# Manually add a missing edge
+link("child_dataset", "parent_dataset")
+
+# Remove an incorrect edge
+unlink_dep("child_dataset", "wrong_parent")
+```
+
+## Next Steps
+
+- **[Reproducibility Tutorial](tutorial-reproducibility.html)** --- Version control strategies
+- **[RNA-seq Scenario](scenario-rnaseq.html)** --- Complete workflow with lineage
+- **[FAQ](faq.html)** --- Common questions about lineage tracking

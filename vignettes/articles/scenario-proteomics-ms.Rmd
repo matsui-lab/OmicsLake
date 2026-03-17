@@ -1,0 +1,192 @@
+---
+title: "Scenario: Proteomics & Mass Spectrometry"
+description: >
+  Version-controlled LC-MS/MS proteomics workflow with Spectra and QFeatures integration
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Overview
+
+Proteomics and mass spectrometry workflows involve complex data transformations: raw spectra processing, peptide identification, protein quantification, normalization, and statistical analysis. OmicsLake captures these stages with full lineage.
+
+## Setup
+
+```r
+library(OmicsLake)
+lake <- Lake$new("proteomics_project")
+```
+
+## Step 1: Import PSM-level Data
+
+```r
+# Peptide-spectrum matches from search engine output
+psm_data <- data.frame(
+  spectrum_id = paste0("spec_", 1:50000),
+  peptide = sample(paste0("PEPTIDE", 1:5000), 50000, replace = TRUE),
+  protein = sample(paste0("PROT_", 1:2000), 50000, replace = TRUE),
+  score = runif(50000, 0, 100),
+  qvalue = runif(50000, 0, 0.1),
+  intensity = rlnorm(50000, 15, 2),
+  sample = sample(paste0("S", 1:6), 50000, replace = TRUE)
+)
+
+lake$put("psm_raw", psm_data)
+lake$snap("01_imported")
+```
+
+## Step 2: FDR Filtering
+
+```r
+lake$ref("psm_raw") |>
+  dplyr::filter(qvalue < 0.01) |>
+  save_as("psm_filtered", lake)
+
+lake$snap("02_fdr_filtered")
+```
+
+## Step 3: Peptide-level Aggregation
+
+```r
+lake$ref("psm_filtered") |>
+  dplyr::group_by(peptide, protein, sample) |>
+  dplyr::summarize(
+    intensity = median(intensity),
+    n_psms = dplyr::n(),
+    best_score = max(score),
+    .groups = "drop"
+  ) |>
+  save_as("peptide_quant", lake)
+
+lake$snap("03_peptide_level")
+```
+
+## Step 4: Protein-level Rollup
+
+```r
+lake$ref("peptide_quant") |>
+  dplyr::group_by(protein, sample) |>
+  dplyr::summarize(
+    intensity = sum(intensity),
+    n_peptides = dplyr::n_distinct(peptide),
+    .groups = "drop"
+  ) |>
+  dplyr::filter(n_peptides >= 2) |>  # At least 2 unique peptides
+  save_as("protein_quant", lake)
+
+lake$snap("04_protein_level")
+```
+
+## Step 5: Normalization
+
+```r
+# Median normalization
+protein_wide <- lake$get("protein_quant") |>
+  tidyr::pivot_wider(names_from = sample, values_from = intensity)
+
+medians <- apply(protein_wide[, -c(1,2)], 2, median, na.rm = TRUE)
+global_median <- median(medians)
+norm_factors <- global_median / medians
+
+normalized <- protein_wide
+for (s in names(norm_factors)) {
+  normalized[[s]] <- normalized[[s]] * norm_factors[s]
+}
+
+lake$put("protein_normalized", normalized,
+         depends_on = "protein_quant")
+ol_commit(note = "Median normalization applied")
+lake$snap("05_normalized")
+```
+
+## Step 6: Differential Abundance
+
+```r
+# Simple t-test per protein (use limma in practice)
+sample_groups <- data.frame(
+  sample = paste0("S", 1:6),
+  group = c("control", "control", "control", "treated", "treated", "treated")
+)
+
+lake$put("sample_groups", sample_groups)
+
+# Perform statistical testing
+protein_data <- lake$get("protein_normalized")
+results <- do.call(rbind, lapply(1:nrow(protein_data), function(i) {
+  ctrl <- as.numeric(protein_data[i, c("S1", "S2", "S3")])
+  trt <- as.numeric(protein_data[i, c("S4", "S5", "S6")])
+  tt <- t.test(trt, ctrl)
+  data.frame(
+    protein = protein_data$protein[i],
+    log2fc = log2(mean(trt) / mean(ctrl)),
+    pvalue = tt$p.value
+  )
+}))
+results$padj <- p.adjust(results$pvalue, method = "BH")
+
+lake$put("da_results", results,
+         depends_on = c("protein_normalized", "sample_groups"))
+lake$snap("06_da_complete")
+```
+
+## Step 7: Significant Proteins
+
+```r
+lake$ref("da_results") |>
+  dplyr::filter(padj < 0.05, abs(log2fc) > 1) |>
+  save_as("significant_proteins", lake)
+
+lake$snap("07_final")
+```
+
+## Using Spectra Objects (Optional)
+
+If working with raw MS data via the `Spectra` package:
+
+```r
+library(Spectra)
+
+# Store spectra object
+lake$put("raw_spectra", sps)     # Stored as versioned object
+lake$snap("spectra_raw")
+
+# After re-calibration
+lake$put("calibrated_spectra", sps_calibrated,
+         depends_on = "raw_spectra")
+lake$snap("spectra_calibrated")
+```
+
+## Using QFeatures (Optional)
+
+For hierarchical quantitative data:
+
+```r
+library(QFeatures)
+
+# Store the entire QFeatures object
+lake$put("qf_experiment", qf)
+lake$snap("qfeatures_stored")
+
+# After normalization
+qf_norm <- QFeatures::normalize(qf, method = "center.median")
+lake$put("qf_normalized", qf_norm, depends_on = "qf_experiment")
+lake$snap("qfeatures_normalized")
+```
+
+## Full Lineage
+
+```r
+lake$tree("significant_proteins")
+# significant_proteins
+#   └── da_results
+#         ├── protein_normalized
+#         │     └── protein_quant
+#         │           └── peptide_quant
+#         │                 └── psm_filtered
+#         │                       └── psm_raw
+#         └── sample_groups
+```
+
+Every protein in the significant list can be traced back through the entire quantification hierarchy.

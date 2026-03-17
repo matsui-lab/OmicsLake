@@ -1,0 +1,174 @@
+---
+title: "Scenario: Single-cell RNA-seq Analysis"
+description: >
+  Version-controlled scRNA-seq workflow with QC checkpoints and lineage tracking
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Overview
+
+Single-cell RNA-seq analysis is inherently iterative: QC thresholds, clustering resolutions, and cell type annotations are revised multiple times. OmicsLake captures each decision point, enabling comparison and rollback.
+
+## Setup
+
+```r
+library(OmicsLake)
+lake <- Lake$new("scrna_project")
+```
+
+## Step 1: Import Raw Data
+
+```r
+# Simulated scRNA-seq count matrix (genes × cells)
+set.seed(42)
+n_genes <- 2000
+n_cells <- 5000
+raw_matrix <- matrix(rpois(n_genes * n_cells, lambda = 2),
+                     nrow = n_genes,
+                     dimnames = list(paste0("Gene_", 1:n_genes),
+                                     paste0("Cell_", 1:n_cells)))
+
+# Cell-level metadata
+cell_meta <- data.frame(
+  cell_id = colnames(raw_matrix),
+  n_genes = colSums(raw_matrix > 0),
+  total_counts = colSums(raw_matrix),
+  pct_mito = runif(n_cells, 0, 25)
+)
+
+lake$put("raw_counts", as.data.frame(raw_matrix))
+lake$put("cell_metadata", cell_meta)
+lake$snap("01_raw")
+```
+
+## Step 2: QC --- Explore Different Thresholds
+
+```r
+# Strict QC
+lake$ref("cell_metadata") |>
+  dplyr::filter(n_genes > 500, total_counts > 1000, pct_mito < 10) |>
+  save_as("qc_strict_cells", lake)
+# How many cells pass?
+nrow(lake$get("qc_strict_cells"))
+
+lake$snap("02_qc_strict")
+
+# Lenient QC
+lake$ref("cell_metadata") |>
+  dplyr::filter(n_genes > 200, total_counts > 500, pct_mito < 20) |>
+  save_as("qc_lenient_cells", lake)
+nrow(lake$get("qc_lenient_cells"))
+
+lake$snap("02_qc_lenient")
+```
+
+Both QC strategies are preserved. You can compare cell counts and proceed with either.
+
+## Step 3: Normalization
+
+```r
+# Proceed with strict QC
+passing_cells <- lake$get("qc_strict_cells")$cell_id
+filtered_matrix <- lake$get("raw_counts")[, passing_cells]
+
+# Simple log-normalization (in practice, use scran/Seurat)
+size_factors <- colSums(filtered_matrix) / median(colSums(filtered_matrix))
+normalized <- log1p(sweep(filtered_matrix, 2, size_factors, "/"))
+
+lake$put("normalized_counts", as.data.frame(normalized),
+         depends_on = c("raw_counts", "qc_strict_cells"))
+lake$snap("03_normalized")
+```
+
+## Step 4: Feature Selection & Dimensionality Reduction
+
+```r
+# Highly variable genes
+gene_vars <- apply(as.matrix(lake$get("normalized_counts")), 1, var)
+hvg <- names(sort(gene_vars, decreasing = TRUE))[1:500]
+lake$put("hvg_list", list(genes = hvg), depends_on = "normalized_counts")
+
+# PCA (store as object)
+pca_data <- lake$get("normalized_counts")[hvg, ]
+pca_result <- prcomp(t(as.matrix(pca_data)), center = TRUE, scale. = TRUE)
+lake$put("pca_result", pca_result, depends_on = "normalized_counts")
+
+# UMAP embeddings (store as table for easy querying)
+umap_coords <- data.frame(
+  cell_id = rownames(pca_result$x),
+  UMAP1 = pca_result$x[, 1],  # placeholder; use uwot::umap() in practice
+  UMAP2 = pca_result$x[, 2]
+)
+lake$put("umap_coords", umap_coords, depends_on = "pca_result")
+lake$snap("04_dimreduction")
+```
+
+## Step 5: Clustering --- Compare Resolutions
+
+```r
+# Try multiple clustering resolutions
+for (k in c(5, 10, 15)) {
+  clusters <- kmeans(pca_result$x[, 1:10], centers = k)
+  cluster_df <- data.frame(
+    cell_id = rownames(pca_result$x),
+    cluster = paste0("C", clusters$cluster)
+  )
+  lake$put(paste0("clusters_k", k), cluster_df,
+           depends_on = "pca_result")
+}
+lake$snap("05_clustering")
+
+# Compare cluster distributions
+for (k in c(5, 10, 15)) {
+  cat(sprintf("k=%d: ", k))
+  print(table(lake$get(paste0("clusters_k", k))$cluster))
+}
+```
+
+## Step 6: Cell Type Annotation
+
+```r
+# Annotate clusters (k=10 chosen after evaluation)
+annotations_v1 <- data.frame(
+  cluster = paste0("C", 1:10),
+  cell_type = c("T cells", "B cells", "Monocytes", "NK cells", "DCs",
+                "T cells", "Fibroblasts", "Epithelial", "Macrophages", "Unknown")
+)
+lake$put("annotations_v1", annotations_v1, depends_on = "clusters_k10")
+lake$snap("06_annotated_v1")
+
+# Revised after marker gene validation
+annotations_v2 <- annotations_v1
+annotations_v2$cell_type[10] <- "Plasma cells"  # Resolved "Unknown"
+lake$put("annotations_v2", annotations_v2, depends_on = "clusters_k10")
+lake$snap("06_annotated_v2")
+```
+
+## Full Lineage
+
+```r
+lake$tree("annotations_v2")
+# annotations_v2
+#   └── clusters_k10
+#         └── pca_result
+#               └── normalized_counts
+#                     ├── raw_counts
+#                     └── qc_strict_cells
+#                           └── cell_metadata
+```
+
+## Export Results
+
+```r
+# Final annotated cell metadata
+lake$ref("umap_coords") |>
+  dplyr::left_join(lake$ref("clusters_k10"), by = "cell_id") |>
+  dplyr::left_join(lake$ref("annotations_v2"), by = "cluster") |>
+  save_as("final_cell_annotations", lake)
+
+lake$export("final_cell_annotations", "results/cell_annotations.parquet")
+lake$snap("07_final")
+```

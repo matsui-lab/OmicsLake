@@ -5,32 +5,59 @@ template:
 
 navbar:
   structure:
-    left:  [intro, articles, reference, news]
+    left:  [intro, learn, scenarios, reference, news]
     right: [search, github]
   components:
     intro:
       text: Get Started
-      href: articles/lake_quickstart_EN.html
-    articles:
-      text: Articles
+      href: articles/concepts.html
+    learn:
+      text: Learn
       menu:
-        - text: "Quick Start (EN)"
-          href: articles/lake_quickstart_EN.html
-        - text: "Comprehensive Guide (EN)"
-          href: articles/omicslake_comprehensive_guide_EN.html
-        - text: "Practical Workflow (EN)"
-          href: articles/omicslake_practical_workflow_EN.html
-        - text: "Layer Use Cases (EN)"
-          href: articles/omicslake_layer_use_cases_EN.html
+        - text: "Core Concepts"
+          href: articles/concepts.html
         - text: "---"
-        - text: "Quick Start (JP)"
-          href: articles/lake_quickstart.html
-        - text: "Comprehensive Guide (JP)"
-          href: articles/omicslake_comprehensive_guide.html
-        - text: "Practical Workflow (JP)"
-          href: articles/omicslake_practical_workflow.html
-        - text: "Layer Use Cases (JP)"
-          href: articles/omicslake_layer_use_cases.html
+        - text: "Tutorials"
+        - text: "Getting Started (15 min)"
+          href: articles/tutorial-getting-started.html
+        - text: "Mastering Lineage Tracking"
+          href: articles/tutorial-lineage.html
+        - text: "Version Control & Reproducibility"
+          href: articles/tutorial-reproducibility.html
+        - text: "---"
+        - text: "Reference Guides"
+        - text: "Quick Start"
+          href: articles/lake_quickstart_EN.html
+        - text: "Comprehensive API Guide"
+          href: articles/omicslake_comprehensive_guide_EN.html
+        - text: "FAQ & Troubleshooting"
+          href: articles/faq.html
+        - text: "Performance Tips"
+          href: articles/performance.html
+    scenarios:
+      text: Scenarios
+      menu:
+        - text: "Omics Workflows"
+        - text: "Bulk RNA-seq"
+          href: articles/scenario-rnaseq.html
+        - text: "Single-cell RNA-seq"
+          href: articles/scenario-single-cell.html
+        - text: "Proteomics & Mass Spectrometry"
+          href: articles/scenario-proteomics-ms.html
+        - text: "Metabolomics"
+          href: articles/scenario-metabolomics.html
+        - text: "Multi-omics Integration"
+          href: articles/scenario-multi-omics.html
+        - text: "---"
+        - text: "Applied Scenarios"
+        - text: "Team Collaboration & Handoff"
+          href: articles/scenario-collaboration.html
+        - text: "---"
+        - text: "Advanced"
+        - text: "Practical Workflow (RNA-seq)"
+          href: articles/omicslake_practical_workflow_EN.html
+        - text: "Bioconductor Layer Use Cases"
+          href: articles/omicslake_layer_use_cases_EN.html
     reference:
       text: Reference
       href: reference/index.html
@@ -41,6 +68,13 @@ navbar:
       icon: fa-github
       href: https://github.com/matsui-lab/OmicsLake
       aria-label: GitHub
+
+home:
+  links:
+    - text: Bioconductor
+      href: https://bioconductor.org/
+    - text: Report a bug
+      href: https://github.com/matsui-lab/OmicsLake/issues
 
 reference:
   - title: "Core - Lake Class"
@@ -130,13 +164,38 @@ reference:
       - starts_with("ol_")
 
 articles:
-  - title: "English"
+  - title: "Getting Started"
     navbar: ~
     contents:
+      - concepts
+      - tutorial-getting-started
+
+  - title: "Tutorials"
+    contents:
+      - tutorial-lineage
+      - tutorial-reproducibility
+
+  - title: "Omics Scenarios"
+    contents:
+      - scenario-rnaseq
+      - scenario-single-cell
+      - scenario-proteomics-ms
+      - scenario-metabolomics
+      - scenario-multi-omics
+
+  - title: "Applied Scenarios"
+    contents:
+      - scenario-collaboration
+
+  - title: "Reference Guides"
+    contents:
+      - faq
+      - performance
       - lake_quickstart_EN
       - omicslake_comprehensive_guide_EN
       - omicslake_practical_workflow_EN
       - omicslake_layer_use_cases_EN
+
   - title: "Japanese"
     contents:
       - lake_quickstart

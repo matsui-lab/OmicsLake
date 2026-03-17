@@ -1,0 +1,158 @@
+---
+title: "FAQ & Troubleshooting"
+description: >
+  Answers to common questions and solutions for typical issues
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## General
+
+### What is OmicsLake?
+
+OmicsLake is an R package for versioned data management with automatic lineage tracking. It stores tables and R objects in an embedded DuckDB database, provides snapshot-based version control, and tracks how datasets depend on each other through dplyr integration.
+
+### Do I need to know SQL?
+
+No. OmicsLake's primary interface uses R functions (`put`, `get`, `ref`) and dplyr verbs. SQL is available for advanced queries via `sql()` but never required.
+
+### How much disk space does OmicsLake use?
+
+Each snapshot creates physical backup tables. A rough estimate:
+
+```
+Storage ≈ active_data_size × (1 + number_of_snapshots)
+```
+
+For a project with 500 MB of active data and 5 snapshots, expect ~3 GB. Monitor with `lake_status()`.
+
+### Can I use OmicsLake data with Python?
+
+Yes. Export to Parquet format:
+
+```r
+lake$export("results", "results.parquet")
+```
+
+```python
+import pandas as pd
+df = pd.read_parquet("results.parquet")
+```
+
+### What happens if R crashes?
+
+DuckDB is ACID-compliant. Your data and snapshots survive crashes. The next time you open the lake, everything is intact.
+
+## Lineage
+
+### Why is my lineage incomplete?
+
+Common causes:
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No parents for derived dataset | Used `get()` instead of `ref()` | Use `lake$ref()` for dplyr pipelines |
+| Missing edge after transformation | Called `collect()` then more R ops | Use `save_as()` before/after `collect()` |
+| Bioconductor step untracked | No `depends_on` specified | Add `depends_on` to `put()` |
+
+### How do I fix missing lineage edges?
+
+```r
+# Add a missing edge
+link("child_dataset", "parent_dataset")
+
+# Remove an incorrect edge
+unlink_dep("child_dataset", "wrong_parent")
+```
+
+### Does lineage track column-level changes?
+
+No. OmicsLake tracks **dataset-level** dependencies: which tables were used to produce which outputs. It does not track which specific columns or rows were involved.
+
+## Version Control
+
+### What's the difference between snap() and tag()?
+
+`snap(label)` creates a labeled checkpoint of the entire lake. `tag()` is a legacy alias. In the v2.0 API, use `snap()`.
+
+### Can I delete old snapshots?
+
+Currently, you can remove backup tables directly via SQL:
+
+```r
+# List snapshot backup tables
+DBI::dbListTables(lake$.__enclos_env__$private$.state$conn) |>
+  grep("__ol_backup_", x = _, value = TRUE)
+
+# Remove a specific backup (careful!)
+DBI::dbExecute(conn, "DROP TABLE __ol_backup_counts_v1")
+```
+
+A dedicated `ol_prune()` function is planned for a future release.
+
+### How many snapshots should I create?
+
+Create snapshots at natural analysis boundaries (import, QC, normalization, analysis, final). Typical projects have 5--15 snapshots. There's no hard limit, but each snapshot increases storage.
+
+## Performance
+
+### OmicsLake is slow for large data
+
+- Use `ref()` instead of `get()` --- lazy evaluation only loads what you need
+- Filter and select before `collect()` --- DuckDB pushes operations down
+- Use chunked processing for datasets exceeding RAM:
+
+```r
+for (i in seq(1, total_rows, by = 1e6)) {
+  chunk <- read_chunk(i, 1e6)
+  lake$put("large_table", chunk,
+           mode = ifelse(i == 1, "create", "append"))
+}
+```
+
+### When should I use ref() vs get()?
+
+| Function | Returns | Memory | Best for |
+|----------|---------|--------|----------|
+| `get()` | Full R data frame | Loads everything | Small data, non-dplyr operations |
+| `ref()` | Lazy tbl (DuckDB) | Minimal until `collect()` | Large data, dplyr pipelines, lineage tracking |
+
+### Parquet vs RDS: when to use which?
+
+| Format | Size | Speed | Cross-language | Use case |
+|--------|------|-------|---------------|----------|
+| Parquet | ~55% smaller | Fast columnar reads | Yes (Python, Julia) | Sharing, archival |
+| RDS | Baseline | Fast for full objects | No (R only) | Complex R objects, models |
+
+## Troubleshooting
+
+### "Connection already closed" error
+
+The DuckDB connection was garbage collected. Re-open the lake:
+
+```r
+lake <- Lake$new("my_project")  # Reconnects automatically
+```
+
+### "Table not found" after restore
+
+Check that the label is correct:
+
+```r
+lake$history()  # List all available snapshots
+```
+
+Table names are case-sensitive.
+
+### Tests fail on my machine
+
+Ensure all dependencies are installed:
+
+```r
+BiocManager::install(c("SummarizedExperiment", "S4Vectors"))
+install.packages(c("duckdb", "arrow", "dplyr", "R6"))
+```
+
+Check temp directory permissions --- OmicsLake stores test data in temporary directories.

@@ -1,0 +1,205 @@
+---
+title: "Core Concepts"
+description: >
+  Understanding OmicsLake's key ideas: lakes, versions, snapshots, lineage, and adapters
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## What is a Lake?
+
+A **Lake** is a versioned data store for a single project, backed by an embedded DuckDB database. Think of it as **Git for your data**: every dataset you store can be snapshotted, restored, and traced.
+
+```
+~/.omicslake/
+  └── my_project/
+        └── db.duckdb    # All tables, objects, metadata, lineage
+```
+
+Each lake is self-contained. One lake per project keeps things organized.
+
+```r
+lake <- Lake$new("my_rnaseq_project")
+```
+
+## Three Data Types
+
+OmicsLake stores three kinds of data, each optimized for its use case:
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    lake$put()                         │
+│                                                      │
+│  data.frame / matrix  ──→  TABLE (DuckDB)            │
+│     - Queryable with SQL and dplyr                   │
+│     - Columnar storage, fast aggregation             │
+│                                                      │
+│  R object (list, model) ──→  OBJECT (serialized)     │
+│     - Arbitrary R objects preserved exactly           │
+│     - Versioned with timestamps                      │
+│                                                      │
+│  SummarizedExperiment  ──→  ADAPTER (decomposed)     │
+│     - Assays → long-format tables                    │
+│     - colData/rowData → separate tables              │
+│     - Metadata → serialized object                   │
+└──────────────────────────────────────────────────────┘
+```
+
+Type detection is automatic --- just call `put()` and OmicsLake routes your data to the right backend.
+
+## The put/get Cycle
+
+The fundamental operations are simple:
+
+```r
+# Store
+lake$put("counts", count_matrix)
+
+# Retrieve
+df <- lake$get("counts")
+```
+
+`put()` overwrites the **active state** of a dataset. To preserve a historical state, create a snapshot first.
+
+## Snapshots & Time Travel
+
+A **snapshot** is a labeled checkpoint of your entire lake at a moment in time.
+
+```
+Timeline:
+  ───[put counts]───[put metadata]───[snap "raw"]───[normalize]───[snap "normalized"]───
+                                         │                              │
+                                    Checkpoint 1                  Checkpoint 2
+```
+
+```r
+lake$snap("raw")            # Save current state as "raw"
+# ... modify data ...
+lake$snap("normalized")     # Save new state
+
+lake$restore("raw")         # Go back to "raw" state
+```
+
+**Key distinction**: `put()` updates the active working state. `snap()` creates a restorable copy. Only snapshotted states can be restored.
+
+## Version References
+
+Access historical data without restoring the full project:
+
+| Reference | Meaning | Example |
+|-----------|---------|---------|
+| *(none)* | Latest active state | `lake$get("counts")` |
+| `"@latest"` | Same as above (explicit) | `lake$get("counts", "@latest")` |
+| `"@first"` | Earliest object version | `lake$get("model", "@first")` |
+| `"raw"` | Named snapshot | `lake$get("counts", "raw")` |
+
+## Lineage Tracking
+
+**Lineage** is the record of how datasets depend on each other. OmicsLake tracks this automatically through dplyr operations.
+
+```
+  counts ──┐
+            ├──[left_join]──→ merged ──[filter]──→ filtered ──[summarize]──→ summary
+  metadata ─┘
+```
+
+### Automatic tracking (dplyr)
+
+When you use `ref()` to create lazy references and pipe them through dplyr verbs, OmicsLake automatically records which datasets contributed to each result:
+
+```r
+lake$ref("counts") |>
+  left_join(lake$ref("metadata"), by = "sample_id") |>
+  filter(quality > 0.8) |>
+  summarize(mean_expr = mean(expression)) |>
+  save_as("summary", lake)
+
+lake$tree("summary")
+# summary
+#   ├── counts
+#   └── metadata
+```
+
+### Manual annotation (non-dplyr operations)
+
+For operations outside dplyr (e.g., DESeq2, Seurat, edgeR), specify dependencies explicitly:
+
+```r
+dds <- DESeq2::DESeq(lake$get("raw_counts"))
+lake$put("de_results", as.data.frame(results(dds)),
+         depends_on = "raw_counts")
+```
+
+### What's tracked and what's not
+
+| Operation | Auto-tracked? |
+|-----------|:------------:|
+| dplyr verbs on `ref()` | Yes |
+| `save_as()` pipe terminator | Yes |
+| Base R (`merge`, `[`, `apply`) | **No** --- use `depends_on` |
+| Bioconductor functions | **No** --- use `depends_on` |
+| `collect()` then more transforms | **No** --- `save_as()` right after |
+
+## The Three Pillars of Reproducibility
+
+OmicsLake addresses the missing data layer in computational reproducibility:
+
+```
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│     Git      │  │    renv     │  │  OmicsLake  │
+│              │  │              │  │              │
+│  Code        │  │  Packages   │  │  Data States │
+│  Scripts     │  │  R versions │  │  Lineage     │
+│  Analysis    │  │  Libraries  │  │  Snapshots   │
+└─────────────┘  └─────────────┘  └─────────────┘
+     Code      +   Environment   +   Data State
+     ────────────────────────────────────────────
+                 = Reproducibility
+```
+
+Each tool handles a different dimension. Together, they provide complete reproducibility.
+
+## Adapters
+
+**Adapters** handle storage and reconstruction of complex Bioconductor objects. When you `put()` a SummarizedExperiment, the adapter:
+
+1. Extracts assay matrices → stores as queryable long-format tables
+2. Extracts colData/rowData → stores as separate versioned tables
+3. Serializes metadata → stores as an R object
+
+When you `get()` it back, the adapter reconstructs the original object exactly.
+
+```r
+lake$put("experiment", se)           # Decomposed automatically
+se_back <- lake$get("experiment")    # Reconstructed exactly
+all.equal(se, se_back)               # TRUE
+```
+
+Currently supported: **SummarizedExperiment**. Additional adapters for SingleCellExperiment, MultiAssayExperiment, Spectra, QFeatures, and MsExperiment are available for basic versioning.
+
+## Lightweight Mode
+
+For **existing scripts** you don't want to rewrite, lightweight mode adds tracking without changing your workflow:
+
+```r
+# Wrap an existing function
+tracked_normalize <- wrap_fn(my_normalize_function)
+result <- tracked_normalize(data)   # Lineage captured automatically
+
+# Or use a tracking context
+with_tracking(lake, {
+  raw <- lake$get("counts")
+  normalized <- normalize(raw)
+  lake$put("normalized", normalized)
+})
+# Dependencies inferred from get/put calls within the block
+```
+
+## What's Next?
+
+- **[Getting Started Tutorial](tutorial-getting-started.html)**: Build your first project in 15 minutes
+- **[Lineage Tutorial](tutorial-lineage.html)**: Master dependency tracking
+- **[RNA-seq Scenario](scenario-rnaseq.html)**: Complete bulk RNA-seq workflow
+- **[API Reference](../reference/index.html)**: Full function documentation

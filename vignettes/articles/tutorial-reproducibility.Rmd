@@ -1,0 +1,252 @@
+---
+title: "Tutorial: Version Control & Reproducibility"
+description: >
+  Master snapshots, time travel, and reproducible analysis workflows
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## The Reproducibility Stack
+
+Complete computational reproducibility requires three layers:
+
+| Layer | Tool | What it captures |
+|-------|------|-----------------|
+| Code | Git | Scripts, analysis logic |
+| Environment | renv + Docker | R version, package versions, system libraries |
+| **Data State** | **OmicsLake** | Intermediate datasets, lineage, parameters |
+
+OmicsLake provides the missing data layer.
+
+## Snapshot Strategies
+
+### When to snapshot
+
+Create snapshots at **natural analysis boundaries**:
+
+```r
+lake$put("counts", raw_counts)
+lake$snap("01_raw")                    # After data import
+
+lake$put("counts_normalized", normalized)
+lake$snap("02_normalized")             # After normalization
+
+lake$put("counts_filtered", filtered)
+lake$snap("03_qc_filtered")            # After QC
+
+lake$put("de_results", results_df)
+lake$snap("04_de_complete")            # After statistical analysis
+
+lake$put("enrichment", pathway_results)
+lake$snap("05_final")                  # Final results
+```
+
+### Naming conventions
+
+| Pattern | Example | Best for |
+|---------|---------|----------|
+| Numbered steps | `01_raw`, `02_normalized` | Linear workflows |
+| Date-based | `2025-03-18_submission` | Milestone tracking |
+| Descriptive | `before_batch_correction` | Exploratory analysis |
+| Analyst-prefixed | `yuki_normalization_v2` | Team projects |
+
+### Storage considerations
+
+Each `snap()` creates physical backup tables in DuckDB. Monitor storage:
+
+```r
+lake_status()
+# Tables: 5, Objects: 2, Snapshots: 3
+# Database size: 245 MB
+```
+
+## Time Travel
+
+### Comparing versions
+
+```r
+# Get data at different snapshots
+counts_raw <- lake$get("counts", "01_raw")
+counts_normalized <- lake$get("counts_normalized", "02_normalized")
+
+# Compare
+dim(counts_raw)          # 20000 x 6
+dim(counts_normalized)   # 20000 x 6  (same dimensions)
+range(counts_raw$sample_A)        # 0 - 15234
+range(counts_normalized$sample_A) # 0.0 - 12.3  (log-transformed)
+```
+
+### Full project restore
+
+```r
+# Go back to the QC step
+lake$restore("03_qc_filtered")
+
+# Everything after this point is gone from the active state
+# But snapshots 04 and 05 still exist as backups!
+
+# You can still access them:
+de_results <- lake$get("de_results", "04_de_complete")
+```
+
+## Multi-step Analysis with Checkpoints
+
+Complete example: RNA-seq workflow with recovery points.
+
+```r
+lake <- Lake$new("rnaseq_analysis")
+
+# === Step 1: Import ===
+counts <- read.csv("counts.csv", row.names = 1)
+sample_info <- read.csv("samples.csv")
+lake$put("raw_counts", counts)
+lake$put("sample_info", sample_info)
+lake$snap("import")
+
+# === Step 2: QC ===
+lake$ref("raw_counts") |>
+  dplyr::filter(rowSums(dplyr::across(where(is.numeric))) > 10) |>
+  save_as("qc_counts", lake)
+lake$snap("qc")
+
+# === Step 3: Normalize ===
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = lake$get("qc_counts"),
+  colData = lake$get("sample_info"),
+  design = ~condition
+)
+dds <- DESeq2::estimateSizeFactors(dds)
+normalized <- counts(dds, normalized = TRUE)
+lake$put("normalized", as.data.frame(normalized),
+         depends_on = c("qc_counts", "sample_info"))
+lake$snap("normalized")
+
+# === Step 4: DE Analysis ===
+dds <- DESeq2::DESeq(dds)
+res <- as.data.frame(DESeq2::results(dds))
+lake$put("de_results", res, depends_on = "normalized")
+ol_commit(note = "DESeq2 with default parameters, design = ~condition")
+lake$snap("de_complete")
+```
+
+### Rollback and re-analyze
+
+The reviewer asks for a different normalization:
+
+```r
+# Go back to QC
+lake$restore("qc")
+
+# Apply different normalization (e.g., TMM via edgeR)
+dge <- edgeR::DGEList(counts = lake$get("qc_counts"))
+dge <- edgeR::calcNormFactors(dge, method = "TMM")
+lake$put("normalized_tmm", as.data.frame(edgeR::cpm(dge)),
+         depends_on = "qc_counts")
+lake$snap("normalized_tmm")
+
+# Continue with new normalization...
+```
+
+## Cross-environment Portability
+
+### Sharing a lake directory
+
+```r
+# The entire lake is in one directory
+# ~/.omicslake/rnaseq_analysis/
+
+# Zip and share
+zip("rnaseq_analysis.zip", "~/.omicslake/rnaseq_analysis")
+# Send to collaborator
+```
+
+### Parquet export for cross-language sharing
+
+```r
+# Export key results for Python/Julia users
+lake$export("de_results", "results/de_results.parquet")
+lake$export("normalized", "results/normalized_counts.parquet")
+```
+
+### Verification after transfer
+
+```r
+# Collaborator verifies the received data
+lake <- Lake$new("rnaseq_analysis")
+counts <- lake$get("raw_counts", "import")
+
+# Compare with known checksum or expected values
+all.equal(dim(counts), c(20000, 6))     # TRUE
+all.equal(sum(counts[,1]), 1234567)      # TRUE (within tolerance)
+```
+
+## Reproducibility Best Practices
+
+### 1. Record analysis parameters
+
+```r
+ol_commit(
+  note = "Differential expression analysis",
+  params = list(
+    method = "DESeq2",
+    design = "~condition",
+    alpha = 0.05,
+    lfc_threshold = 1
+  )
+)
+```
+
+### 2. Combine with renv
+
+```r
+# Lock R package versions alongside data snapshots
+renv::snapshot()
+lake$snap("analysis_v1")
+ol_commit(note = "Snapshot with renv lock",
+          params = list(renv_lock = "renv.lock"))
+```
+
+### 3. Record session info
+
+```r
+lake$put("session_info", capture.output(sessionInfo()))
+lake$snap("final_with_session")
+```
+
+### 4. Snapshot before destructive operations
+
+```r
+# Always snapshot before irreversible changes
+lake$snap("before_filtering")
+# Now safe to apply aggressive filters
+```
+
+## Recovering from Mistakes
+
+### Restore to a known good state
+
+```r
+# Accidentally overwrote important data?
+lake$restore("last_known_good")
+```
+
+### Diagnostics
+
+```r
+# Check lake health
+lake_doctor()
+
+# Inspect available snapshots
+lake$history()
+
+# Repair inconsistencies
+lake_repair()
+```
+
+## Next Steps
+
+- **[Team Collaboration](scenario-collaboration.html)** --- Share reproducible analyses
+- **[Multi-omics Integration](scenario-multi-omics.html)** --- Multi-layer versioning
+- **[Performance Tips](performance.html)** --- Optimize for large datasets

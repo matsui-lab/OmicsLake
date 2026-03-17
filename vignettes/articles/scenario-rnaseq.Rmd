@@ -1,0 +1,146 @@
+---
+title: "Scenario: Bulk RNA-seq Analysis"
+description: >
+  Complete differential expression workflow with versioned checkpoints and lineage
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Overview
+
+Bulk RNA-seq analysis involves multiple interdependent steps where intermediate data states matter: raw counts, filtered counts, normalized counts, DE results, and enrichment results. OmicsLake captures each state as a versioned, traceable dataset.
+
+## Setup
+
+```r
+library(OmicsLake)
+library(SummarizedExperiment)
+
+lake <- Lake$new("rnaseq_project")
+```
+
+## Step 1: Import Raw Data
+
+```r
+# Import count matrix and sample metadata
+counts <- read.csv("featureCounts_output.csv", row.names = 1)
+sample_info <- data.frame(
+  sample_id = colnames(counts),
+  condition = c(rep("control", 3), rep("treated", 3)),
+  batch = c(1, 1, 2, 1, 2, 2)
+)
+
+lake$put("raw_counts", counts)
+lake$put("sample_info", sample_info)
+lake$snap("01_imported")
+```
+
+## Step 2: Quality Control
+
+```r
+# Filter low-expression genes
+lake$ref("raw_counts") |>
+  dplyr::mutate(total = rowSums(dplyr::across(where(is.numeric)))) |>
+  dplyr::filter(total > 10) |>
+  dplyr::select(-total) |>
+  save_as("qc_counts", lake)
+
+lake$snap("02_qc")
+```
+
+## Step 3: Normalization (DESeq2)
+
+```r
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = as.matrix(lake$get("qc_counts")),
+  colData = lake$get("sample_info"),
+  design = ~batch + condition
+)
+dds <- DESeq2::estimateSizeFactors(dds)
+norm_counts <- as.data.frame(DESeq2::counts(dds, normalized = TRUE))
+
+lake$put("normalized_counts", norm_counts,
+         depends_on = c("qc_counts", "sample_info"))
+ol_commit(note = "DESeq2 normalization, design = ~batch + condition")
+lake$snap("03_normalized")
+```
+
+## Step 4: Differential Expression
+
+```r
+dds <- DESeq2::DESeq(dds)
+res <- as.data.frame(DESeq2::results(dds, contrast = c("condition", "treated", "control")))
+res$gene_id <- rownames(res)
+
+lake$put("de_results", res, depends_on = "normalized_counts")
+ol_commit(note = "DESeq2 Wald test, treated vs control, batch-corrected")
+lake$snap("04_de_results")
+```
+
+## Step 5: Significant Genes
+
+```r
+lake$ref("de_results") |>
+  dplyr::filter(!is.na(padj), padj < 0.05, abs(log2FoldChange) > 1) |>
+  save_as("significant_genes", lake)
+
+lake$snap("05_final")
+```
+
+## Full Lineage
+
+```r
+lake$tree("significant_genes")
+# significant_genes
+#   └── de_results
+#         └── normalized_counts
+#               ├── qc_counts
+#               │     └── raw_counts
+#               └── sample_info
+```
+
+## Alternative: SummarizedExperiment Workflow
+
+```r
+# Store as SummarizedExperiment
+se <- SummarizedExperiment(
+  assays = list(counts = as.matrix(counts)),
+  colData = DataFrame(sample_info)
+)
+lake$put("rnaseq_se", se)
+lake$snap("se_stored")
+
+# Retrieve and verify
+se_restored <- lake$get("rnaseq_se")
+all.equal(se, se_restored)  # TRUE
+```
+
+## Reviewer Revision Scenario
+
+Reviewer asks: *"Please re-analyze using TMM normalization instead of DESeq2."*
+
+```r
+# Restore to QC step
+lake$restore("02_qc")
+
+# Apply TMM normalization
+dge <- edgeR::DGEList(counts = as.matrix(lake$get("qc_counts")))
+dge <- edgeR::calcNormFactors(dge, method = "TMM")
+tmm_counts <- as.data.frame(edgeR::cpm(dge, log = TRUE))
+
+lake$put("normalized_tmm", tmm_counts, depends_on = "qc_counts")
+lake$snap("03_normalized_tmm")
+
+# Continue with edgeR DE analysis...
+```
+
+Both normalization paths are preserved with full lineage.
+
+## Export for Publication
+
+```r
+lake$export("significant_genes", "results/significant_genes.parquet")
+lake$export("de_results", "results/full_de_results.parquet")
+```

@@ -1,0 +1,191 @@
+---
+title: "Scenario: Team Collaboration & Data Handoff"
+description: >
+  Share reproducible analysis states with collaborators and across environments
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Overview
+
+When multiple researchers work on the same dataset, or when analyses need to be handed off for review, data provenance becomes critical. OmicsLake provides versioned snapshots and lineage tracking to ensure everyone works from the same, documented data states.
+
+## Snapshot Naming for Teams
+
+Establish clear naming conventions:
+
+```r
+# Recommended: date + analyst + description
+lake$snap("2025-03-18_yuki_qc_complete")
+lake$snap("2025-03-20_tanaka_normalization_v2")
+lake$snap("2025-03-25_submission_final")
+
+# Record context with each snapshot
+ol_commit(
+  note = "QC filtering complete. Removed 2,341 low-quality cells.",
+  params = list(
+    analyst = "Yuki Matsui",
+    min_genes = 500,
+    max_mito_pct = 10
+  )
+)
+```
+
+## Sharing a Lake
+
+### Option A: Share the directory (simplest)
+
+```r
+# The entire lake is in ~/.omicslake/<project>/
+# Package and share
+tar("rnaseq_project.tar.gz", "~/.omicslake/rnaseq_project", compression = "gzip")
+```
+
+The recipient unpacks it to their `~/.omicslake/` and opens it:
+
+```r
+lake <- Lake$new("rnaseq_project")
+lake$history()  # See all snapshots
+lake$tree("de_results")  # Inspect lineage
+```
+
+### Option B: Export specific datasets as Parquet
+
+For collaborators who use Python or only need specific results:
+
+```r
+lake$export("de_results", "shared/de_results.parquet")
+lake$export("normalized_counts", "shared/normalized_counts.parquet")
+lake$export("sample_info", "shared/sample_info.parquet")
+```
+
+### Option C: Git-based synchronization
+
+For ongoing collaboration, include the lake in version control:
+
+```r
+# Add lake to .gitignore (DuckDB files are binary)
+# Instead, export snapshots to Parquet in a tracked directory
+dir.create("data/snapshots", recursive = TRUE)
+for (tbl in lake$tables()) {
+  lake$export(tbl, file.path("data/snapshots", paste0(tbl, ".parquet")))
+}
+# Git track the Parquet files (or use Git LFS for large ones)
+```
+
+## Reproducing a Collaborator's Analysis
+
+When you receive a lake from a colleague:
+
+```r
+# 1. Open the lake
+lake <- Lake$new("received_project")
+
+# 2. Check available snapshots
+lake$history()
+# label                          created_at
+# 2025-03-18_yuki_qc_complete    2025-03-18 14:30:00
+# 2025-03-20_yuki_normalized     2025-03-20 09:15:00
+# 2025-03-22_yuki_de_complete    2025-03-22 16:45:00
+
+# 3. Restore to their final state
+lake$restore("2025-03-22_yuki_de_complete")
+
+# 4. Inspect lineage
+lake$tree("de_results")
+
+# 5. Verify the data
+de <- lake$get("de_results")
+dim(de)
+head(de)
+
+# 6. Build on their work
+lake$ref("de_results") |>
+  dplyr::filter(padj < 0.01, abs(log2FoldChange) > 2) |>
+  save_as("stringent_hits", lake)
+
+lake$snap("2025-03-25_tanaka_stringent_filter")
+```
+
+## Parallel Analysis Branches
+
+Multiple analysts working from the same raw data:
+
+```r
+# Analyst A: DESeq2 approach
+lake$restore("qc_complete")
+# ... DESeq2 analysis ...
+lake$snap("analyst_a_deseq2")
+
+# Analyst B: edgeR approach
+lake$restore("qc_complete")
+# ... edgeR analysis ...
+lake$snap("analyst_b_edger")
+
+# Compare results
+deseq_results <- lake$get("de_results_deseq2", "analyst_a_deseq2")
+edger_results <- lake$get("de_results_edger", "analyst_b_edger")
+
+# How many significant genes overlap?
+deseq_sig <- deseq_results$gene_id[deseq_results$padj < 0.05]
+edger_sig <- edger_results$gene_id[edger_results$padj < 0.05]
+length(intersect(deseq_sig, edger_sig))
+```
+
+## The Complete Reproducibility Package
+
+For maximum reproducibility, bundle four components:
+
+```r
+# 1. Lake directory (data + metadata + lineage)
+tar("reproducibility_package/lake.tar.gz",
+    "~/.omicslake/my_project", compression = "gzip")
+
+# 2. renv lockfile (package versions)
+renv::snapshot()
+file.copy("renv.lock", "reproducibility_package/renv.lock")
+
+# 3. Analysis scripts (Git)
+# git archive HEAD -o reproducibility_package/code.tar.gz
+
+# 4. Session info
+writeLines(capture.output(sessionInfo()),
+           "reproducibility_package/session_info.txt")
+```
+
+### Recipient's workflow
+
+```r
+# 1. Restore package environment
+renv::restore("renv.lock")
+
+# 2. Unpack lake
+untar("lake.tar.gz", exdir = "~/.omicslake/")
+
+# 3. Open and verify
+lake <- Lake$new("my_project")
+lake$restore("submission_final")
+
+# 4. Run analysis scripts
+source("analysis.R")
+
+# 5. Compare results
+all.equal(
+  lake$get("de_results"),
+  read.csv("expected_results.csv")
+)
+```
+
+## Handoff Checklist
+
+Before sharing an analysis:
+
+- [ ] Create a final snapshot with a descriptive label
+- [ ] Verify all lineage edges are present (`tree()` for key outputs)
+- [ ] Record analysis parameters with `ol_commit()`
+- [ ] Export key results as Parquet for cross-platform access
+- [ ] Include `renv.lock` for package reproducibility
+- [ ] Document snapshot inventory and purpose of each
+- [ ] Test restore on a clean environment if possible

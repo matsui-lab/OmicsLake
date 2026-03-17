@@ -1,0 +1,200 @@
+---
+title: "Tutorial: Getting Started"
+description: >
+  Build your first OmicsLake project in 15 minutes
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Installation
+
+```r
+# From GitHub
+remotes::install_github("matsui-lab/OmicsLake")
+
+# Or from Bioconductor (when available)
+# BiocManager::install("OmicsLake")
+```
+
+## Step 1: Create a Lake
+
+```r
+library(OmicsLake)
+
+lake <- Lake$new("gene_expression_demo")
+```
+
+This creates a DuckDB-backed data store at `~/.omicslake/gene_expression_demo/`.
+
+## Step 2: Store Data
+
+Let's create a simple gene expression dataset:
+
+```r
+# Toy gene expression data
+counts <- data.frame(
+  gene_id = paste0("GENE_", 1:100),
+  sample_A = rpois(100, lambda = 500),
+  sample_B = rpois(100, lambda = 500),
+  sample_C = rpois(100, lambda = 300),
+  gene_type = sample(c("protein_coding", "lncRNA", "miRNA"), 100, replace = TRUE)
+)
+
+# Store it
+lake$put("counts", counts)
+```
+
+OmicsLake automatically detects this is a data frame and stores it in DuckDB.
+
+## Step 3: Retrieve and Query Data
+
+```r
+# Get the full table
+df <- lake$get("counts")
+head(df)
+
+# Lazy reference for efficient queries
+lake$ref("counts") |>
+  dplyr::filter(gene_type == "protein_coding") |>
+  dplyr::select(gene_id, sample_A, sample_B) |>
+  dplyr::collect()
+```
+
+With `ref()`, filters are pushed down to DuckDB --- only matching rows are loaded into R memory.
+
+## Step 4: Add More Data
+
+```r
+# Sample metadata
+metadata <- data.frame(
+  sample = c("sample_A", "sample_B", "sample_C"),
+  condition = c("treated", "treated", "control"),
+  batch = c(1, 2, 1)
+)
+
+lake$put("metadata", metadata)
+
+# Check what's in the lake
+lake$tables()
+# [1] "counts"   "metadata"
+```
+
+## Step 5: Create a Snapshot
+
+Before making changes, save the current state:
+
+```r
+lake$snap("raw_data")
+```
+
+This creates a labeled checkpoint. You can always return to this exact state.
+
+## Step 6: Transform Data with Lineage
+
+```r
+# Derive a new dataset --- lineage tracked automatically
+lake$ref("counts") |>
+  dplyr::left_join(lake$ref("metadata"),
+                   by = c("sample_A" = "sample")) |>
+  dplyr::filter(gene_type == "protein_coding") |>
+  dplyr::mutate(total = sample_A + sample_B + sample_C) |>
+  save_as("protein_coding_counts", lake)
+```
+
+OmicsLake records that `protein_coding_counts` depends on both `counts` and `metadata`.
+
+```r
+# View the lineage
+lake$tree("protein_coding_counts")
+# protein_coding_counts
+#   ├── counts
+#   └── metadata
+```
+
+## Step 7: Snapshot Again
+
+```r
+lake$snap("filtered")
+```
+
+Now you have two snapshots:
+
+```r
+lake$history()
+# label         created_at
+# raw_data      2025-03-18 10:00:00
+# filtered      2025-03-18 10:05:00
+```
+
+## Step 8: Time Travel
+
+Go back to the original state:
+
+```r
+lake$restore("raw_data")
+
+# protein_coding_counts is gone (it didn't exist at "raw_data")
+lake$tables()
+# [1] "counts"   "metadata"
+
+# Come back to the latest state
+lake$restore("filtered")
+lake$tables()
+# [1] "counts"   "metadata"   "protein_coding_counts"
+```
+
+## Step 9: Export Data
+
+```r
+# Export as Parquet (efficient, cross-language)
+lake$export("counts", "counts.parquet")
+
+# Export as CSV
+lake$export("counts", "counts.csv")
+```
+
+Parquet files can be read by Python (pandas, polars), Julia, and other tools.
+
+## Step 10: Store R Objects
+
+OmicsLake can also store arbitrary R objects:
+
+```r
+# Store a model
+model <- lm(sample_A ~ sample_B + sample_C, data = lake$get("counts"))
+lake$put("linear_model", model)
+
+# Retrieve later
+restored_model <- lake$get("linear_model")
+summary(restored_model)
+```
+
+## Clean Up
+
+```r
+# Remove the demo lake
+unlink("~/.omicslake/gene_expression_demo", recursive = TRUE)
+```
+
+## Summary
+
+| Operation | Function | Purpose |
+|-----------|----------|---------|
+| Create lake | `Lake$new("name")` | Initialize a project |
+| Store data | `lake$put("name", data)` | Save tables or objects |
+| Retrieve data | `lake$get("name")` | Load data back |
+| Lazy query | `lake$ref("name")` | dplyr-compatible reference |
+| Save pipeline | `save_as("name", lake)` | Persist with lineage |
+| Snapshot | `lake$snap("label")` | Create checkpoint |
+| Restore | `lake$restore("label")` | Return to checkpoint |
+| View lineage | `lake$tree("name")` | Show dependencies |
+| Export | `lake$export("name", "path")` | Export to file |
+
+## Next Steps
+
+- **[Core Concepts](concepts.html)** --- Deeper understanding of how OmicsLake works
+- **[Lineage Tutorial](tutorial-lineage.html)** --- Master dependency tracking
+- **[Reproducibility Tutorial](tutorial-reproducibility.html)** --- Snapshots and version control strategies
+- **[RNA-seq Scenario](scenario-rnaseq.html)** --- Complete bulk RNA-seq workflow

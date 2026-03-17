@@ -1,0 +1,206 @@
+---
+title: "Scenario: Metabolomics Analysis"
+description: >
+  Version-controlled metabolomics workflow from feature tables to pathway analysis
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Overview
+
+Metabolomics analysis involves peak detection, alignment, annotation, normalization, and statistical analysis. Decisions at each step (e.g., intensity thresholds, annotation databases, normalization methods) affect downstream results. OmicsLake captures these decision points.
+
+## Setup
+
+```r
+library(OmicsLake)
+lake <- Lake$new("metabolomics_project")
+```
+
+## Step 1: Import Feature Table
+
+```r
+# Feature table from XCMS or MZmine
+features <- data.frame(
+  feature_id = paste0("M", sprintf("%04d", 1:2000)),
+  mz = runif(2000, 50, 1200),
+  rt = runif(2000, 0.5, 30),  # retention time in minutes
+  S1 = rlnorm(2000, 12, 2), S2 = rlnorm(2000, 12, 2),
+  S3 = rlnorm(2000, 12, 2), S4 = rlnorm(2000, 11.5, 2),
+  S5 = rlnorm(2000, 11.5, 2), S6 = rlnorm(2000, 11.5, 2)
+)
+
+sample_info <- data.frame(
+  sample = paste0("S", 1:6),
+  group = c(rep("control", 3), rep("case", 3)),
+  batch = c(1, 1, 2, 1, 2, 2)
+)
+
+lake$put("features_raw", features)
+lake$put("sample_info", sample_info)
+lake$snap("01_imported")
+```
+
+## Step 2: Blank Subtraction & Filtering
+
+```r
+# Remove features with low intensity
+lake$ref("features_raw") |>
+  dplyr::filter(
+    dplyr::if_any(S1:S6, ~ . > 1000)  # At least one sample above threshold
+  ) |>
+  save_as("features_filtered", lake)
+
+lake$snap("02_filtered")
+```
+
+## Step 3: Missing Value Imputation
+
+```r
+filtered <- lake$get("features_filtered")
+# Replace zeros with half-minimum per feature
+sample_cols <- paste0("S", 1:6)
+for (col in sample_cols) {
+  zeros <- filtered[[col]] == 0 | is.na(filtered[[col]])
+  if (any(zeros)) {
+    half_min <- min(filtered[[col]][!zeros], na.rm = TRUE) / 2
+    filtered[[col]][zeros] <- half_min
+  }
+}
+
+lake$put("features_imputed", filtered, depends_on = "features_filtered")
+lake$snap("03_imputed")
+```
+
+## Step 4: Normalization
+
+```r
+# Log2 transformation + median centering
+lake$ref("features_imputed") |>
+  dplyr::mutate(dplyr::across(S1:S6, log2)) |>
+  save_as("features_log2", lake)
+
+# Median center per sample
+log_data <- lake$get("features_log2")
+for (col in sample_cols) {
+  log_data[[col]] <- log_data[[col]] - median(log_data[[col]], na.rm = TRUE)
+}
+
+lake$put("features_normalized", log_data, depends_on = "features_log2")
+ol_commit(note = "Log2 transform + median centering")
+lake$snap("04_normalized")
+```
+
+## Step 5: Metabolite Annotation
+
+```r
+# Match m/z to known metabolites (simplified)
+library_db <- data.frame(
+  metabolite = c("Glucose", "Lactate", "Pyruvate", "Citrate", "Glutamate",
+                 "Alanine", "Valine", "Leucine", "Phenylalanine", "Tryptophan"),
+  mz_ref = c(180.063, 89.024, 87.008, 191.019, 146.045,
+             88.040, 116.071, 130.087, 164.071, 203.082),
+  pathway = c("glycolysis", "glycolysis", "glycolysis", "tca_cycle", "amino_acid",
+              "amino_acid", "amino_acid", "amino_acid", "amino_acid", "amino_acid")
+)
+
+lake$put("metabolite_library", library_db)
+
+# Annotate features by m/z matching (10 ppm tolerance)
+features_norm <- lake$get("features_normalized")
+annotations <- do.call(rbind, lapply(1:nrow(library_db), function(i) {
+  tol <- library_db$mz_ref[i] * 10e-6
+  matches <- features_norm[abs(features_norm$mz - library_db$mz_ref[i]) < tol, ]
+  if (nrow(matches) > 0) {
+    data.frame(
+      feature_id = matches$feature_id,
+      metabolite = library_db$metabolite[i],
+      pathway = library_db$pathway[i],
+      mz_error_ppm = abs(matches$mz - library_db$mz_ref[i]) / library_db$mz_ref[i] * 1e6
+    )
+  }
+}))
+
+lake$put("annotations", annotations,
+         depends_on = c("features_normalized", "metabolite_library"))
+lake$snap("05_annotated")
+```
+
+## Step 6: Statistical Analysis
+
+```r
+# t-test per feature
+features_norm <- lake$get("features_normalized")
+results <- do.call(rbind, lapply(1:nrow(features_norm), function(i) {
+  ctrl <- as.numeric(features_norm[i, c("S1", "S2", "S3")])
+  case <- as.numeric(features_norm[i, c("S4", "S5", "S6")])
+  tt <- t.test(case, ctrl)
+  data.frame(
+    feature_id = features_norm$feature_id[i],
+    log2fc = mean(case) - mean(ctrl),
+    pvalue = tt$p.value
+  )
+}))
+results$padj <- p.adjust(results$pvalue, method = "BH")
+
+lake$put("stat_results", results,
+         depends_on = c("features_normalized", "sample_info"))
+lake$snap("06_stats")
+```
+
+## Step 7: Pathway Enrichment
+
+```r
+# Join stats with annotations
+lake$ref("stat_results") |>
+  dplyr::inner_join(lake$ref("annotations"), by = "feature_id") |>
+  dplyr::group_by(pathway) |>
+  dplyr::summarize(
+    n_features = dplyr::n(),
+    n_significant = sum(padj < 0.05),
+    mean_log2fc = mean(log2fc),
+    .groups = "drop"
+  ) |>
+  save_as("pathway_summary", lake)
+
+lake$snap("07_final")
+```
+
+## Full Lineage
+
+```r
+lake$tree("pathway_summary")
+# pathway_summary
+#   ├── stat_results
+#   │     ├── features_normalized
+#   │     │     └── features_log2
+#   │     │           └── features_imputed
+#   │     │                 └── features_filtered
+#   │     │                       └── features_raw
+#   │     └── sample_info
+#   └── annotations
+#         ├── features_normalized (shared dependency)
+#         └── metabolite_library
+```
+
+## Using MsExperiment (Optional)
+
+```r
+library(MsExperiment)
+
+# Store the complete MS experiment object
+lake$put("ms_experiment", mse)
+lake$snap("mse_stored")
+
+# After processing
+lake$put("ms_processed", mse_processed, depends_on = "ms_experiment")
+```
+
+## Export
+
+```r
+lake$export("pathway_summary", "results/pathway_enrichment.parquet")
+lake$export("stat_results", "results/all_metabolite_stats.parquet")
+```
