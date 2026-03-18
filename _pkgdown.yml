@@ -124,17 +124,12 @@ reference:
       - observe
       - observe_session
       - observe_to_lake
-      - with_tracking
-      - wrap_fn
       - wrap_call
       - mark
       - link
       - unlink_dep
       - deps
       - create_pipeline
-      - Pipeline
-      - ObserveSession
-      - trace_calls
 
   - title: "Adapters"
     desc: "Type-specific storage adapters for Bioconductor containers"
