@@ -219,6 +219,9 @@ Lake <- R6::R6Class("Lake",
                    where = NULL,
                    select = NULL,
                    collect = TRUE) {
+      nr <- private$.split_name_ref(name, ref)
+      name <- nr$name
+      ref <- nr$ref
       private$.validate_name(name)
 
       # Track this read for dependency detection
@@ -295,6 +298,9 @@ Lake <- R6::R6Class("Lake",
     #' @param ref Version reference (default: "@latest")
     #' @return A lazy table reference (tbl_lazy)
     ref = function(name, ref = "@latest") {
+      nr <- private$.split_name_ref(name, ref)
+      name <- nr$name
+      ref <- nr$ref
       private$.validate_name(name)
       private$.tracker$track_read(name, ref)
       tbl <- private$.get_lazy_data(name, ref)
@@ -317,6 +323,33 @@ Lake <- R6::R6Class("Lake",
     #' @return Invisible self for chaining
     snap = function(label, note = "", params = list()) {
       private$.validate_name(label)
+
+      # Snapshot validation: compare the current live tables against the most
+      # recent label before recording the new one. Record the diff in the
+      # commit params and, depending on ol.snapshot.validate.mode, warn or block
+      # on structural drift (added/removed tables, schema changes).
+      if (.ol_snapshot_validation_enabled()) {
+        validation <- tryCatch(
+          .ol_build_snapshot_validation(private$.project, label),
+          error = function(e) NULL
+        )
+        if (!is.null(validation)) {
+          structural <- tryCatch(
+            as.integer(validation$summary$structural_changes),
+            error = function(e) 0L
+          )
+          if (length(structural) != 1L || is.na(structural)) structural <- 0L
+          mode <- .ol_snapshot_validation_mode()
+          if (structural > 0L && mode %in% c("warn", "error")) {
+            msg <- .ol_snapshot_validation_issue_text(validation)
+            if (identical(mode, "error")) {
+              stop(msg, call. = FALSE)
+            }
+            warning(msg, call. = FALSE)
+          }
+          params <- .ol_add_snapshot_validation_to_params(params, validation)
+        }
+      }
 
       state <- private$.state
       conn <- state$conn
@@ -351,9 +384,11 @@ Lake <- R6::R6Class("Lake",
       conn <- state$conn
 
       # Check if it's an adapter-managed object (e.g., SummarizedExperiment)
-      # First try registry, then fallback to manifest-based detection
+      # Prefer the live adapter (knows its own component layout); fall back to
+      # the registry/prefix reconstruction only when the adapter class is
+      # unavailable (e.g., a legacy database opened without the adapter loaded).
       adapter_info <- .ol_get_adapter_info(state, name)
-      adapter <- if (!is.null(adapter_info)) NULL else private$.find_adapter_for_stored(name)
+      adapter <- private$.find_adapter_for_stored(name)
       if (!is.null(adapter_info) || !is.null(adapter)) {
         # Tag all adapter components atomically
         if (!is.null(adapter)) {
@@ -673,8 +708,11 @@ Lake <- R6::R6Class("Lake",
       conn <- state$conn
 
       # Check if it's an adapter-managed object
+      # Prefer the live adapter (knows its own component layout); fall back to
+      # the registry/prefix reconstruction only when the adapter class is
+      # unavailable.
       adapter_info <- .ol_get_adapter_info(state, name)
-      adapter <- if (!is.null(adapter_info)) NULL else private$.find_adapter_for_stored(name)
+      adapter <- private$.find_adapter_for_stored(name)
       if (!is.null(adapter_info) || !is.null(adapter)) {
         if (!is.null(adapter)) {
           # Use adapter to get components and drop them
@@ -690,6 +728,13 @@ Lake <- R6::R6Class("Lake",
               }
             }
           }
+          # Remove the adapter registry entry so the object is no longer
+          # detected as adapter-managed after being dropped.
+          tryCatch({
+            ident <- .ol_sql_ident(conn, state, "__ol_adapters")
+            DBI::dbExecute(conn, sprintf("DELETE FROM %s WHERE name = %s",
+                                         ident, DBI::dbQuoteString(conn, name)))
+          }, error = function(e) NULL)
         } else {
           prefix <- private$.adapter_prefix(name, adapter_info$adapter_name)
           DBI::dbBegin(conn)
@@ -929,7 +974,13 @@ Lake <- R6::R6Class("Lake",
       # Apply pattern matching
       if (!is.null(pattern) && nzchar(pattern)) {
         idx <- if (fixed) {
-          grep(pattern, all_items$name, fixed = TRUE, ignore.case = ignore.case)
+          # ignore.case has no effect with fixed = TRUE in grep(); emulate it
+          # by lower-casing both the pattern and the targets when requested.
+          if (isTRUE(ignore.case)) {
+            which(grepl(tolower(pattern), tolower(all_items$name), fixed = TRUE))
+          } else {
+            grep(pattern, all_items$name, fixed = TRUE)
+          }
         } else {
           grep(pattern, all_items$name, ignore.case = ignore.case)
         }
@@ -977,7 +1028,7 @@ Lake <- R6::R6Class("Lake",
           stdout = TRUE, stderr = FALSE)
         length(out) > 0
       }, error = function(e) NA)
-      data.frame(
+      st <- data.frame(
         project = private$.project,
         root = .ol_root(),
         tables = n_tables,
@@ -987,6 +1038,27 @@ Lake <- R6::R6Class("Lake",
         git_dirty = git_dirty,
         stringsAsFactors = FALSE
       )
+
+      # When automatic reproducibility capture is enabled, surface the captured
+      # git/renv context as additional status fields.
+      if (.ol_repro_capture_enabled()) {
+        ctx <- tryCatch(.ol_collect_repro_context(), error = function(e) NULL)
+        if (!is.null(ctx)) {
+          st$repro_path <- .ol_as_scalar_character(ctx$path, NA_character_)
+          st$git_repo <- isTRUE(.ol_get_nested(ctx, c("git", "found")))
+          st$git_branch <- .ol_as_scalar_character(
+            .ol_get_nested(ctx, c("git", "branch")), NA_character_)
+          st$git_commit <- .ol_as_scalar_character(
+            .ol_get_nested(ctx, c("git", "commit")), NA_character_)
+          dirty_val <- .ol_get_nested(ctx, c("git", "dirty"))
+          st$git_dirty <- if (is.null(dirty_val)) NA else isTRUE(dirty_val)
+          st$renv_lockfile <- .ol_as_scalar_character(
+            .ol_get_nested(ctx, c("renv", "lockfile")), NA_character_)
+          st$renv_lockfile_md5 <- .ol_as_scalar_character(
+            .ol_get_nested(ctx, c("renv", "lockfile_md5")), NA_character_)
+        }
+      }
+      st
     },
 
     #' @description Run diagnostic checks on this lake
@@ -1027,6 +1099,50 @@ Lake <- R6::R6Class("Lake",
       }
       checks[[5L]] <- list(check = "git working tree is clean", ok = g,
         detail = gd, fix = gf)
+
+      # Reproducibility-capture diagnostics (only when capture is enabled).
+      if (.ol_repro_capture_enabled()) {
+        ctx <- tryCatch(.ol_collect_repro_context(), error = function(e) NULL)
+        cap_ok <- !is.null(ctx)
+        checks[[length(checks) + 1L]] <- list(
+          check = "automatic reproducibility metadata capture",
+          ok = cap_ok,
+          detail = if (cap_ok) {
+            paste0("Capturing repro context at ",
+              .ol_as_scalar_character(ctx$path, "<unknown>"))
+          } else {
+            "Repro capture is enabled but context collection failed"
+          },
+          fix = if (cap_ok) "" else
+            "Check the ol.repro.path and ol.repro.include options")
+        git_found <- isTRUE(.ol_get_nested(ctx, c("git", "found")))
+        checks[[length(checks) + 1L]] <- list(
+          check = "git repository detected",
+          ok = git_found,
+          detail = if (git_found) {
+            paste0("Git repository at ",
+              .ol_as_scalar_character(.ol_get_nested(ctx, c("git", "root")),
+                "<unknown>"))
+          } else {
+            "No git repository found at the reproducibility path"
+          },
+          fix = if (git_found) "" else
+            "Initialise a git repository or point ol.repro.path at one")
+        renv_found <- isTRUE(.ol_get_nested(ctx, c("renv", "found")))
+        checks[[length(checks) + 1L]] <- list(
+          check = "renv lockfile detected",
+          ok = renv_found,
+          detail = if (renv_found) {
+            paste0("renv lockfile at ",
+              .ol_as_scalar_character(.ol_get_nested(ctx, c("renv", "lockfile")),
+                "<unknown>"))
+          } else {
+            "No renv.lock found at the reproducibility path"
+          },
+          fix = if (renv_found) "" else
+            "Run renv::snapshot() or set ol.repro.path to a project with renv")
+      }
+
       result <- do.call(rbind, lapply(checks, function(ch) {
         data.frame(check = ch$check, ok = ch$ok, detail = ch$detail,
           fix = ch$fix, stringsAsFactors = FALSE)
@@ -1073,6 +1189,21 @@ Lake <- R6::R6Class("Lake",
       .ol_validate_name(name, "name")
     },
 
+    # Support combined "name@ref" syntax (e.g. "parent@tag(v1)", "tbl@v2").
+    # Only applied when no explicit ref was supplied (ref == "@latest"), since
+    # version references always begin with '@' and valid names do not contain it.
+    .split_name_ref = function(name, ref) {
+      if (identical(ref, "@latest") &&
+            is.character(name) && length(name) == 1 &&
+            grepl("@", name, fixed = TRUE)) {
+        parts <- regmatches(name, regexec("^([^@]+)@(.+)$", name))[[1]]
+        if (length(parts) == 3L) {
+          return(list(name = parts[2], ref = paste0("@", parts[3])))
+        }
+      }
+      list(name = name, ref = ref)
+    },
+
     # Map adapter name to storage prefix string
     .adapter_prefix = function(name, adapter_name) {
       prefix_map <- c(
@@ -1100,8 +1231,13 @@ Lake <- R6::R6Class("Lake",
       if (inherits(data, "SummarizedExperiment")) {
         return("se")
       }
+      # Any registered adapter (Seurat, SCE, MAE, omics layers, custom) routes
+      # through the generic adapter dispatch (.put_se), which also records the
+      # object in __ol_adapters. Checked before the Seurat legacy branch so a
+      # registered SeuratAdapter wins over plain serialization.
+      if (!is.null(find_adapter(data))) return("se")
       if (inherits(data, "Seurat")) {
-        return("seurat")
+        return("seurat")  # legacy fallback when no Seurat adapter is registered
       }
       if (is.data.frame(data) || inherits(data, "data.frame")) {
         return("table")
@@ -1109,8 +1245,6 @@ Lake <- R6::R6Class("Lake",
       if (is.matrix(data)) {
         return("table")  # Convert matrix to data.frame
       }
-      # Check if any registered adapter can handle this type
-      if (!is.null(find_adapter(data))) return("se")
       "object"  # Default: serialize as R object
     },
 
@@ -1127,11 +1261,35 @@ Lake <- R6::R6Class("Lake",
       ol_save(name, data, project = private$.project)
     },
 
-    # Store SummarizedExperiment using adapter
+    # Store an adapter-managed object (SummarizedExperiment, SCE, MAE, omics
+    # layers, custom registered adapters, ...). After the adapter persists its
+    # components, record the object in __ol_adapters so that get()/tag()/drop()
+    # can deterministically detect and route it back through the adapter.
     .put_se = function(name, data) {
       adapter <- find_adapter(data)
       if (!is.null(adapter)) {
         adapter$put(self, name, data)
+        comp_df <- tryCatch(adapter$components(self, name),
+                            error = function(e) NULL)
+        components <- if (is.data.frame(comp_df) && nrow(comp_df) > 0) {
+          if ("component_id" %in% names(comp_df)) {
+            as.character(comp_df$component_id)
+          } else if ("component" %in% names(comp_df)) {
+            as.character(comp_df$component)
+          } else {
+            character(0)
+          }
+        } else {
+          character(0)
+        }
+        tryCatch(
+          .ol_register_adapter_object(private$.state, name, adapter$name(),
+                                      components),
+          error = function(e) {
+            warning("Could not register adapter object '", name, "': ",
+                    conditionMessage(e), call. = FALSE)
+          }
+        )
       } else {
         # Fallback if adapter not registered
         ol_save(name, data, project = private$.project)
@@ -1243,17 +1401,19 @@ Lake <- R6::R6Class("Lake",
       adapter_info <- .ol_get_adapter_info(state, name, ref)
 
       if (is.null(adapter_info)) {
-        # Fallback: check for legacy storage with any known adapter prefix
-        known_prefixes <- c("__se__", "__sce__", "__mae__", "__spectra__",
-                            "__qfeatures__", "__mse__", "__xcms__", "__chrom__")
-        for (kp in known_prefixes) {
-          manifest_name <- paste0(name, ".", kp, ".manifest")
-          if (private$.is_object(manifest_name)) {
-            adapters <- get_adapters()
-            for (adapter in adapters) {
-              if (adapter$exists(self, name)) {
-                return(adapter)
-              }
+        # Fallback (no registry row): detect adapter-managed objects by their
+        # manifest naming convention "<name>.__<tag>__.manifest". A single
+        # objects() scan keeps the common non-adapter path fast; only when a
+        # matching manifest exists do we ask each adapter whether it owns it.
+        objs <- tryCatch(self$objects()$name, error = function(e) character(0))
+        has_marker <- length(objs) > 0 &&
+          any(startsWith(objs, paste0(name, ".__")) &
+                endsWith(objs, "__.manifest"))
+        if (has_marker) {
+          for (adapter in get_adapters()) {
+            if (isTRUE(tryCatch(adapter$exists(self, name),
+                                error = function(e) FALSE))) {
+              return(adapter)
             }
           }
         }

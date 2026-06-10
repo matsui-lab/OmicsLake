@@ -1,8 +1,7 @@
 # Tests for newly added omics layer adapters
 
 test_that("built-in omics layer adapters are autoloaded", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   adapters <- get_adapters()
   adapter_names <- names(adapters)
@@ -25,8 +24,7 @@ test_that("built-in omics layer adapters are autoloaded", {
 })
 
 test_that("omics layer adapters support put/get/tag with deterministic registry", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")
@@ -72,8 +70,7 @@ test_that("omics layer adapters support put/get/tag with deterministic registry"
 })
 
 test_that("serialized omics adapters materialize table-like sidecar components", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")
@@ -100,8 +97,7 @@ test_that("serialized omics adapters materialize table-like sidecar components",
 })
 
 test_that("sidecar extraction traverses nested list payloads", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")

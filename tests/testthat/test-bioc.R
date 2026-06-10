@@ -415,7 +415,7 @@ test_that("Lake handles QFeatures via adapter", {
   col_data <- S4Vectors::DataFrame(condition = c("A", "B"),
     row.names = c("s1", "s2"))
   qf <- QFeatures::QFeatures(
-    assays = list(psms = se_psm, peptides = se_pep),
+    experiments = list(psms = se_psm, peptides = se_pep),
     colData = col_data
   )
   qf <- tryCatch(
@@ -450,7 +450,7 @@ test_that("Lake handles QFeatures via adapter", {
       row.names = c("pep1", "pep2"))
   )
   qf_v2 <- QFeatures::QFeatures(
-    assays = list(psms = se_psm_v2, peptides = se_pep),
+    experiments = list(psms = se_psm_v2, peptides = se_pep),
     colData = col_data
   )
   lake$put("qf_obj", qf_v2)

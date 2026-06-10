@@ -2,7 +2,12 @@
 #' @export
 ol_init <- function(project, root = NULL, ...) {
   if (is.null(project) || !nzchar(project)) stop("project must be a non-empty string", call. = FALSE)
-  if (!is.null(root)) options(ol.root = .ol_norm(root))
+  if (!is.null(root)) {
+    # Create the root before normalizing so the stored path is canonical
+    # (e.g. resolves the macOS /var -> /private/var symlink consistently).
+    dir.create(root, recursive = TRUE, showWarnings = FALSE)
+    options(ol.root = .ol_norm(root))
+  }
   .ol_init_backend(project = project, ...)
   invisible(.ol_norm(.ol_proj_root(project)))
 }

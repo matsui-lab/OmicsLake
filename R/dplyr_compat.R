@@ -154,72 +154,72 @@ into <- function(lake) {
   result
 }
 
-#' @export
+#' @exportS3Method dplyr::filter
 filter.lake_tbl <- function(.data, ..., .preserve = FALSE) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::select
 select.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::mutate
 mutate.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::summarise
 summarise.lake_tbl <- function(.data, ..., .groups = NULL) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::summarize
 summarize.lake_tbl <- function(.data, ..., .groups = NULL) {
   summarise.lake_tbl(.data, ..., .groups = .groups)
 }
 
-#' @export
+#' @exportS3Method dplyr::group_by
 group_by.lake_tbl <- function(.data, ..., .add = FALSE, .drop = TRUE) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::ungroup
 ungroup.lake_tbl <- function(x, ...) {
   result <- NextMethod()
   .preserve_lake_attrs(result, x)
 }
 
-#' @export
+#' @exportS3Method dplyr::arrange
 arrange.lake_tbl <- function(.data, ..., .by_group = FALSE) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::distinct
 distinct.lake_tbl <- function(.data, ..., .keep_all = FALSE) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::slice
 slice.lake_tbl <- function(.data, ..., .preserve = FALSE) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::rename
 rename.lake_tbl <- function(.data, ...) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
 }
 
-#' @export
+#' @exportS3Method dplyr::relocate
 relocate.lake_tbl <- function(.data, ..., .before = NULL, .after = NULL) {
   result <- NextMethod()
   .preserve_lake_attrs(result, .data)
@@ -260,37 +260,37 @@ relocate.lake_tbl <- function(.data, ..., .before = NULL, .after = NULL) {
   result
 }
 
-#' @export
+#' @exportS3Method dplyr::left_join
 left_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
-#' @export
+#' @exportS3Method dplyr::inner_join
 inner_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
-#' @export
+#' @exportS3Method dplyr::right_join
 right_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
-#' @export
+#' @exportS3Method dplyr::full_join
 full_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
-#' @export
+#' @exportS3Method dplyr::semi_join
 semi_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
-#' @export
+#' @exportS3Method dplyr::anti_join
 anti_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
@@ -298,7 +298,7 @@ anti_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, ...) {
 
 # Collect preserves lineage info differently
 
-#' @export
+#' @exportS3Method dplyr::collect
 collect.lake_tbl <- function(x, ...) {
   result <- NextMethod()
   # Transfer lake_sources (new paired format) to collected data

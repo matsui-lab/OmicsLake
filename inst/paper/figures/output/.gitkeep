@@ -1,3 +1,0 @@
-# This file ensures the output directory is tracked by git.
-# Generated figures (PDF, PNG, SVG) will be placed here.
-# Note: Generated files should typically be in .gitignore for publication repos.

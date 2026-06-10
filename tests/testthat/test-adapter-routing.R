@@ -56,8 +56,7 @@ make_mock_adapter <- function() {
 }
 
 test_that("Lake$put routes object storage through registered adapters", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")
@@ -82,8 +81,7 @@ test_that("Lake$put routes object storage through registered adapters", {
 })
 
 test_that("Lake$get falls back to marker-based adapter detection without registry row", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")
@@ -116,8 +114,7 @@ test_that("Lake$get falls back to marker-based adapter detection without registr
 })
 
 test_that("Adapter-managed objects support tag refs and drop via generic component resolution", {
-  clear_adapters()
-  .adapter_registry$autoload_attempted <- FALSE
+  local_mock_adapters()
 
   tmpdir <- withr::local_tempdir()
   old_opt <- getOption("ol.root")

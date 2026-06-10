@@ -285,9 +285,16 @@
   .ol_ensure_dependencies_table(state)
   conn <- state$conn
 
-  # Resolve parent ref to version_id if not provided
+  # Resolve parent ref to version_id if not provided. Resolution can fail for
+  # adapter-managed parents (e.g., a tagged SummarizedExperiment: the tag lives
+  # on the decomposed components, not the logical name) or other best-effort
+  # cases. A dependency edge is still worth recording, so fall back to NA rather
+  # than aborting the whole put().
   if (is.null(parent_version_id)) {
-    resolved <- .ol_resolve_ref_to_version(state, parent_name, parent_ref, parent_type)
+    resolved <- tryCatch(
+      .ol_resolve_ref_to_version(state, parent_name, parent_ref, parent_type),
+      error = function(e) list(version_id = NULL)
+    )
     parent_version_id <- resolved$version_id
   }
 
@@ -500,7 +507,16 @@ ol_tag <- function(name, tag, ref = "@latest", project = getOption("ol.project")
   conn <- state$conn
 
   backup_table <- .ol_get_backup_table_name(name, tag)
-  source_ident <- .ol_sql_ident(conn, state, name)
+  # Resolve `ref` so a tag can be created from an earlier tagged version, not
+  # only from the current table state. "@latest" resolves to the live table;
+  # "@<tag>"/"@tag(<tag>)" resolves to that tag's backup table.
+  resolved_source <- .ol_resolve_reference(state, name, ref)
+  source_table <- if (!is.null(resolved_source$backup_table)) {
+    resolved_source$backup_table
+  } else {
+    name
+  }
+  source_ident <- .ol_sql_ident(conn, state, source_table)
   backup_ident <- .ol_sql_ident(conn, state, backup_table)
 
   # Internal function to do the actual work
@@ -578,6 +594,15 @@ ol_tag_object <- function(name, tag, when = "latest", project = getOption("ol.pr
     if (!nrow(res)) stop("Object not found: ", name, call. = FALSE)
     version_ts <- res$version_ts[[1]]
   } else {
+    # Specific version requested: verify the object and that exact version exist.
+    existing <- DBI::dbGetQuery(conn, sprintf(
+      "SELECT version_ts FROM %s WHERE name = %s",
+      ident_objects, DBI::dbQuoteString(conn, name)
+    ))
+    if (!nrow(existing)) stop("Object not found: ", name, call. = FALSE)
+    if (!as.character(when) %in% as.character(existing$version_ts)) {
+      stop("Version not found: ", when, call. = FALSE)
+    }
     version_ts <- when
   }
 

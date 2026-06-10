@@ -70,7 +70,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
             manifest <- private$.load_manifest(prefix, name, ref, project)
             assays_list <- private$.load_assays(prefix, manifest$assay_names,
                 ref, project, feature_ids = manifest$feature_ids,
-                sample_ids = manifest$sample_ids)
+                sample_ids = manifest$sample_ids,
+                sparse_flags = manifest$assay_sparse)
             col_data_mode <- private$.manifest_slot_mode(manifest,
                 "col_data_mode")
             row_data_mode <- private$.manifest_slot_mode(manifest,
@@ -291,6 +292,14 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 type = "SummarizedExperiment",
                 class = class(data)[1],
                 assay_names = assay_names,
+                # Record whether each assay was sparse so a dense matrix
+                # round-trips back to a dense matrix (not silently to dgCMatrix).
+                assay_sparse = vapply(
+                    seq_along(assay_names),
+                    function(i) inherits(
+                        SummarizedExperiment::assay(data, i), "sparseMatrix"),
+                    logical(1)
+                ),
                 n_samples = ncol(data),
                 n_features = nrow(data),
                 sample_ids = if (!is.null(colnames(data))) {
@@ -328,18 +337,27 @@ SEAdapter <- R6::R6Class("SEAdapter",
             )
         },
         .load_assays = function(prefix, assay_names, ref, project,
-            feature_ids = NULL, sample_ids = NULL) {
+            feature_ids = NULL, sample_ids = NULL, sparse_flags = NULL) {
             assays_list <- list()
-            for (assay_name in assay_names) {
+            for (k in seq_along(assay_names)) {
+                assay_name <- assay_names[k]
                 long_df <- ol_read(
                     paste0(prefix, "assay.", assay_name),
                     ref = ref,
                     project = project
                 )
+                # Default to dense unless the manifest recorded this assay as
+                # sparse (older manifests without the flag round-trip to dense).
+                sparse <- if (!is.null(sparse_flags) && length(sparse_flags) >= k) {
+                    isTRUE(as.logical(sparse_flags[[k]]))
+                } else {
+                    FALSE
+                }
                 assays_list[[assay_name]] <- private$.long_to_matrix(
                     long_df,
                     feature_ids = feature_ids,
-                    sample_ids = sample_ids
+                    sample_ids = sample_ids,
+                    sparse = sparse
                 )
             }
             assays_list
@@ -537,7 +555,7 @@ SEAdapter <- R6::R6Class("SEAdapter",
 
         # Convert long format back to matrix
         .long_to_matrix = function(long_df, feature_ids = NULL,
-            sample_ids = NULL) {
+            sample_ids = NULL, sparse = FALSE) {
             if (is.null(feature_ids)) {
                 feature_ids <- unique(long_df$feature)
             }
@@ -546,11 +564,15 @@ SEAdapter <- R6::R6Class("SEAdapter",
             }
             feature_ids <- as.character(feature_ids)
             sample_ids <- as.character(sample_ids)
+            # Sparse reconstruction is only possible when the Matrix package is
+            # available; otherwise fall back to dense regardless of the flag.
+            want_sparse <- isTRUE(sparse) &&
+                requireNamespace("Matrix", quietly = TRUE)
             if (length(feature_ids) == 0 || length(sample_ids) == 0) {
                 return(matrix(0, 0, 0))
             }
             if (nrow(long_df) == 0) {
-                if (requireNamespace("Matrix", quietly = TRUE)) {
+                if (want_sparse) {
                     return(Matrix::sparseMatrix(
                         i = integer(0),
                         j = integer(0),
@@ -573,8 +595,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 match(long_df$sample, sample_ids)
             }
 
-            # Create sparse matrix
-            if (requireNamespace("Matrix", quietly = TRUE)) {
+            if (want_sparse) {
+                # Preserve sparse representation for assays stored as sparse.
                 mat <- Matrix::sparseMatrix(
                     i = i_idx,
                     j = j_idx,
@@ -583,13 +605,12 @@ SEAdapter <- R6::R6Class("SEAdapter",
                     dimnames = list(feature_ids, sample_ids)
                 )
             } else {
-                # Fall back to dense matrix
+                # Dense reconstruction (default): a dense assay round-trips to a
+                # base matrix so identical()/all.equal() hold against the source.
                 mat <- matrix(0, length(feature_ids), length(sample_ids),
                     dimnames = list(feature_ids, sample_ids)
                 )
-                for (k in seq_len(nrow(long_df))) {
-                    mat[i_idx[k], j_idx[k]] <- long_df$value[k]
-                }
+                mat[cbind(i_idx, j_idx)] <- long_df$value
             }
 
             mat
