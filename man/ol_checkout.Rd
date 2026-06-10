@@ -17,3 +17,9 @@ Invisible TRUE on success, FALSE if no tables found
 \description{
 Restore entire project to a labeled state
 }
+\examples{
+ol_init("ex_ol_checkout", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_label("v1")
+ol_checkout("v1")
+}

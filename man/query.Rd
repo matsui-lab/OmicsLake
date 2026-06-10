@@ -12,3 +12,8 @@ A QueryBuilder instance
 \description{
 Start a query builder on the default lake
 }
+\examples{
+use_lake("ex_query", root = tempfile())
+put("t", data.frame(x = 1:3))
+qb <- query()
+}

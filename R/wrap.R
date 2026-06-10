@@ -23,44 +23,10 @@
 #'         wrap_call(normalize_data, raw_data, output = "normalized")
 #' }
 #'
+#' @return See the individual function help pages for return values.
 #' @name wrap
 NULL
 
-#' Wrap a function with lineage tracking
-#'
-#' Creates a wrapped version of a function that automatically records
-#' its execution in the lake's lineage graph.
-#'
-#' @param fn Function to wrap
-#' @param lake Lake instance for lineage recording
-#' @param output_name Name for the output in the lineage graph
-#' @param input_names Optional character vector specifying which arguments
-#'   should be recorded as dependencies. If NULL, attempts to detect
-#'   lake-sourced data automatically.
-#' @param save_output If TRUE, automatically saves the output to the lake
-#' @return A wrapped function with the same signature as fn
-#' @export
-#' @examples
-#' if (FALSE) {
-#'     lake <- Lake$new("project")
-#'     lake$put("raw_data", data.frame(x = 1:10))
-#'
-#'     # Create a simple processing function
-#'     process <- function(data) {
-#'         data$y <- data$x * 2
-#'         data
-#'     }
-#'
-#'     # Wrap it
-#'     tracked_process <- wrap_fn(process, lake, "processed_data")
-#'
-#'     # Use the wrapped function
-#'     input <- lake$get("raw_data")
-#'     result <- tracked_process(input)
-#'
-#'     # The lineage is automatically recorded
-#'     lake$tree("processed_data")
-#' }
 .ol_collect_wrap_dependencies <- function(args, input_names = NULL) {
     deps <- character(0)
     arg_names <- names(args)
@@ -88,6 +54,25 @@ NULL
     unique(deps)
 }
 
+#' Wrap a function with lineage tracking
+#'
+#' Creates a wrapped version of a function that automatically records
+#' its execution in the lake's lineage graph.
+#'
+#' @param fn Function to wrap
+#' @param lake Lake instance for lineage recording
+#' @param output_name Name for the output in the lineage graph
+#' @param input_names Optional character vector specifying which arguments
+#'   should be recorded as dependencies. If NULL, attempts to detect
+#'   lake-sourced data automatically.
+#' @param save_output If TRUE, automatically saves the output to the lake
+#' @return A wrapped function with the same signature as fn
+#' @export
+#' @examples
+#' lake <- Lake$new("ex_wrap_fn", root = tempfile())
+#' lake$put("raw", data.frame(x = 1:3))
+#' tracked <- wrap_fn(function(d) d, lake, "out")
+#' invisible(tracked(lake$get("raw")))
 wrap_fn <- function(fn, lake, output_name, input_names = NULL,
     save_output = TRUE) {
     force(fn)
@@ -484,6 +469,11 @@ link <- function(from, to, lake = NULL, relationship = "linked") {
 #' @param lake Lake instance (uses default if NULL)
 #' @return Invisible TRUE on success
 #' @export
+#' @examples
+#' use_lake("ex_unlink_dep", root = tempfile())
+#' put("raw", data.frame(x = 1:3))
+#' put("filtered", data.frame(x = 1:2), depends_on = "raw")
+#' unlink_dep("raw", "filtered")
 unlink_dep <- function(from, to, lake = NULL) {
     if (is.null(lake)) {
         lake <- lake()
@@ -595,26 +585,6 @@ Pipeline <- R6::R6Class("Pipeline",
     )
 )
 
-#' Trace function calls for lineage
-#'
-#' Temporarily hooks into specified functions to track their calls.
-#' More invasive than observe() but provides finer-grained control.
-#'
-#' @param functions Named list of functions to trace
-#' @param expr Expression to evaluate while tracing
-#' @param lake Optional lake to record to
-#' @return List with result and call trace
-#' @export
-#' @examples
-#' if (FALSE) {
-#'     trace_calls(
-#'         list(read.csv = "input", write.csv = "output"),
-#'         {
-#'             data <- read.csv("file.csv")
-#'             write.csv(data, "out.csv")
-#'         }
-#'     )
-#' }
 .ol_trace_install <- function(functions, record_fun, env) {
     for (fn_name in names(functions)) {
         role <- functions[[fn_name]]
@@ -636,6 +606,19 @@ Pipeline <- R6::R6Class("Pipeline",
     invisible(TRUE)
 }
 
+#' Trace function calls for lineage
+#'
+#' Temporarily hooks into specified functions to track their calls.
+#' More invasive than observe() but provides finer-grained control.
+#'
+#' @param functions Named list of functions to trace
+#' @param expr Expression to evaluate while tracing
+#' @param lake Optional lake to record to
+#' @return List with result and call trace
+#' @export
+#' @examples
+#' lake <- Lake$new("ex_trace_calls", root = tempfile())
+#' trace_calls(character(0), { x <- 1 }, lake = lake)
 trace_calls <- function(functions, expr, lake = NULL) {
     calls_env <- new.env(parent = emptyenv())
     calls_env$calls <- list()

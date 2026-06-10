@@ -19,3 +19,8 @@ One-row data frame with status fields
 \description{
 Show one-line status for the default lake (or a specified project)
 }
+\examples{
+use_lake("ex_status", root = tempfile())
+put("t", data.frame(x = 1:3))
+lake_status()
+}

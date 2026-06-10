@@ -13,8 +13,25 @@ ol_tag(
 )
 }
 \arguments{
-\item{.in_transaction}{Internal parameter - if TRUE, skip transaction management (caller handles it)}
+\item{name}{Table name to tag}
+
+\item{tag}{Tag name to assign}
+
+\item{ref}{Reference to tag (e.g. "@latest")}
+
+\item{project}{Project name}
+
+\item{.in_transaction}{Internal parameter - if TRUE, skip transaction
+management (caller handles it)}
+}
+\value{
+Invisible backup table name
 }
 \description{
 Tag a table by creating a backup
+}
+\examples{
+ol_init("ex_ol_tag", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_tag("t", "raw")
 }

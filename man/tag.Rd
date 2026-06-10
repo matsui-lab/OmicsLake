@@ -17,3 +17,8 @@ Invisible Lake object
 \description{
 Tag data in the default lake
 }
+\examples{
+use_lake("ex_tag", root = tempfile())
+put("counts", data.frame(x = 1:3))
+tag("counts", "raw")
+}

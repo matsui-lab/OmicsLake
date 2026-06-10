@@ -3,12 +3,20 @@
 \name{MethylationAdapter}
 \alias{MethylationAdapter}
 \title{Methylation Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving methylation-layer objects.
 }
 \details{
 Supports common Bioconductor methylation classes (e.g. minfi family) by
 storing a full serialized object and manifest.
+}
+\examples{
+adapter <- MethylationAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{MethylationAdapter}

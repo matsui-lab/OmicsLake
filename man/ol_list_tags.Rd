@@ -11,6 +11,14 @@ ol_list_tags(name = NULL, project = getOption("ol.project"))
 
 \item{project}{Project name}
 }
+\value{
+Data frame of tags
+}
 \description{
 List all tags for a table or all project labels
+}
+\examples{
+ol_init("ex_ol_list_tags", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_list_tags()
 }

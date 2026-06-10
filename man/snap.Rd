@@ -17,3 +17,8 @@ Invisible Lake object
 \description{
 Create a snapshot of the default lake
 }
+\examples{
+use_lake("ex_snap", root = tempfile())
+put("t", data.frame(x = 1:3))
+snap("v1.0")
+}

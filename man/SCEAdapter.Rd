@@ -3,6 +3,10 @@
 \name{SCEAdapter}
 \alias{SCEAdapter}
 \title{SingleCellExperiment Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving
 SingleCellExperiment objects.
@@ -18,6 +22,10 @@ SingleCellExperiment-specific components:
   \item column labels (\code{colLabels})
   \item main experiment label (\code{mainExpName})
 }
+}
+\examples{
+adapter <- SCEAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{SCEAdapter}

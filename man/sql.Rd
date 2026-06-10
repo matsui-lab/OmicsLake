@@ -17,3 +17,8 @@ Query results
 \description{
 Execute SQL on the default lake
 }
+\examples{
+use_lake("ex_sql", root = tempfile())
+put("t", data.frame(x = 1:3))
+sql("SELECT COUNT(*) AS n FROM t")
+}

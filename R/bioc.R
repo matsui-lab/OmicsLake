@@ -9,6 +9,10 @@
 #' @param as_tibble If TRUE, return tibble when available
 #' @return Data frame or tibble
 #' @export
+#' @examples
+#' ol_init("ex_ol_fread", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3, y = 4:6))
+#' ol_fread("t", select = "x")
 ol_fread <- function(name, ref = "@latest", select = NULL, drop = NULL,
     nrows = Inf, filter = NULL,
                     project = getOption("ol.project"), as_tibble = FALSE) {
@@ -36,6 +40,15 @@ ol_fread <- function(name, ref = "@latest", select = NULL, drop = NULL,
 #' @param backing Backing mode: "hdf5" or "memory"
 #' @return SummarizedExperiment object
 #' @export
+#' @examples
+#' ol_init("ex_ol_read_se", root = tempfile())
+#' long <- data.frame(
+#'     feature = rep(c("g1", "g2"), each = 2),
+#'     sample = rep(c("s1", "s2"), 2),
+#'     value = c(5, 8, 1, 3)
+#' )
+#' ol_write("expr_long", long)
+#' ol_read_se("expr_long", backing = "memory")
 ol_read_se <- function(name, ref = "@latest", feature_col = "feature",
     sample_col = "sample", value_col = "value",
                         project = getOption("ol.project"), backing = c("hdf5",
@@ -78,6 +91,17 @@ ol_read_se <- function(name, ref = "@latest", feature_col = "feature",
 #' @param backing Backing mode: "hdf5" or "memory"
 #' @return MultiAssayExperiment object
 #' @export
+#' @examples
+#' if (requireNamespace("MultiAssayExperiment", quietly = TRUE)) {
+#'     ol_init("ex_ol_read_mae", root = tempfile())
+#'     long <- data.frame(
+#'         feature = rep(c("g1", "g2"), 2),
+#'         sample = rep(c("s1", "s2"), each = 2),
+#'         value = c(5, 8, 1, 3)
+#'     )
+#'     ol_write("rna_long", long)
+#'     ol_read_mae(list(rna = list(name = "rna_long")), backing = "memory")
+#' }
 ol_read_mae <- function(assays, ref = "@latest",
     project = getOption("ol.project"), backing = c("hdf5", "memory")) {
     backing <- match.arg(backing)

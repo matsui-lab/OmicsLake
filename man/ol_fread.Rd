@@ -38,3 +38,8 @@ Data frame or tibble
 \description{
 fread-like reader for Parquet tables
 }
+\examples{
+ol_init("ex_ol_fread", root = tempfile())
+ol_write("t", data.frame(x = 1:3, y = 4:6))
+ol_fread("t", select = "x")
+}

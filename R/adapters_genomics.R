@@ -5,6 +5,11 @@
 #' (e.g. VCF / RaggedExperiment) and captures genomics-marked objects.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- GenomicsAdapter$new()
+#' class(adapter)
 GenomicsAdapter <- .ol_create_serialized_adapter(
   class_name = "GenomicsAdapter",
   adapter_name = "Genomics",

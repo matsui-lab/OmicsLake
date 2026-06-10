@@ -17,3 +17,7 @@ Logical vector
 \description{
 Check if string ends with a suffix
 }
+\examples{
+files <- c("a.csv", "b.txt", "c.csv")
+files[ends_with_str(files, ".csv")]
+}

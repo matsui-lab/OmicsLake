@@ -17,12 +17,22 @@ ol_tag_object(
 
 \item{tag}{Tag name to assign}
 
-\item{when}{Which version to tag: "latest" (default) or "first", or a specific version_ts timestamp}
+\item{when}{Which version to tag: "latest" (default) or "first", or a
+specific version_ts timestamp}
 
 \item{project}{Project name}
 
-\item{.in_transaction}{Internal parameter - if TRUE, skip transaction management (caller handles it)}
+\item{.in_transaction}{Internal parameter - if TRUE, skip transaction
+management (caller handles it)}
+}
+\value{
+Invisible TRUE on success
 }
 \description{
 Tag a stored object version
+}
+\examples{
+ol_init("ex_ol_tag_object", root = tempfile())
+ol_save("m", list(a = 1))
+ol_tag_object("m", "v1")
 }

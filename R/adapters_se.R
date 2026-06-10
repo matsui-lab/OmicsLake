@@ -32,6 +32,7 @@
 #' }
 #'
 #' @importFrom R6 R6Class
+#' @return An \code{SEAdapter} R6 generator for SummarizedExperiment objects.
 #' @export
 SEAdapter <- R6::R6Class("SEAdapter",
     inherit = LakeAdapter,
@@ -164,7 +165,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 return(character(0))
             }
             roots <- sort(unique(sub(manifest_pattern, "", manifests)))
-            roots[!grepl("\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
+            roots[!grepl(
+                "\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
                 roots,
                 perl = TRUE)]
         }
@@ -264,10 +266,12 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 return("object")
             }
             feature_ids <- names(row_ranges)
-            if (is.null(feature_ids) || length(feature_ids) != nrow(ranges_df)) {
+            if (is.null(feature_ids) ||
+                length(feature_ids) != nrow(ranges_df)) {
                 feature_ids <- rownames(data)
             }
-            if (is.null(feature_ids) || length(feature_ids) != nrow(ranges_df)) {
+            if (is.null(feature_ids) ||
+                length(feature_ids) != nrow(ranges_df)) {
                 feature_ids <- paste0("row", seq_len(nrow(ranges_df)))
             }
             ranges_df$.__feature_id__ <- as.character(feature_ids)
@@ -293,7 +297,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 class = class(data)[1],
                 assay_names = assay_names,
                 # Record whether each assay was sparse so a dense matrix
-                # round-trips back to a dense matrix (not silently to dgCMatrix).
+                # round-trips back to a dense matrix (not silently to
+                # dgCMatrix).
                 assay_sparse = vapply(
                     seq_along(assay_names),
                     function(i) inherits(
@@ -317,7 +322,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 has_metadata = isTRUE(has_meta),
                 col_data_mode = as.character(col_data_mode),
                 row_data_mode = as.character(row_data_mode),
-                created_at = format(Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC")
+                created_at = format(
+                    Sys.time(), "%Y-%m-%d %H:%M:%OS6", tz = "UTC")
             )
             ol_save(paste0(prefix, "manifest"), manifest, project = project)
             invisible(TRUE)
@@ -348,7 +354,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                 )
                 # Default to dense unless the manifest recorded this assay as
                 # sparse (older manifests without the flag round-trip to dense).
-                sparse <- if (!is.null(sparse_flags) && length(sparse_flags) >= k) {
+                sparse <- if (!is.null(sparse_flags) &&
+                    length(sparse_flags) >= k) {
                     isTRUE(as.logical(sparse_flags[[k]]))
                 } else {
                     FALSE
@@ -436,7 +443,8 @@ SEAdapter <- R6::R6Class("SEAdapter",
                         ref = ref, project = project),
                     error = function(e) NULL
                 )
-                if (is.null(rr) || is.null(feature_ids) || length(feature_ids) == 0) {
+                if (is.null(rr) || is.null(feature_ids) ||
+                    length(feature_ids) == 0) {
                     return(rr)
                 }
                 rn <- names(rr)
@@ -605,8 +613,9 @@ SEAdapter <- R6::R6Class("SEAdapter",
                     dimnames = list(feature_ids, sample_ids)
                 )
             } else {
-                # Dense reconstruction (default): a dense assay round-trips to a
-                # base matrix so identical()/all.equal() hold against the source.
+                # Dense reconstruction (default): a dense assay round-trips
+                # to a base matrix so identical()/all.equal() hold against
+                # the source.
                 mat <- matrix(0, length(feature_ids), length(sample_ids),
                     dimnames = list(feature_ids, sample_ids)
                 )

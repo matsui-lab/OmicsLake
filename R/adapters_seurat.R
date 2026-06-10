@@ -4,6 +4,11 @@
 #' This adapter stores a full-fidelity serialized Seurat object and manifest.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- SeuratAdapter$new()
+#' class(adapter)
 SeuratAdapter <- .ol_create_serialized_adapter(
   class_name = "SeuratAdapter",
   adapter_name = "Seurat",

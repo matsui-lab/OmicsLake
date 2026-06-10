@@ -18,3 +18,7 @@ Logical vector
 \description{
 NOT BETWEEN operator
 }
+\examples{
+values <- 1:20
+values[values \%!between\% c(5, 15)]
+}

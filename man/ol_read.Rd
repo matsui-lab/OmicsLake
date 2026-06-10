@@ -26,3 +26,8 @@ Data frame, lazy table, or stored object
 \description{
 Read a table by name and reference
 }
+\examples{
+ol_init("ex_ol_read", root = tempfile())
+ol_write("counts", data.frame(x = 1:3))
+ol_read("counts")
+}

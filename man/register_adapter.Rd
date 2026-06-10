@@ -9,6 +9,12 @@ register_adapter(adapter)
 \arguments{
 \item{adapter}{An LakeAdapter instance}
 }
+\value{
+Invisible TRUE on success
+}
 \description{
 Register a data adapter
+}
+\examples{
+register_adapter(SEAdapter$new())
 }

@@ -11,6 +11,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- SpectraAdapter$new()
+#' class(adapter)
 SpectraAdapter <- R6::R6Class("SpectraAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -30,7 +35,8 @@ SpectraAdapter <- R6::R6Class("SpectraAdapter",
             prefix <- paste0(name, ".__spectra__.")
             project <- lake$.__enclos_env__$private$.project
 
-            spectra_data_mode <- private$.put_spectra_data(prefix, data, project)
+            spectra_data_mode <- private$.put_spectra_data(
+                prefix, data, project)
             private$.put_peaks_data(prefix, data, project)
             private$.put_manifest(prefix, data, spectra_data_mode,
                 project)
@@ -97,7 +103,8 @@ SpectraAdapter <- R6::R6Class("SpectraAdapter",
                 return(character(0))
             }
             roots <- sort(unique(sub(manifest_pattern, "", manifests)))
-            roots[!grepl("\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
+            roots[!grepl(
+                "\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
                 roots,
                 perl = TRUE)]
         }

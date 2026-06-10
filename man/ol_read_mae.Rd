@@ -26,3 +26,15 @@ MultiAssayExperiment object
 \description{
 Compose a MultiAssayExperiment
 }
+\examples{
+if (requireNamespace("MultiAssayExperiment", quietly = TRUE)) {
+    ol_init("ex_ol_read_mae", root = tempfile())
+    long <- data.frame(
+        feature = rep(c("g1", "g2"), 2),
+        sample = rep(c("s1", "s2"), each = 2),
+        value = c(5, 8, 1, 3)
+    )
+    ol_write("rna_long", long)
+    ol_read_mae(list(rna = list(name = "rna_long")), backing = "memory")
+}
+}

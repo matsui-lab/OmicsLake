@@ -28,6 +28,7 @@
 #' }
 #'
 #' @importFrom R6 R6Class
+#' @return A \code{QueryBuilder} R6 generator; call \code{$new()} to create one.
 #' @export
 QueryBuilder <- R6::R6Class("QueryBuilder",
     cloneable = TRUE,

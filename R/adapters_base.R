@@ -18,6 +18,7 @@
 #' }
 #'
 #' @importFrom R6 R6Class
+#' @return A \code{LakeAdapter} R6 generator (base class for type adapters).
 #' @export
 LakeAdapter <- R6::R6Class("LakeAdapter",
     public = list(
@@ -162,7 +163,10 @@ LakeAdapter <- R6::R6Class("LakeAdapter",
 #' Register a data adapter
 #'
 #' @param adapter An LakeAdapter instance
+#' @return Invisible TRUE on success
 #' @export
+#' @examples
+#' register_adapter(SEAdapter$new())
 register_adapter <- function(adapter) {
     if (!inherits(adapter, "LakeAdapter")) {
         stop("adapter must be a LakeAdapter instance", call. = FALSE)
@@ -181,6 +185,9 @@ register_adapter <- function(adapter) {
 #'
 #' @return List of registered adapters
 #' @export
+#' @examples
+#' adapters <- get_adapters()
+#' length(adapters)
 get_adapters <- function() {
     if (length(.adapter_registry$adapters) == 0) {
         .ol_autoregister_builtin_adapters()

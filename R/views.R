@@ -134,24 +134,6 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
     invisible(TRUE)
 }
 
-#' List all views in the project
-#'
-#' Returns a data frame with information about all views in the project,
-#' including their SQL definitions and dependencies.
-#'
-#' @param project Project name (default: current project from options)
-#'
-#' @return A data frame with columns: view_name, definition, dependencies
-#' @export
-#'
-#' @examples
-#' if (FALSE) {
-#'     ol_init("myproject")
-#'     ol_create_view("view1", "SELECT * FROM genes WHERE expr > 0")
-#'     ol_create_view("view2", "SELECT * FROM genes WHERE expr < 0")
-#'
-#'     ol_list_views()
-#' }
 .ol_empty_views_df <- function() {
     data.frame(
         view_name = character(0),
@@ -177,6 +159,21 @@ ol_drop_view <- function(name, project = getOption("ol.project")) {
     paste(deps$parent_name, collapse = ", ")
 }
 
+#' List all views in the project
+#'
+#' Returns a data frame with information about all views in the project,
+#' including their SQL definitions and dependencies.
+#'
+#' @param project Project name (default: current project from options)
+#'
+#' @return A data frame with columns: view_name, definition, dependencies
+#' @export
+#'
+#' @examples
+#' ol_init("ex_list_views", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_create_view("v", "SELECT * FROM t")
+#' ol_list_views()
 ol_list_views <- function(project = getOption("ol.project")) {
     project <- .ol_assert_project(project,
         "Call ol_init() first or set options(ol.project=...).")

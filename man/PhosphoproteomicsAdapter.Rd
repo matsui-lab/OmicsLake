@@ -3,12 +3,20 @@
 \name{PhosphoproteomicsAdapter}
 \alias{PhosphoproteomicsAdapter}
 \title{Phosphoproteomics Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving phosphoproteomics-layer
 objects.
 }
 \details{
 Supports explicit phosphoproteomics marker classes/metadata.
+}
+\examples{
+adapter <- PhosphoproteomicsAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{PhosphoproteomicsAdapter}

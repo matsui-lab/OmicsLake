@@ -3,6 +3,9 @@
 \name{SEAdapter}
 \alias{SEAdapter}
 \title{SummarizedExperiment Adapter}
+\value{
+An \code{SEAdapter} R6 generator for SummarizedExperiment objects.
+}
 \description{
 Adapter for storing and retrieving Bioconductor
 SummarizedExperiment objects.

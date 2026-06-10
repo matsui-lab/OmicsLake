@@ -19,3 +19,9 @@ Invisible Lake object
 \description{
 Import data into the default lake
 }
+\examples{
+use_lake("ex_import", root = tempfile())
+f <- file.path(tempdir(), "imp.csv")
+write.csv(data.frame(x = 1:3), f, row.names = FALSE)
+import_data(f, "imported")
+}

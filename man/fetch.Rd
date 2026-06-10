@@ -17,6 +17,11 @@ The requested data
 \description{
 Note: This function is named 'fetch' to avoid conflict with base::get()
 }
+\examples{
+use_lake("ex_fetch", root = tempfile())
+put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+fetch("counts")
+}
 \seealso{
 \code{\link{Lake}}
 }

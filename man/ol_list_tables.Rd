@@ -9,6 +9,14 @@ ol_list_tables(project = getOption("ol.project"))
 \arguments{
 \item{project}{Project name}
 }
+\value{
+Data frame of table names
+}
 \description{
 List all tables in the project
+}
+\examples{
+ol_init("ex_ol_list_tables", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_list_tables()
 }

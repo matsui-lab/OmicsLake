@@ -1,22 +1,3 @@
-#' List all versions of an object
-#'
-#' Returns a data frame with all saved versions of an object, including
-#' timestamps, tags, size, and dependencies for each version.
-#'
-#' @param name Name of the object to list versions for
-#' @param project Project name
-#' @return A data frame with columns: version_ts, tags, size_bytes, dependencies
-#' @export
-#'
-#' @examples
-#' if (FALSE) {
-#'     ol_init("myproject")
-#'     ol_save("results", data1)
-#'     ol_save("results", data2)
-#'     ol_tag_object("results", "v1.0", when = "first")
-#'
-#'     ol_list_object_versions("results")
-#' }
 .ol_empty_object_versions <- function() {
     data.frame(
         version_ts = character(0),
@@ -71,6 +52,20 @@
     version_deps
 }
 
+#' List all versions of an object
+#'
+#' Returns a data frame with all saved versions of an object, including
+#' timestamps, tags, size, and dependencies for each version.
+#'
+#' @param name Name of the object to list versions for
+#' @param project Project name
+#' @return A data frame with columns: version_ts, tags, size_bytes, dependencies
+#' @export
+#'
+#' @examples
+#' ol_init("ex_list_object_versions", root = tempfile())
+#' ol_save("m", list(a = 1))
+#' ol_list_object_versions("m")
 ol_list_object_versions <- function(name, project = getOption("ol.project")) {
     .ol_validate_name(name, "object name")
     project <- .ol_assert_project(project,
@@ -113,30 +108,6 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
     versions
 }
 
-#' Compare versions of an object
-#'
-#' Shows a side-by-side comparison of multiple versions of an object,
-#' including timestamps, tags, size changes, and dependency changes.
-#'
-#' @param name Name of the object to compare versions for
-#' @param versions Optional vector of version identifiers (timestamps or tags).
-#'   If NULL, compares all versions.
-#' @param project Project name
-#' @return A data frame comparing the specified versions
-#' @export
-#'
-#' @examples
-#' if (FALSE) {
-#'     ol_init("myproject")
-#'     ol_save("results", data1, depends_on = "raw")
-#'     ol_tag_object("results", "baseline")
-#'     ol_save("results", data2, depends_on = c("raw", "params"))
-#'     ol_tag_object("results", "improved")
-#'
-#'     ol_compare_versions("results")
-#'
-#'     ol_compare_versions("results", versions = c("baseline", "improved"))
-#' }
 .ol_resolve_version_filter <- function(state, name, versions) {
     conn <- state$conn
     ident_refs <- .ol_sql_ident(conn, state, "__ol_refs")
@@ -179,6 +150,23 @@ ol_list_object_versions <- function(name, project = getOption("ol.project")) {
     versions_df
 }
 
+#' Compare versions of an object
+#'
+#' Shows a side-by-side comparison of multiple versions of an object,
+#' including timestamps, tags, size changes, and dependency changes.
+#'
+#' @param name Name of the object to compare versions for
+#' @param versions Optional vector of version identifiers (timestamps or tags).
+#'   If NULL, compares all versions.
+#' @param project Project name
+#' @return A data frame comparing the specified versions
+#' @export
+#'
+#' @examples
+#' ol_init("ex_compare_versions", root = tempfile())
+#' ol_save("m", list(a = 1))
+#' ol_save("m", list(a = 2))
+#' ol_compare_versions("m")
 ol_compare_versions <- function(name, versions = NULL,
     project = getOption("ol.project")) {
     .ol_validate_name(name, "object name")

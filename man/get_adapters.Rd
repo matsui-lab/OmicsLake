@@ -12,3 +12,7 @@ List of registered adapters
 \description{
 Get registered adapters
 }
+\examples{
+adapters <- get_adapters()
+length(adapters)
+}

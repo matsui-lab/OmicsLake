@@ -6,6 +6,19 @@
 \usage{
 ol_init(project, root = NULL, ...)
 }
+\arguments{
+\item{project}{Project name}
+
+\item{root}{Optional storage root directory. Defaults to the OmicsLake root.}
+
+\item{...}{Additional arguments passed to the backend initializer}
+}
+\value{
+Invisible normalized project root path
+}
 \description{
 Initialize an OmicsLake project
+}
+\examples{
+ol_init("ex_ol_init", root = tempfile())
 }

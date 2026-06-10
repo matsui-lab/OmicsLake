@@ -19,3 +19,8 @@ Data frame, lazy table, or stored object
 \description{
 Alias of \code{ol_read()}
 }
+\examples{
+ol_init("ex_ol_load", root = tempfile())
+ol_save("model", list(a = 1))
+ol_load("model")
+}

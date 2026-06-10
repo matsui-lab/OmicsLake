@@ -3,6 +3,10 @@
 \name{QFeaturesAdapter}
 \alias{QFeaturesAdapter}
 \title{QFeatures Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving
 \code{QFeatures} objects.
@@ -13,6 +17,10 @@ This adapter preserves \code{QFeatures} components:
   \item underlying experiments/sample maps via MultiAssayExperiment adapter
   \item assay links (\code{assayLinks})
 }
+}
+\examples{
+adapter <- QFeaturesAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{QFeaturesAdapter}

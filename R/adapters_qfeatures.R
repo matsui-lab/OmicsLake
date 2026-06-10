@@ -11,6 +11,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- QFeaturesAdapter$new()
+#' class(adapter)
 QFeaturesAdapter <- R6::R6Class("QFeaturesAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -153,7 +158,10 @@ QFeaturesAdapter <- R6::R6Class("QFeaturesAdapter",
             exps <- MultiAssayExperiment::experiments(mae)
             col_data <- SummarizedExperiment::colData(mae)
             sample_map <- MultiAssayExperiment::sampleMap(mae)
-            meta <- tryCatch(S4Vectors::metadata(mae), error = function(e) list())
+            meta <- tryCatch(
+                S4Vectors::metadata(mae),
+                error = function(e) list()
+            )
 
             qf <- tryCatch(
                 do.call(QFeatures::QFeatures, c(

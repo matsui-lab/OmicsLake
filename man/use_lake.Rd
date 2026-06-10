@@ -19,8 +19,6 @@ The default Lake object (invisibly when setting)
 Set or get the default lake
 }
 \examples{
-if (FALSE) {
-    use_lake("my_analysis")
-    lake <- use_lake() # Get current lake
-}
+use_lake("ex_use_lake", root = tempfile())
+current <- use_lake() # Get current lake
 }

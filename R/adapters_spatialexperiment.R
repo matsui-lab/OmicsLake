@@ -5,6 +5,11 @@
 #' manifest.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- SpatialExperimentAdapter$new()
+#' class(adapter)
 SpatialExperimentAdapter <- .ol_create_serialized_adapter(
   class_name = "SpatialExperimentAdapter",
   adapter_name = "SpatialExperiment",

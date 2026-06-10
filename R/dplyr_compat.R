@@ -15,6 +15,7 @@
 #'   save_as("summary", lake)
 #' }
 #'
+#' @return See the individual function help pages for return values.
 #' @name dplyr_compat
 NULL
 
@@ -261,25 +262,29 @@ relocate.lake_tbl <- function(.data, ..., .before = NULL, .after = NULL) {
 }
 
 #' @exportS3Method dplyr::left_join
-left_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
+left_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE,
+                               suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
 #' @exportS3Method dplyr::inner_join
-inner_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
+inner_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE,
+                                suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
 #' @exportS3Method dplyr::right_join
-right_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
+right_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE,
+                                suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }
 
 #' @exportS3Method dplyr::full_join
-full_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...) {
+full_join.lake_tbl <- function(x, y, by = NULL, copy = FALSE,
+                               suffix = c(".x", ".y"), ...) {
   result <- NextMethod()
   .merge_lake_attrs(result, x, y)
 }

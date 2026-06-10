@@ -3,12 +3,20 @@
 \name{EpigenomicsAdapter}
 \alias{EpigenomicsAdapter}
 \title{Epigenomics Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving epigenomics-layer objects.
 }
 \details{
 This umbrella adapter is lower priority than specific adapters
 (e.g. Methylation / ATAC / ChIP) and captures epigenomics-marked objects.
+}
+\examples{
+adapter <- EpigenomicsAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{EpigenomicsAdapter}

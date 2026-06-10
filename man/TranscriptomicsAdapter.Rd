@@ -3,6 +3,10 @@
 \name{TranscriptomicsAdapter}
 \alias{TranscriptomicsAdapter}
 \title{Transcriptomics Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving transcriptomics-layer
 objects.
@@ -11,6 +15,10 @@ objects.
 This umbrella adapter is lower priority than specific adapters
 (e.g. SingleCellExperiment / SummarizedExperiment) and captures
 transcriptomics-marked objects.
+}
+\examples{
+adapter <- TranscriptomicsAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{TranscriptomicsAdapter}

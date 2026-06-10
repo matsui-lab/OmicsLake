@@ -5,6 +5,11 @@
 #' Supports explicit phosphoproteomics marker classes/metadata.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- PhosphoproteomicsAdapter$new()
+#' class(adapter)
 PhosphoproteomicsAdapter <- .ol_create_serialized_adapter(
   class_name = "PhosphoproteomicsAdapter",
   adapter_name = "Phosphoproteomics",

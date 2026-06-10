@@ -17,3 +17,8 @@ Invisible Lake object
 \description{
 Drop data from the default lake
 }
+\examples{
+use_lake("ex_drop", root = tempfile())
+put("t", data.frame(x = 1:3))
+drop("t")
+}

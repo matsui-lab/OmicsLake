@@ -1,35 +1,3 @@
-#' Visualize dependency lineage as a graph
-#'
-#' Creates a visualization of the dependency relationships between tables and
-#' objects in the OmicsLake project. Requires the igraph package to be
-#' installed.
-#'
-#' @param name Name of the table or object to visualize
-#' @param direction Direction to traverse: "upstream" (dependencies),
-#'   "downstream" (dependents), or "both"
-#' @param layout Graph layout algorithm: "tree", "sugiyama" (hierarchical),
-#'   "circle", or "auto"
-#' @param max_depth Maximum depth to traverse (default: 10)
-#' @param project Project name
-#' @param vertex.size Size of graph nodes (default: 20)
-#' @param vertex.label.cex Size of node labels (default: 0.8)
-#' @param edge.arrow.size Size of edge arrows (default: 0.5)
-#' @param main Plot title (auto-generated if NULL)
-#' @param ... Additional arguments passed to plot.igraph()
-#'
-#' @return An igraph object (invisibly)
-#' @export
-#'
-#' @examples
-#' if (FALSE) {
-#'     ol_init("myproject")
-#'     ol_save("raw", data)
-#'     ol_save("processed", result, depends_on = "raw")
-#'
-#'     ol_plot_lineage("processed", direction = "upstream")
-#'
-#'     ol_plot_lineage("processed", direction = "upstream", layout = "circle")
-#' }
 .ol_plot_lineage_format <- function(lineage, direction) {
     if (nrow(lineage) == 0) {
         return(NULL)
@@ -98,6 +66,35 @@
     igraph::layout_with_sugiyama
 }
 
+#' Visualize dependency lineage as a graph
+#'
+#' Creates a visualization of the dependency relationships between tables and
+#' objects in the OmicsLake project. Requires the igraph package to be
+#' installed.
+#'
+#' @param name Name of the table or object to visualize
+#' @param direction Direction to traverse: "upstream" (dependencies),
+#'   "downstream" (dependents), or "both"
+#' @param layout Graph layout algorithm: "tree", "sugiyama" (hierarchical),
+#'   "circle", or "auto"
+#' @param max_depth Maximum depth to traverse (default: 10)
+#' @param project Project name
+#' @param vertex.size Size of graph nodes (default: 20)
+#' @param vertex.label.cex Size of node labels (default: 0.8)
+#' @param edge.arrow.size Size of edge arrows (default: 0.5)
+#' @param main Plot title (auto-generated if NULL)
+#' @param ... Additional arguments passed to plot.igraph()
+#'
+#' @return An igraph object (invisibly)
+#' @export
+#'
+#' @examples
+#' if (requireNamespace("igraph", quietly = TRUE)) {
+#'     ol_init("ex_plot_lineage", root = tempfile())
+#'     ol_write("raw", data.frame(x = 1:3))
+#'     ol_write("f", data.frame(x = 1:2), depends_on = "raw")
+#'     ol_plot_lineage("f")
+#' }
 ol_plot_lineage <- function(
     name,
     direction = c("upstream", "downstream", "both"),

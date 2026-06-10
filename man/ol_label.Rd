@@ -12,8 +12,23 @@ ol_label(
 )
 }
 \arguments{
-\item{.in_transaction}{Internal parameter - if TRUE, skip transaction in child calls (caller handles it)}
+\item{label}{Label name to assign to the current state}
+
+\item{state_id}{Optional state identifier; defaults to the current state}
+
+\item{project}{Project name}
+
+\item{.in_transaction}{Internal parameter - if TRUE, skip transaction in
+child calls (caller handles it)}
+}
+\value{
+Invisible label name
 }
 \description{
 Label current state with a human-friendly alias
+}
+\examples{
+ol_init("ex_ol_label", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_label("v1")
 }

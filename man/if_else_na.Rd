@@ -21,3 +21,7 @@ Vector with conditional values
 \description{
 If-else with NA handling
 }
+\examples{
+cond <- c(TRUE, FALSE, NA)
+if_else_na(cond, "yes", "no", na = "missing")
+}

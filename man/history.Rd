@@ -17,3 +17,8 @@ History data frame
 \description{
 Show history from the default lake
 }
+\examples{
+use_lake("ex_history", root = tempfile())
+put("t", data.frame(x = 1:3))
+history()
+}

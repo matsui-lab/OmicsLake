@@ -3,28 +3,47 @@
 #' @param data Data frame to store
 #' @param project Project name
 #' @param mode Write mode: "create", "overwrite", or "append"
-#' @param depends_on Optional character vector of table/object names that this table depends on
+#' @param depends_on Optional character vector of table/object names that this
+#'   table depends on
 #' @return Invisible qualified table name
 #' @export
-ol_write <- function(name, data, project = getOption("ol.project"), mode = c("create", "overwrite", "append"), depends_on = NULL) {
+#' @examples
+#' ol_init("ex_ol_write", root = tempfile())
+#' ol_write("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+ol_write <- function(name, data, project = getOption("ol.project"),
+                     mode = c("create", "overwrite", "append"),
+                     depends_on = NULL) {
   .ol_require(c("arrow", "duckdb"))
   .ol_validate_name(name, "table name")
   .ol_validate_data_frame(data)
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   mode <- match.arg(mode)
   conn <- state$conn
   schema_sql <- .ol_schema_sql(conn, state)
   DBI::dbExecute(conn, sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema_sql))
   tbl <- arrow::arrow_table(data)
-  tmp_name <- paste0("ol_tmp_", gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6")))
+  tmp_name <- paste0(
+    "ol_tmp_", gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
+  )
   duckdb::duckdb_register_arrow(conn, tmp_name, tbl)
   on.exit(duckdb::duckdb_unregister_arrow(conn, tmp_name), add = TRUE)
   ident <- .ol_sql_ident(conn, state, name)
   sql <- switch(mode,
-    create = sprintf("CREATE TABLE %s AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
-    overwrite = sprintf("CREATE OR REPLACE TABLE %s AS SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name)),
-    append = sprintf("INSERT INTO %s SELECT * FROM %s", ident, DBI::dbQuoteIdentifier(conn, tmp_name))
+    create = sprintf(
+      "CREATE TABLE %s AS SELECT * FROM %s",
+      ident, DBI::dbQuoteIdentifier(conn, tmp_name)
+    ),
+    overwrite = sprintf(
+      "CREATE OR REPLACE TABLE %s AS SELECT * FROM %s",
+      ident, DBI::dbQuoteIdentifier(conn, tmp_name)
+    ),
+    append = sprintf(
+      "INSERT INTO %s SELECT * FROM %s",
+      ident, DBI::dbQuoteIdentifier(conn, tmp_name)
+    )
   )
   DBI::dbExecute(conn, sql)
   
@@ -38,12 +57,19 @@ ol_write <- function(name, data, project = getOption("ol.project"), mode = c("cr
 #' @param object R object to save
 #' @param project Project name
 #' @param mime MIME type for object payload
-#' @param depends_on Optional character vector of table/object names that this object depends on
+#' @param depends_on Optional character vector of table/object names that this
+#'   object depends on
 #' @return Invisible TRUE on success
 #' @export
-ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL, depends_on = NULL) {
+#' @examples
+#' ol_init("ex_ol_save", root = tempfile())
+#' ol_save("model", list(coef = 1:3))
+ol_save <- function(name, object, project = getOption("ol.project"),
+                    mime = NULL, depends_on = NULL) {
   .ol_validate_name(name, "object name")
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   conn <- state$conn
   .ol_ensure_objects_table(state)
@@ -51,7 +77,9 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
   mime <- if (is.null(mime)) "application/octet-stream" else as.character(mime)
   if (identical(state$object_mode, "external")) {
     root <- state$object_root
-    if (is.null(root)) stop("External object storage root is not configured", call. = FALSE)
+    if (is.null(root)) {
+      stop("External object storage root is not configured", call. = FALSE)
+    }
     fname <- sprintf("%s-%s.rds", name, format(version_ts, "%Y%m%d-%H%M%S"))
     fpath <- file.path(root, fname)
     saveRDS(object, fpath)
@@ -66,8 +94,12 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
     bytes = I(list(bytes)),
     stringsAsFactors = FALSE
   )
-  DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_objects"), payload)
-  
+  DBI::dbAppendTable(
+    conn,
+    DBI::Id(schema = state$namespace, table = "__ol_objects"),
+    payload
+  )
+
   .ol_record_dependencies(state, name, "object", depends_on)
   
   invisible(TRUE)
@@ -87,9 +119,17 @@ ol_save <- function(name, object, project = getOption("ol.project"), mime = NULL
 #' `options(ol.repro.strict = TRUE/FALSE)`,
 #' `options(ol.repro.require_clean_git = TRUE/FALSE)`,
 #' and AI metadata options such as `options(ol.agent.prompt_id = "...")`.
+#' @return Invisible commit identifier string
 #' @export
-ol_commit <- function(note = "", params = list(), project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+#' @examples
+#' ol_init("ex_ol_commit", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_commit("initial load")
+ol_commit <- function(note = "", params = list(),
+                      project = getOption("ol.project")) {
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   commit_id <- format(Sys.time(), "%Y%m%d-%H%M%S")
   
@@ -97,7 +137,11 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
   conn <- state$conn
   
   params <- .ol_add_repro_to_params(params)
-  params_json <- if (length(params) > 0) jsonlite::toJSON(params, auto_unbox = TRUE, null = "null") else ""
+  params_json <- if (length(params) > 0) {
+    jsonlite::toJSON(params, auto_unbox = TRUE, null = "null")
+  } else {
+    ""
+  }
   
   commit_data <- data.frame(
     commit_id = commit_id,
@@ -107,7 +151,11 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
     stringsAsFactors = FALSE
   )
   
-  DBI::dbAppendTable(conn, DBI::Id(schema = state$namespace, table = "__ol_commits"), commit_data)
+  DBI::dbAppendTable(
+    conn,
+    DBI::Id(schema = state$namespace, table = "__ol_commits"),
+    commit_data
+  )
   
   invisible(commit_id)
 }
@@ -119,8 +167,15 @@ ol_commit <- function(note = "", params = list(), project = getOption("ol.projec
 #' @param collect If TRUE, return data.frame; if FALSE, return lazy table
 #' @return Data frame, lazy table, or stored object
 #' @export
-ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), collect = TRUE) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+#' @examples
+#' ol_init("ex_ol_read", root = tempfile())
+#' ol_write("counts", data.frame(x = 1:3))
+#' ol_read("counts")
+ol_read <- function(name, ref = "@latest", project = getOption("ol.project"),
+                    collect = TRUE) {
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
 
   if (!isTRUE(collect)) {
@@ -155,7 +210,10 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
 
   object_attempt <- tryCatch(
     {
-      list(result = ol_read_object(name, ref = ref, project = project), error = NULL)
+      list(
+        result = ol_read_object(name, ref = ref, project = project),
+        error = NULL
+      )
     },
     error = function(e) list(result = NULL, error = conditionMessage(e))
   )
@@ -171,7 +229,11 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
 
   msg <- paste0(
     "Failed to read '", name, "' at ref '", ref, "'. ",
-    if (!is.null(table_err)) paste0("Table read error: ", table_err, ". ") else "",
+    if (!is.null(table_err)) {
+      paste0("Table read error: ", table_err, ". ")
+    } else {
+      ""
+    },
     if (!is.null(obj_err)) paste0("Object read error: ", obj_err, ".") else ""
   )
   stop(msg, call. = FALSE)
@@ -183,15 +245,27 @@ ol_read <- function(name, ref = "@latest", project = getOption("ol.project"), co
 #' @param project Project name
 #' @return Data frame, lazy table, or stored object
 #' @export
-ol_load <- function(name, ref = "@latest", project = getOption("ol.project")) ol_read(name, ref, project)
+#' @examples
+#' ol_init("ex_ol_load", root = tempfile())
+#' ol_save("model", list(a = 1))
+#' ol_load("model")
+ol_load <- function(name, ref = "@latest", project = getOption("ol.project")) {
+  ol_read(name, ref, project)
+}
 
 #' Return version log for a table
 #' @param name Optional table name. If NULL, returns commit log.
 #' @param project Project name
 #' @return Data frame of version history
 #' @export
+#' @examples
+#' ol_init("ex_ol_log", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_log()
 ol_log <- function(name = NULL, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- try(.ol_get_backend_state(project), silent = TRUE)
   if (inherits(state, "try-error")) return(utils::head(data.frame()))
   
@@ -208,22 +282,35 @@ ol_log <- function(name = NULL, project = getOption("ol.project")) {
     ident,
     DBI::dbQuoteString(conn, name)
   )
-  res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
+  res <- tryCatch(
+    DBI::dbGetQuery(conn, query),
+    error = function(e) data.frame()
+  )
   
   res
 }
 
 #' List all tables in the project
 #' @param project Project name
+#' @return Data frame of table names
 #' @export
+#' @examples
+#' ol_init("ex_ol_list_tables", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_list_tables()
 ol_list_tables <- function(project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   conn <- state$conn
   
   tables <- DBI::dbListTables(conn, DBI::Id(schema = state$namespace))
-  tables <- setdiff(tables, c("__ol_refs", "__ol_objects", "__ol_commits", "__ol_dependencies", "__ol_adapters"))
-  
+  tables <- setdiff(tables, c(
+    "__ol_refs", "__ol_objects", "__ol_commits",
+    "__ol_dependencies", "__ol_adapters"
+  ))
+
   data.frame(
     table_name = tables,
     stringsAsFactors = FALSE
@@ -232,9 +319,16 @@ ol_list_tables <- function(project = getOption("ol.project")) {
 
 #' List all saved objects in the project
 #' @param project Project name
+#' @return Data frame of object names
 #' @export
+#' @examples
+#' ol_init("ex_ol_list_objects", root = tempfile())
+#' ol_save("m", list(a = 1))
+#' ol_list_objects()
 ol_list_objects <- function(project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
@@ -247,9 +341,16 @@ ol_list_objects <- function(project = getOption("ol.project")) {
 #' List all tags for a table or all project labels
 #' @param name Optional table name to list tags for. If NULL, lists all tags.
 #' @param project Project name
+#' @return Data frame of tags
 #' @export
+#' @examples
+#' ol_init("ex_ol_list_tags", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_list_tags()
 ol_list_tags <- function(name = NULL, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   .ol_ensure_refs_table(state)
   conn <- state$conn
@@ -274,9 +375,16 @@ ol_list_tags <- function(name = NULL, project = getOption("ol.project")) {
 
 #' List all project-level labels
 #' @param project Project name
+#' @return Data frame of project labels
 #' @export
+#' @examples
+#' ol_init("ex_ol_list_labels", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_list_labels()
 ol_list_labels <- function(project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   .ol_ensure_refs_table(state)
   conn <- state$conn
@@ -294,9 +402,16 @@ ol_list_labels <- function(project = getOption("ol.project")) {
 #' Drop (delete) a table from the project
 #' @param name Name of the table to drop
 #' @param project Project name
+#' @return Invisible TRUE on success
 #' @export
+#' @examples
+#' ol_init("ex_ol_drop", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_drop("t")
 ol_drop <- function(name, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   conn <- state$conn
 
@@ -306,16 +421,24 @@ ol_drop <- function(name, project = getOption("ol.project")) {
     DBI::dbExecute(conn, sprintf("DROP TABLE IF EXISTS %s", ident))
     invisible(TRUE)
   }, error = function(e) {
-    stop("Failed to drop table '", name, "': ", conditionMessage(e), call. = FALSE)
+    stop("Failed to drop table '", name, "': ",
+         conditionMessage(e), call. = FALSE)
   })
 }
 
 #' Drop (delete) an object from the project
 #' @param name Name of the object to drop
 #' @param project Project name
+#' @return Invisible TRUE on success
 #' @export
+#' @examples
+#' ol_init("ex_ol_drop_object", root = tempfile())
+#' ol_save("m", list(a = 1))
+#' ol_drop_object("m")
 ol_drop_object <- function(name, project = getOption("ol.project")) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   .ol_ensure_objects_table(state)
   conn <- state$conn
@@ -345,16 +468,25 @@ ol_drop_object <- function(name, project = getOption("ol.project")) {
     DBI::dbExecute(conn, delete_query)
     invisible(TRUE)
   }, error = function(e) {
-    stop("Failed to drop object '", name, "': ", conditionMessage(e), call. = FALSE)
+    stop("Failed to drop object '", name, "': ",
+         conditionMessage(e), call. = FALSE)
   })
 }
 
 #' View commit history
 #' @param project Project name
 #' @param n Maximum number of commits to return
+#' @return Data frame of commits with reproducibility and agent metadata columns
 #' @export
+#' @examples
+#' ol_init("ex_ol_log_commits", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_commit("note")
+#' ol_log_commits()
 ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- try(.ol_get_backend_state(project), silent = TRUE)
   if (inherits(state, "try-error")) return(utils::head(data.frame()))
   
@@ -362,8 +494,17 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
   conn <- state$conn
   ident <- .ol_sql_ident(conn, state, "__ol_commits")
   
-  query <- sprintf("SELECT commit_id, note, params_json, created_at FROM %s ORDER BY created_at DESC LIMIT %d", ident, as.integer(n))
-  res <- tryCatch(DBI::dbGetQuery(conn, query), error = function(e) data.frame())
+  query <- sprintf(
+    paste0(
+      "SELECT commit_id, note, params_json, created_at FROM %s ",
+      "ORDER BY created_at DESC LIMIT %d"
+    ),
+    ident, as.integer(n)
+  )
+  res <- tryCatch(
+    DBI::dbGetQuery(conn, query),
+    error = function(e) data.frame()
+  )
   if (nrow(res) > 0) {
     parsed <- lapply(res$params_json, .ol_parse_params_json)
     repro <- lapply(parsed, function(x) {
@@ -389,12 +530,16 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
     })
     res$git_commit <- vapply(
       repro,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("git", "commit")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("git", "commit")), NA_character_
+      ),
       character(1)
     )
     res$git_branch <- vapply(
       repro,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("git", "branch")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("git", "branch")), NA_character_
+      ),
       character(1)
     )
     res$git_dirty <- vapply(
@@ -407,52 +552,72 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
     )
     res$renv_lockfile <- vapply(
       repro,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("renv", "lockfile")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("renv", "lockfile")), NA_character_
+      ),
       character(1)
     )
     res$renv_lockfile_md5 <- vapply(
       repro,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("renv", "lockfile_md5")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("renv", "lockfile_md5")), NA_character_
+      ),
       character(1)
     )
     res$agent_prompt_id <- vapply(
       agent,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("prompt_id")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("prompt_id")), NA_character_
+      ),
       character(1)
     )
     res$agent_run_id <- vapply(
       agent,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("run_id")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("run_id")), NA_character_
+      ),
       character(1)
     )
     res$agent_name <- vapply(
       agent,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("agent_name")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("agent_name")), NA_character_
+      ),
       character(1)
     )
     res$agent_script_path <- vapply(
       agent,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("script_path")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("script_path")), NA_character_
+      ),
       character(1)
     )
     res$agent_script_md5 <- vapply(
       agent,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("script_md5")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("script_md5")), NA_character_
+      ),
       character(1)
     )
     res$snapshot_validation_prev <- vapply(
       validation,
-      function(x) .ol_as_scalar_character(.ol_get_nested(x, c("previous_label")), NA_character_),
+      function(x) .ol_as_scalar_character(
+        .ol_get_nested(x, c("previous_label")), NA_character_
+      ),
       character(1)
     )
     res$snapshot_validation_structural_changes <- vapply(
       validation,
-      function(x) .ol_as_scalar_integer(.ol_get_nested(x, c("summary", "structural_changes")), NA_integer_),
+      function(x) .ol_as_scalar_integer(
+        .ol_get_nested(x, c("summary", "structural_changes")), NA_integer_
+      ),
       integer(1)
     )
     res$snapshot_validation_row_count_changes <- vapply(
       validation,
-      function(x) .ol_as_scalar_integer(.ol_get_nested(x, c("summary", "row_count_changes")), NA_integer_),
+      function(x) .ol_as_scalar_integer(
+        .ol_get_nested(x, c("summary", "row_count_changes")), NA_integer_
+      ),
       integer(1)
     )
   }
@@ -462,13 +627,25 @@ ol_log_commits <- function(project = getOption("ol.project"), n = 20) {
 
 #' Get dependencies for a table or object
 #' @param name Name of the table or object
-#' @param direction Direction to query: "upstream" (parents), "downstream" (children), or "both"
+#' @param direction Direction to query: "upstream" (parents), "downstream"
+#'   (children), or "both"
 #' @param project Project name
-#' @return Data frame with dependency info including version references (parent_ref, parent_version_id)
+#' @return Data frame with dependency info including version references
+#'   (parent_ref, parent_version_id)
 #' @export
-ol_get_dependencies <- function(name, direction = c("upstream", "downstream", "both"), project = getOption("ol.project")) {
+#' @examples
+#' ol_init("ex_ol_get_dependencies", root = tempfile())
+#' ol_write("raw", data.frame(x = 1:3))
+#' ol_write("filtered", data.frame(x = 1:2), depends_on = "raw")
+#' ol_get_dependencies("filtered")
+ol_get_dependencies <- function(name,
+                                direction = c("upstream", "downstream",
+                                              "both"),
+                                project = getOption("ol.project")) {
   direction <- match.arg(direction)
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
 
   .ol_ensure_dependencies_table(state)
@@ -477,28 +654,48 @@ ol_get_dependencies <- function(name, direction = c("upstream", "downstream", "b
 
   if (direction == "upstream") {
     query <- sprintf(
-      "SELECT parent_name, parent_type, relationship_type, created_at, parent_ref, parent_version_id FROM %s WHERE child_name = %s ORDER BY created_at DESC",
+      paste0(
+        "SELECT parent_name, parent_type, relationship_type, created_at, ",
+        "parent_ref, parent_version_id FROM %s WHERE child_name = %s ",
+        "ORDER BY created_at DESC"
+      ),
       ident,
       DBI::dbQuoteString(conn, name)
     )
   } else if (direction == "downstream") {
     query <- sprintf(
-      "SELECT child_name, child_type, relationship_type, created_at, child_version_id FROM %s WHERE parent_name = %s ORDER BY created_at DESC",
+      paste0(
+        "SELECT child_name, child_type, relationship_type, created_at, ",
+        "child_version_id FROM %s WHERE parent_name = %s ",
+        "ORDER BY created_at DESC"
+      ),
       ident,
       DBI::dbQuoteString(conn, name)
     )
   } else {
     upstream_query <- sprintf(
-      "SELECT parent_name AS name, parent_type AS type, 'upstream' AS direction, relationship_type, created_at, parent_ref, parent_version_id FROM %s WHERE child_name = %s",
+      paste0(
+        "SELECT parent_name AS name, parent_type AS type, ",
+        "'upstream' AS direction, relationship_type, created_at, ",
+        "parent_ref, parent_version_id FROM %s WHERE child_name = %s"
+      ),
       ident,
       DBI::dbQuoteString(conn, name)
     )
     downstream_query <- sprintf(
-      "SELECT child_name AS name, child_type AS type, 'downstream' AS direction, relationship_type, created_at, NULL as parent_ref, child_version_id as parent_version_id FROM %s WHERE parent_name = %s",
+      paste0(
+        "SELECT child_name AS name, child_type AS type, ",
+        "'downstream' AS direction, relationship_type, created_at, ",
+        "NULL as parent_ref, child_version_id as parent_version_id ",
+        "FROM %s WHERE parent_name = %s"
+      ),
       ident,
       DBI::dbQuoteString(conn, name)
     )
-    query <- sprintf("(%s) UNION ALL (%s) ORDER BY created_at DESC", upstream_query, downstream_query)
+    query <- sprintf(
+      "(%s) UNION ALL (%s) ORDER BY created_at DESC",
+      upstream_query, downstream_query
+    )
   }
 
   DBI::dbGetQuery(conn, query)
@@ -506,13 +703,24 @@ ol_get_dependencies <- function(name, direction = c("upstream", "downstream", "b
 
 #' Show lineage (full dependency tree) for a table or object
 #' @param name Name of the table or object
-#' @param direction Direction to traverse: "upstream" (all ancestors) or "downstream" (all descendants)
+#' @param direction Direction to traverse: "upstream" (all ancestors) or
+#'   "downstream" (all descendants)
 #' @param max_depth Maximum depth to traverse (default: 10)
 #' @param project Project name
+#' @return Data frame describing the lineage tree
 #' @export
-ol_show_lineage <- function(name, direction = c("upstream", "downstream"), max_depth = 10, project = getOption("ol.project")) {
+#' @examples
+#' ol_init("ex_ol_show_lineage", root = tempfile())
+#' ol_write("raw", data.frame(x = 1:3))
+#' ol_write("filtered", data.frame(x = 1:2), depends_on = "raw")
+#' ol_show_lineage("filtered")
+ol_show_lineage <- function(name, direction = c("upstream", "downstream"),
+                            max_depth = 10,
+                            project = getOption("ol.project")) {
   direction <- match.arg(direction)
-  project <- .ol_assert_project(project, "Call ol_init() first or set options(ol.project=...).")
+  project <- .ol_assert_project(
+    project, "Call ol_init() first or set options(ol.project=...)."
+  )
   state <- .ol_get_backend_state(project)
   
   .ol_ensure_dependencies_table(state)
@@ -535,7 +743,9 @@ ol_show_lineage <- function(name, direction = c("upstream", "downstream"), max_d
     if (current_name %in% visited) next
     visited <- c(visited, current_name)
     
-    deps <- ol_get_dependencies(current_name, direction = direction, project = project)
+    deps <- ol_get_dependencies(
+      current_name, direction = direction, project = project
+    )
     
     if (nrow(deps) > 0) {
       if (direction == "upstream") {

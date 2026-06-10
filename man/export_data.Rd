@@ -19,3 +19,8 @@ Invisible path
 \description{
 Export data from the default lake
 }
+\examples{
+use_lake("ex_export", root = tempfile())
+put("t", data.frame(x = 1:3))
+export_data("t", file.path(tempdir(), "t.parquet"))
+}

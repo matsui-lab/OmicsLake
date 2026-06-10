@@ -326,6 +326,11 @@ record_read <- function(path) {
 #' @param path File path that was written
 #' @return Invisibly returns the path
 #' @export
+#' @examples
+#' use_lake("ex_record_write", root = tempfile())
+#' f <- file.path(tempdir(), "result.csv")
+#' write.csv(data.frame(x = 1:3), f, row.names = FALSE)
+#' record_write(f)
 record_write <- function(path) {
     .record_write(path)
     invisible(path)
@@ -406,6 +411,7 @@ observe <- function(expr, track_functions = NULL) {
 #'
 #' @param x A lake_observation object
 #' @param ... Additional arguments (ignored)
+#' @return Invisibly returns \code{x}.
 #' @export
 print.lake_observation <- function(x, ...) {
     lines <- c(
@@ -730,40 +736,6 @@ observe_to_lake <- function(expr, lake, prefix = "file:",
     obs$result
 }
 
-#' Enable transparent background tracking for a session
-#'
-#' Installs temporary wrappers for common unqualified I/O functions in
-#' `.GlobalEnv`, so existing analysis code can run unchanged while reads/writes
-#' are tracked and recorded to Lake.
-#'
-#' @param project Optional project name. If set, calls `use_lake(project, ...)`.
-#' @param prefix Prefix for file-based node names in the lake
-#' @param snapshot Optional snapshot label created when tracking is disabled
-#' with commit
-#' @param track_functions Character vector forwarded to tracking wrappers
-#' @param store_observation If TRUE, store observed reads/writes/lineage as an
-#' object
-#' @param observation_name Optional target name when `store_observation = TRUE`
-#' @param observation_depends_on Dependencies used for observation record:
-#'   `"writes"`, `"reads"`, `"both"`, or `"none"`
-#' @param auto_disable If TRUE, installs a `.Last()` hook to auto-commit on
-#' session end
-#' @param ... Additional arguments passed to `use_lake()` when `project` is
-#' provided
-#' @return Invisible Lake object
-#' @export
-#' @examples
-#' if (FALSE) {
-#'     # In .Rprofile (one-time setup for transparent mode)
-#'     OmicsLake::ol_enable_transparent_tracking(project = "rna_project")
-#'
-#'     # Existing script code runs unchanged
-#'     data <- read.csv("counts.csv")
-#'     write.csv(data, "counts_qc.csv", row.names = FALSE)
-#'
-#'     # Explicit end if not using auto_disable
-#'     OmicsLake::ol_disable_transparent_tracking(commit = TRUE)
-#' }
 .ol_track_validate_enable_args <- function(
     snapshot,
     store_observation,
@@ -817,6 +789,32 @@ observe_to_lake <- function(expr, lake, prefix = "file:",
     invisible(target_lake)
 }
 
+#' Enable transparent background tracking for a session
+#'
+#' Installs temporary wrappers for common unqualified I/O functions in
+#' `.GlobalEnv`, so existing analysis code can run unchanged while reads/writes
+#' are tracked and recorded to Lake.
+#'
+#' @param project Optional project name. If set, calls `use_lake(project, ...)`.
+#' @param prefix Prefix for file-based node names in the lake
+#' @param snapshot Optional snapshot label created when tracking is disabled
+#' with commit
+#' @param track_functions Character vector forwarded to tracking wrappers
+#' @param store_observation If TRUE, store observed reads/writes/lineage as an
+#' object
+#' @param observation_name Optional target name when `store_observation = TRUE`
+#' @param observation_depends_on Dependencies used for observation record:
+#'   `"writes"`, `"reads"`, `"both"`, or `"none"`
+#' @param auto_disable If TRUE, installs a `.Last()` hook to auto-commit on
+#' session end
+#' @param ... Additional arguments passed to `use_lake()` when `project` is
+#' provided
+#' @return Invisible Lake object
+#' @export
+#' @examples
+#' use_lake("ex_transparent", root = tempfile())
+#' ol_enable_transparent_tracking()
+#' ol_disable_transparent_tracking(commit = FALSE)
 ol_enable_transparent_tracking <- function(project = NULL,
     prefix = "file:",
     snapshot = NULL,

@@ -3,6 +3,10 @@
 \name{XCMSAdapter}
 \alias{XCMSAdapter}
 \title{XCMS Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving xcms objects
 (\code{XCMSnExp} and \code{XcmsExperiment}).
@@ -10,6 +14,10 @@ Adapter for storing and retrieving xcms objects
 \details{
 This adapter currently guarantees full-fidelity roundtrip by storing the
 complete object and manifest as internal components.
+}
+\examples{
+adapter <- XCMSAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{XCMSAdapter}

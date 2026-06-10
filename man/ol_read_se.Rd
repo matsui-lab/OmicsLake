@@ -35,3 +35,13 @@ SummarizedExperiment object
 \description{
 Build a SummarizedExperiment from long table
 }
+\examples{
+ol_init("ex_ol_read_se", root = tempfile())
+long <- data.frame(
+    feature = rep(c("g1", "g2"), each = 2),
+    sample = rep(c("s1", "s2"), 2),
+    value = c(5, 8, 1, 3)
+)
+ol_write("expr_long", long)
+ol_read_se("expr_long", backing = "memory")
+}

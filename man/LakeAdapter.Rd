@@ -3,6 +3,9 @@
 \name{LakeAdapter}
 \alias{LakeAdapter}
 \title{Lake Adapter Base Class}
+\value{
+A \code{LakeAdapter} R6 generator (base class for type adapters).
+}
 \description{
 Base class for type-specific data adapters.
 Adapters provide specialized storage and retrieval for complex object types.

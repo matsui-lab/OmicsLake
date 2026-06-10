@@ -4,6 +4,11 @@
 #' Supports explicit glycomics marker classes/metadata.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- GlycomicsAdapter$new()
+#' class(adapter)
 GlycomicsAdapter <- .ol_create_serialized_adapter(
   class_name = "GlycomicsAdapter",
   adapter_name = "Glycomics",

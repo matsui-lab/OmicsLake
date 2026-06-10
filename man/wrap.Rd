@@ -3,6 +3,9 @@
 \name{wrap}
 \alias{wrap}
 \title{Function Wrapping for Lineage Tracking}
+\value{
+See the individual function help pages for return values.
+}
 \description{
 Wrap existing functions to automatically track data lineage.
 Enables non-invasive integration with existing analysis pipelines.

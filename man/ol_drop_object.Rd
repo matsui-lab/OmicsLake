@@ -11,6 +11,14 @@ ol_drop_object(name, project = getOption("ol.project"))
 
 \item{project}{Project name}
 }
+\value{
+Invisible TRUE on success
+}
 \description{
 Drop (delete) an object from the project
+}
+\examples{
+ol_init("ex_ol_drop_object", root = tempfile())
+ol_save("m", list(a = 1))
+ol_drop_object("m")
 }

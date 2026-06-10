@@ -65,7 +65,17 @@ lake_strict_on(...)
 \item{commit}{If TRUE, write tracked lineage before disabling transparent
 mode}
 }
+\value{
+Each alias returns the value of the function it forwards to.
+}
 \description{
 Consistent, memorable aliases that follow one naming rule:
 use `lake_<verb>` for common operations.
+}
+\examples{
+lake_use("ex_aliases", root = tempfile())
+lake_put("counts", data.frame(x = 1:3))
+lake_get("counts")
+lake_snap("v1")
+
 }

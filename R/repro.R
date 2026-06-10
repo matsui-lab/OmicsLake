@@ -674,22 +674,6 @@
     as.integer(x[[1]])
 }
 
-#' Enable Strict Reproducibility Mode
-#'
-#' Applies an opinionated, audit-first option preset for AI-assisted analysis:
-#' reproducibility metadata capture ON, clean-git requirement ON, and
-#' snapshot validation ON.
-#'
-#' @param path Base path used for Git/renv detection (usually repository root)
-#' @param prompt_id Optional AI prompt/work-item identifier
-#' @param run_id Optional AI run/session identifier
-#' @param agent_name Optional AI agent name
-#' @param include Metadata components to capture
-#' @param snapshot_validate_mode Snapshot validation behavior: "error", "warn",
-#' or "off"
-#' @param max_tables Maximum tables stored in snapshot validation details
-#' @return Named list of previous option values (invisible)
-#' @export
 .ol_validate_strict_repro_inputs <- function(path, include,
     snapshot_validate_mode, max_tables) {
     if (!is.character(path) || length(path) != 1 || !nzchar(path)) {
@@ -745,6 +729,27 @@
     )
 }
 
+#' Enable Strict Reproducibility Mode
+#'
+#' Applies an opinionated, audit-first option preset for AI-assisted analysis:
+#' reproducibility metadata capture ON, clean-git requirement ON, and
+#' snapshot validation ON.
+#'
+#' @param path Base path used for Git/renv detection (usually repository root)
+#' @param prompt_id Optional AI prompt/work-item identifier
+#' @param run_id Optional AI run/session identifier
+#' @param agent_name Optional AI agent name
+#' @param include Metadata components to capture
+#' @param snapshot_validate_mode Snapshot validation behavior: "error", "warn",
+#' or "off"
+#' @param max_tables Maximum tables stored in snapshot validation details
+#' @return Named list of previous option values (invisible)
+#' @export
+#' @examples
+#' d <- tempfile()
+#' dir.create(d)
+#' ol_enable_strict_repro_mode(path = d)
+#' options(ol.repro.strict = NULL)
 ol_enable_strict_repro_mode <- function(path = getwd(),
                                         prompt_id = NULL,
                                         run_id = NULL,

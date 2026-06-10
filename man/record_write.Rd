@@ -16,3 +16,9 @@ Invisibly returns the path
 Use this to explicitly record file writes when automatic tracking
 is not available. Call this within an observe() block.
 }
+\examples{
+use_lake("ex_record_write", root = tempfile())
+f <- file.path(tempdir(), "result.csv")
+write.csv(data.frame(x = 1:3), f, row.names = FALSE)
+record_write(f)
+}

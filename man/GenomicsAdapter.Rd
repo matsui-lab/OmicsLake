@@ -3,12 +3,20 @@
 \name{GenomicsAdapter}
 \alias{GenomicsAdapter}
 \title{Genomics Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving genomics-layer objects.
 }
 \details{
 This umbrella adapter is lower priority than specific adapters
 (e.g. VCF / RaggedExperiment) and captures genomics-marked objects.
+}
+\examples{
+adapter <- GenomicsAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{GenomicsAdapter}

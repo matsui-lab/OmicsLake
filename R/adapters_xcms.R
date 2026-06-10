@@ -8,6 +8,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- XCMSAdapter$new()
+#' class(adapter)
 XCMSAdapter <- R6::R6Class("XCMSAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -22,7 +27,10 @@ XCMSAdapter <- R6::R6Class("XCMSAdapter",
         },
         put = function(lake, name, data) {
             if (!requireNamespace("xcms", quietly = TRUE)) {
-                stop("Package 'xcms' is required for XCMSnExp/XcmsExperiment storage", call. = FALSE)
+                stop(
+                    "Package 'xcms' is required for XCMSnExp/XcmsExperiment storage",
+                    call. = FALSE
+                )
             }
             prefix <- paste0(name, ".__xcms__.")
             project <- lake$.__enclos_env__$private$.project

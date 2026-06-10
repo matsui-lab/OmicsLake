@@ -3,20 +3,19 @@
 \name{shortcuts}
 \alias{shortcuts}
 \title{Global Lake Shortcuts}
+\value{
+Each shortcut returns the value of the underlying \code{Lake}
+method it wraps (see the individual help pages).
+}
 \description{
 Convenience functions for working with a default lake.
 These functions provide a simpler API when working with a single project.
 }
 \examples{
-if (FALSE) {
-    # Set up default lake
-    use_lake("my_project")
-
-    # Use shortcuts
-    put("counts", counts_df)
-    data <- fetch("counts")
-    snap("v1.0")
-    tree("counts")
-}
+use_lake("ex_shortcuts", root = tempfile())
+put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+fetch("counts")
+snap("v1.0")
+tree()
 
 }

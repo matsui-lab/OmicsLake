@@ -15,3 +15,7 @@ Logical vector indicating non-NA values
 \description{
 Check for non-NULL/non-NA values
 }
+\examples{
+x <- c(1, NA, 3, NA, 5)
+x[is_not_null(x)]
+}

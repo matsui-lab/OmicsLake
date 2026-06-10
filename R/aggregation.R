@@ -1,36 +1,3 @@
-#' Aggregate data with multiple statistics
-#'
-#' Calculate multiple aggregate statistics, optionally grouped by columns.
-#' Supports common aggregates: count, sum, avg, min, max, stddev, median, etc.
-#'
-#' @param table Character string, name of the table to aggregate
-#' @param group_by Character vector of column names to group by (default: NULL
-#' for overall aggregates)
-#' @param ... Named arguments specifying aggregates. Each argument should be a
-#' list with
-#' 'func' (aggregate function name) and 'col' (column name). The argument name
-#' becomes
-#'   the output column name.
-#' @param project Project name (default: current project)
-#' @param collect Logical; if TRUE returns data.frame, if FALSE returns lazy
-#' dplyr table
-#'
-#' @return Aggregated results as data.frame (if collect=TRUE) or lazy table (if
-#' collect=FALSE)
-#' @export
-#' @examples
-#' if (FALSE) {
-#'     ol_aggregate("genes",
-#'         mean_expr = list(func = "avg", col = "expression"),
-#'         sd_expr = list(func = "stddev", col = "expression")
-#'     )
-#'
-#'     ol_aggregate("genes",
-#'         group_by = "sample",
-#'         mean_expr = list(func = "avg", col = "expression"),
-#'         count = list(func = "count", col = "*")
-#'     )
-#' }
 .ol_agg_assert_name <- function(x, arg) {
     if (missing(x) || !is.character(x) || length(x) != 1 || !nzchar(x)) {
         stop(arg, " must be a non-empty character string", call. = FALSE)
@@ -81,6 +48,30 @@
     paste(c(group_part, agg_part), collapse = ", ")
 }
 
+#' Aggregate data with multiple statistics
+#'
+#' Calculate multiple aggregate statistics, optionally grouped by columns.
+#' Supports common aggregates: count, sum, avg, min, max, stddev, median, etc.
+#'
+#' @param table Character string, name of the table to aggregate
+#' @param group_by Character vector of column names to group by (default: NULL
+#' for overall aggregates)
+#' @param ... Named arguments specifying aggregates. Each argument should be a
+#' list with
+#' 'func' (aggregate function name) and 'col' (column name). The argument name
+#' becomes
+#'   the output column name.
+#' @param project Project name (default: current project)
+#' @param collect Logical; if TRUE returns data.frame, if FALSE returns lazy
+#' dplyr table
+#'
+#' @return Aggregated results as data.frame (if collect=TRUE) or lazy table (if
+#' collect=FALSE)
+#' @export
+#' @examples
+#' ol_init("ex_aggregate", root = tempfile())
+#' ol_write("t", data.frame(g = c("a", "a", "b"), v = c(1, 2, 3)))
+#' ol_aggregate("t", group_by = "g", mean_v = list(func = "mean", col = "v"))
 ol_aggregate <- function(table, group_by = NULL, ...,
     project = getOption("ol.project"), collect = TRUE) {
     .ol_agg_assert_name(table, "table")
@@ -162,6 +153,19 @@ ol_add_rank <- function(table, rank_by, partition_by = NULL,
     ol_query(sql, project = project, collect = collect)
 }
 
+.ol_window_over_clause <- function(order_by, partition_by = NULL,
+    frame_clause = NULL) {
+    over_clause <- sprintf('ORDER BY "%s"', order_by)
+    if (!is.null(frame_clause)) {
+        over_clause <- paste(over_clause, frame_clause)
+    }
+    if (is.null(partition_by)) {
+        return(over_clause)
+    }
+    part <- paste(sprintf('"%s"', partition_by), collapse = ", ")
+    sprintf("PARTITION BY %s %s", part, over_clause)
+}
+
 #' Calculate moving average
 #'
 #' Add a moving average column using window functions.
@@ -181,33 +185,9 @@ ol_add_rank <- function(table, rank_by, partition_by = NULL,
 #' @return Original table with added moving average column
 #' @export
 #' @examples
-#' if (FALSE) {
-#'     ol_moving_avg(
-#'         "counts",
-#'         "expression",
-#'         window_size = 3,
-#'         order_by = "gene_id"
-#'     )
-#'
-#'     ol_moving_avg("counts", "expression",
-#'         window_size = 5,
-#'         partition_by = "sample",
-#'         order_by = "time"
-#'     )
-#' }
-.ol_window_over_clause <- function(order_by, partition_by = NULL,
-    frame_clause = NULL) {
-    over_clause <- sprintf('ORDER BY "%s"', order_by)
-    if (!is.null(frame_clause)) {
-        over_clause <- paste(over_clause, frame_clause)
-    }
-    if (is.null(partition_by)) {
-        return(over_clause)
-    }
-    part <- paste(sprintf('"%s"', partition_by), collapse = ", ")
-    sprintf("PARTITION BY %s %s", part, over_clause)
-}
-
+#' ol_init("ex_moving_avg", root = tempfile())
+#' ol_write("t", data.frame(x = 1:5))
+#' ol_moving_avg("t", "x", window_size = 2, order_by = "x")
 ol_moving_avg <- function(table, column, window_size = 3, partition_by = NULL,
     order_by,
                         as_column = NULL, project = getOption("ol.project"),

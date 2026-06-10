@@ -3,12 +3,20 @@
 \name{SpatialExperimentAdapter}
 \alias{SpatialExperimentAdapter}
 \title{SpatialExperiment Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving SpatialExperiment objects.
 }
 \details{
 This adapter stores a full-fidelity serialized SpatialExperiment object and
 manifest.
+}
+\examples{
+adapter <- SpatialExperimentAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{SpatialExperimentAdapter}

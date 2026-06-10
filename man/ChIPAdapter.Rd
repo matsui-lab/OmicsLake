@@ -3,11 +3,19 @@
 \name{ChIPAdapter}
 \alias{ChIPAdapter}
 \title{ChIP Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving ChIP-layer objects.
 }
 \details{
 Supports explicit ChIP marker classes/metadata.
+}
+\examples{
+adapter <- ChIPAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{ChIPAdapter}

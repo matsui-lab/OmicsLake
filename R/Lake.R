@@ -1,26 +1,28 @@
 #' @title Lake - OmicsLake Core Class
 #' @description R6 class for versioned, lineage-tracked data management.
-#' Provides a modern, fluent API for data operations with automatic dependency tracking.
+#' Provides a modern, fluent API for data operations with automatic
+#' dependency tracking.
 #'
 #' @section SummarizedExperiment Support:
-#' SummarizedExperiment objects are stored via the SEAdapter pattern, which decomposes
-#' the object into queryable components:
+#' SummarizedExperiment objects are stored via the SEAdapter pattern, which
+#' decomposes the object into queryable components:
 #' \itemize{
 #'   \item Assays are stored as tables (long format for efficient querying)
 #'   \item colData and rowData are stored as separate tables
 #'   \item Metadata is stored as a serialized R object
 #' }
 #'
-#' When you \code{put()} a SummarizedExperiment, all components are stored atomically
-#' within a transaction. When you \code{tag()} an SE object, all components are tagged
-#' together to maintain version consistency.
+#' When you \code{put()} a SummarizedExperiment, all components are stored
+#' atomically within a transaction. When you \code{tag()} an SE object, all
+#' components are tagged together to maintain version consistency.
 #'
-#' Legacy objects stored before the adapter registry are still readable via fallback
-#' detection.
+#' Legacy objects stored before the adapter registry are still readable via
+#' fallback detection.
 #'
 #' @section Storage Types:
 #' \itemize{
-#'   \item \strong{Tables}: data.frames stored in DuckDB (queryable with SQL/dplyr)
+#'   \item \strong{Tables}: data.frames stored in DuckDB (queryable with
+#'     SQL/dplyr)
 #'   \item \strong{Objects}: Arbitrary R objects serialized with qs/RDS
 #'   \item \strong{SummarizedExperiment}: Decomposed storage via SEAdapter
 #' }
@@ -59,6 +61,7 @@
 #' }
 #'
 #' @importFrom R6 R6Class
+#' @return A \code{Lake} R6 generator; call \code{Lake$new()} to create a lake.
 #' @export
 Lake <- R6::R6Class("Lake",
   cloneable = FALSE,
@@ -106,14 +109,16 @@ Lake <- R6::R6Class("Lake",
     #'   - Character vector of names (uses @latest for all)
     #'   - List of lists with 'name' and 'ref' elements for version-aware deps
     #'
-    #' **Auto-tracking note**: When `auto_track=TRUE` (default), dependencies are
+    #' **Auto-tracking note**: When `auto_track=TRUE` (default), dependencies
+    #' are
 
     #' automatically detected from:
     #' 1. `lake_deps` attribute on data (set by `save_as()` from dplyr pipes)
     #' 2. Tracked reads within a `with_tracking()` or `wrap_fn()` context
     #'
     #' A simple `lake$get()` followed by `lake$put()` does NOT auto-capture
-    #' dependencies. Use `save_as()`, `with_tracking()`, or specify `depends_on`.
+    #' dependencies. Use `save_as()`, `with_tracking()`, or specify
+    #' `depends_on`.
     #' @param tags Optional tags for this version
     #' @return Invisible self for chaining
     put = function(name, data, depends_on = NULL, tags = NULL) {
@@ -127,7 +132,8 @@ Lake <- R6::R6Class("Lake",
       deps_with_refs <- list()
 
       if (is.null(depends_on) && private$.auto_track) {
-        # Check for dependencies from tracked reads (already in {name, ref} format)
+        # Check for dependencies from tracked reads (already in {name, ref}
+        # format)
         tracked_deps <- private$.tracker$current_reads()
         deps_with_refs <- tracked_deps
 
@@ -138,16 +144,25 @@ Lake <- R6::R6Class("Lake",
           for (src in attr_sources) {
             if (!is.null(src$name)) {
               # Add if not already present
-              existing <- vapply(deps_with_refs, function(d) identical(d$name, src$name), logical(1))
+              existing <- vapply(
+                deps_with_refs,
+                function(d) identical(d$name, src$name),
+                logical(1)
+              )
               if (!any(existing)) {
                 ref_val <- if (is.null(src$ref)) "@latest" else src$ref
-                deps_with_refs <- append(deps_with_refs, list(list(name = src$name, ref = ref_val)))
+                deps_with_refs <- append(
+                  deps_with_refs,
+                  list(list(name = src$name, ref = ref_val))
+                )
               }
             }
           }
         } else {
-          # Fallback to legacy format: lake_deps/lake_source with lake_source_ref
-          # Note: lake_source_ref may be a vector (from joins), so we need to pair by index
+          # Fallback to legacy format: lake_deps/lake_source with
+          # lake_source_ref
+          # Note: lake_source_ref may be a vector (from joins), so we need to
+          # pair by index
           attr_deps <- attr(data, "lake_deps")
           if (is.null(attr_deps)) {
             attr_deps <- attr(data, "lake_source")
@@ -171,9 +186,16 @@ Lake <- R6::R6Class("Lake",
               }
 
               # Add as {name, ref} object if not already present
-              existing <- vapply(deps_with_refs, function(d) identical(d$name, dep_name), logical(1))
+              existing <- vapply(
+                deps_with_refs,
+                function(d) identical(d$name, dep_name),
+                logical(1)
+              )
               if (!any(existing)) {
-                deps_with_refs <- append(deps_with_refs, list(list(name = dep_name, ref = ref_val)))
+                deps_with_refs <- append(
+                  deps_with_refs,
+                  list(list(name = dep_name, ref = ref_val))
+                )
               }
             }
           }
@@ -209,10 +231,12 @@ Lake <- R6::R6Class("Lake",
 
     #' @description Read data from the lake
     #' @param name Name of the data to read
-    #' @param ref Version reference ("@latest", "@first", "@tag(name)", or timestamp)
+    #' @param ref Version reference ("@latest", "@first", "@tag(name)", or
+    #'   timestamp)
     #' @param where Filter condition (formula, e.g., ~ col > 5)
     #' @param select Columns to select (character vector)
-    #' @param collect Whether to collect results immediately (FALSE returns lazy reference)
+    #' @param collect Whether to collect results immediately (FALSE returns
+    #'   lazy reference)
     #' @return The requested data
     get = function(name,
                    ref = "@latest",
@@ -231,10 +255,16 @@ Lake <- R6::R6Class("Lake",
       adapter <- private$.find_adapter_for_stored(name, ref)
       if (!is.null(adapter)) {
         if (!is.null(where) || !is.null(select)) {
-          warning("where/select parameters are ignored for adapter-stored objects", call. = FALSE)
+          warning(
+            "where/select parameters are ignored for adapter-stored objects",
+            call. = FALSE
+          )
         }
         if (!collect) {
-          warning("collect=FALSE is ignored for adapter-stored objects", call. = FALSE)
+          warning(
+            "collect=FALSE is ignored for adapter-stored objects",
+            call. = FALSE
+          )
         }
         return(private$.get_adapter_data(name, ref, adapter))
       }
@@ -247,7 +277,8 @@ Lake <- R6::R6Class("Lake",
 
       if (is_table || is_tag_ref) {
         # Try table path first
-        # For tagged refs, ol_read() can resolve to backup table even if current is dropped
+        # For tagged refs, ol_read() can resolve to backup table even if
+        # current is dropped
         table_result <- tryCatch({
           data <- private$.get_lazy_data(name, ref)
 
@@ -285,10 +316,19 @@ Lake <- R6::R6Class("Lake",
 
       # For objects: cannot be lazy, where/select not supported
       if (!is.null(where) || !is.null(select)) {
-        warning("where/select parameters are ignored for non-table objects", call. = FALSE)
+        warning(
+          "where/select parameters are ignored for non-table objects",
+          call. = FALSE
+        )
       }
       if (!collect) {
-        warning("collect=FALSE is ignored for non-table objects (objects are always eager)", call. = FALSE)
+        warning(
+          paste0(
+            "collect=FALSE is ignored for non-table objects ",
+            "(objects are always eager)"
+          ),
+          call. = FALSE
+        )
       }
       return(private$.get_object_data(name, ref))
     },
@@ -354,19 +394,22 @@ Lake <- R6::R6Class("Lake",
       state <- private$.state
       conn <- state$conn
 
-      # Use transaction for atomicity: commit + label must both succeed or both fail
+      # Use transaction for atomicity: commit + label must both succeed or
+      # both fail
       DBI::dbBegin(conn)
       tryCatch({
         # Create commit record
         ol_commit(note = note, params = params, project = private$.project)
 
-        # Label all current tables and objects (pass .in_transaction=TRUE to avoid nested transactions)
+        # Label all current tables and objects (pass .in_transaction=TRUE to
+        # avoid nested transactions)
         ol_label(label, project = private$.project, .in_transaction = TRUE)
 
         DBI::dbCommit(conn)
       }, error = function(e) {
         DBI::dbRollback(conn)
-        stop("Snapshot failed (rolled back): ", conditionMessage(e), call. = FALSE)
+        stop("Snapshot failed (rolled back): ", conditionMessage(e),
+             call. = FALSE)
       })
 
       invisible(self)
@@ -405,7 +448,8 @@ Lake <- R6::R6Class("Lake",
                   ol_tag_object(comp_name, tag, project = private$.project)
                 }
               }, error = function(e) {
-                warning("Failed to tag component '", comp_name, "': ", conditionMessage(e), call. = FALSE)
+                warning("Failed to tag component '", comp_name, "': ",
+                        conditionMessage(e), call. = FALSE)
               })
             }
           }
@@ -416,15 +460,18 @@ Lake <- R6::R6Class("Lake",
             for (component in adapter_info$components) {
               full_name <- paste0(prefix, component)
               if (private$.is_table(full_name)) {
-                ol_tag(full_name, tag, project = private$.project, .in_transaction = TRUE)
+                ol_tag(full_name, tag, project = private$.project,
+                       .in_transaction = TRUE)
               } else if (private$.is_object(full_name)) {
-                ol_tag_object(full_name, tag, project = private$.project, .in_transaction = TRUE)
+                ol_tag_object(full_name, tag, project = private$.project,
+                              .in_transaction = TRUE)
               }
             }
             DBI::dbCommit(conn)
           }, error = function(e) {
             DBI::dbRollback(conn)
-            stop("Tag failed for adapter object (rolled back): ", conditionMessage(e), call. = FALSE)
+            stop("Tag failed for adapter object (rolled back): ",
+                 conditionMessage(e), call. = FALSE)
           })
         }
         return(invisible(self))
@@ -455,7 +502,8 @@ Lake <- R6::R6Class("Lake",
     #' @param name Data name
     #' @param ref1 First version reference (default: "@latest")
     #' @param ref2 Second version reference (default: "@first")
-    #' @return Comparison summary with row counts, column differences, and sample data
+    #' @return Comparison summary with row counts, column differences, and
+    #'   sample data
     diff = function(name, ref1 = "@latest", ref2 = "@first") {
       private$.validate_name(name)
 
@@ -478,14 +526,31 @@ Lake <- R6::R6Class("Lake",
         name = name,
         ref1 = ref1,
         ref2 = ref2,
-        ref1_rows = if (!is.null(data1) && is.data.frame(data1)) nrow(data1) else NA,
-        ref2_rows = if (!is.null(data2) && is.data.frame(data2)) nrow(data2) else NA,
-        ref1_cols = if (!is.null(data1) && is.data.frame(data1)) ncol(data1) else NA,
-        ref2_cols = if (!is.null(data2) && is.data.frame(data2)) ncol(data2) else NA
+        ref1_rows = if (!is.null(data1) && is.data.frame(data1)) {
+          nrow(data1)
+        } else {
+          NA
+        },
+        ref2_rows = if (!is.null(data2) && is.data.frame(data2)) {
+          nrow(data2)
+        } else {
+          NA
+        },
+        ref1_cols = if (!is.null(data1) && is.data.frame(data1)) {
+          ncol(data1)
+        } else {
+          NA
+        },
+        ref2_cols = if (!is.null(data2) && is.data.frame(data2)) {
+          ncol(data2)
+        } else {
+          NA
+        }
       )
 
       # Column differences
-      if (!is.null(data1) && !is.null(data2) && is.data.frame(data1) && is.data.frame(data2)) {
+      if (!is.null(data1) && !is.null(data2) &&
+          is.data.frame(data1) && is.data.frame(data2)) {
         cols1 <- names(data1)
         cols2 <- names(data2)
         result$cols_added <- setdiff(cols1, cols2)
@@ -519,7 +584,8 @@ Lake <- R6::R6Class("Lake",
         return(DBI::dbGetQuery(conn, query))
       }
 
-      ol_show_lineage(name, direction = direction, max_depth = depth, project = private$.project)
+      ol_show_lineage(name, direction = direction, max_depth = depth,
+                      project = private$.project)
     },
 
     #' @description Plot lineage graph
@@ -550,7 +616,8 @@ Lake <- R6::R6Class("Lake",
     deps = function(name, direction = "up") {
       dir_map <- c("up" = "upstream", "down" = "downstream")
       direction <- dir_map[direction]
-      ol_get_dependencies(name, direction = direction, project = private$.project)
+      ol_get_dependencies(name, direction = direction,
+                          project = private$.project)
     },
 
     #' @description Analyze impact of changing a data source
@@ -578,7 +645,8 @@ Lake <- R6::R6Class("Lake",
     #' @description Join two tables
     #' @param left Left table name
     #' @param right Right table name
-    #' @param by Join columns (character vector or named vector for different column names)
+    #' @param by Join columns (character vector or named vector for different
+    #'   column names)
     #' @param type Join type ("left", "inner", "right", "full")
     #' @return Joined data
     join = function(left, right, by = NULL, type = "left") {
@@ -632,7 +700,9 @@ Lake <- R6::R6Class("Lake",
       }
 
       result |>
-        dplyr::summarize(mean = mean(!!col_sym, na.rm = TRUE), .groups = "drop") |>
+        dplyr::summarize(
+          mean = mean(!!col_sym, na.rm = TRUE), .groups = "drop"
+        ) |>
         dplyr::collect()
     },
 
@@ -722,9 +792,15 @@ Lake <- R6::R6Class("Lake",
               comp_name <- comp_df$component[i]
               comp_type <- comp_df$type[i]
               if (identical(comp_type, "table")) {
-                tryCatch(ol_drop(comp_name, project = private$.project), error = function(e) NULL)
+                tryCatch(
+                  ol_drop(comp_name, project = private$.project),
+                  error = function(e) NULL
+                )
               } else {
-                tryCatch(ol_drop_object(comp_name, project = private$.project), error = function(e) NULL)
+                tryCatch(
+                  ol_drop_object(comp_name, project = private$.project),
+                  error = function(e) NULL
+                )
               }
             }
           }
@@ -741,18 +817,28 @@ Lake <- R6::R6Class("Lake",
           tryCatch({
             for (component in adapter_info$components) {
               full_name <- paste0(prefix, component)
-              table_dropped <- tryCatch({ ol_drop(full_name, project = private$.project); TRUE }, error = function(e) FALSE)
+              table_dropped <- tryCatch({
+                ol_drop(full_name, project = private$.project)
+                TRUE
+              }, error = function(e) FALSE)
               if (!table_dropped) {
-                tryCatch(ol_drop_object(full_name, project = private$.project), error = function(e) NULL)
+                tryCatch(
+                  ol_drop_object(full_name, project = private$.project),
+                  error = function(e) NULL
+                )
               }
             }
             ident <- .ol_sql_ident(conn, state, "__ol_adapters")
-            delete_sql <- sprintf("DELETE FROM %s WHERE name = %s", ident, DBI::dbQuoteString(conn, name))
+            delete_sql <- sprintf(
+              "DELETE FROM %s WHERE name = %s",
+              ident, DBI::dbQuoteString(conn, name)
+            )
             DBI::dbExecute(conn, delete_sql)
             DBI::dbCommit(conn)
           }, error = function(e) {
             DBI::dbRollback(conn)
-            stop("Drop failed for adapter object (rolled back): ", conditionMessage(e), call. = FALSE)
+            stop("Drop failed for adapter object (rolled back): ",
+                 conditionMessage(e), call. = FALSE)
           })
         }
         return(invisible(self))
@@ -783,7 +869,8 @@ Lake <- R6::R6Class("Lake",
     #' @description Export data to a file
     #' @param name Data name
     #' @param path Output file path
-    #' @param format Output format ("parquet", "csv", "rds"). Auto-detected from extension if NULL.
+    #' @param format Output format ("parquet", "csv", "rds"). Auto-detected
+    #'   from extension if NULL.
     #' @return Invisible path
     export = function(name, path, format = NULL) {
       if (is.null(format)) {
@@ -941,15 +1028,22 @@ Lake <- R6::R6Class("Lake",
       prefer_type <- match.arg(prefer_type)
       tbl_names <- tryCatch({
         t <- self$tables()
-        if (is.data.frame(t) && "table_name" %in% names(t)) t$table_name else character(0)
+        if (is.data.frame(t) && "table_name" %in% names(t)) {
+          t$table_name
+        } else {
+          character(0)
+        }
       }, error = function(e) character(0))
       obj_names <- tryCatch({
         o <- self$objects()
         if (is.data.frame(o) && "name" %in% names(o)) o$name else character(0)
       }, error = function(e) character(0))
       build <- function(nms, tp) {
-        if (!length(nms)) return(data.frame(name = character(0), type = character(0),
-          score = numeric(0), distance = integer(0), match_type = character(0), stringsAsFactors = FALSE))
+        if (!length(nms)) return(data.frame(
+          name = character(0), type = character(0),
+          score = numeric(0), distance = integer(0),
+          match_type = character(0), stringsAsFactors = FALSE
+        ))
         data.frame(name = nms, type = tp, score = 1, distance = 0L,
           match_type = "exact", stringsAsFactors = FALSE)
       }
@@ -957,10 +1051,13 @@ Lake <- R6::R6Class("Lake",
         "any" = rbind(build(tbl_names, "table"), build(obj_names, "object")),
         "table" = build(tbl_names, "table"),
         "object" = build(obj_names, "object"))
-      # Filter out internal adapter components but recover top-level adapter names
+      # Filter out internal adapter components but recover top-level adapter
+      # names
       internal_pattern <- "\\.__[a-z]+__\\."
       if (nrow(all_items) > 0) {
-        internal_names <- all_items$name[grepl(internal_pattern, all_items$name)]
+        internal_names <- all_items$name[
+          grepl(internal_pattern, all_items$name)
+        ]
         adapter_names <- unique(sub("\\.__[a-z]+__\\..*$", "", internal_names))
         adapter_names <- setdiff(adapter_names, all_items$name)
         if (length(adapter_names) > 0) {
@@ -977,7 +1074,9 @@ Lake <- R6::R6Class("Lake",
           # ignore.case has no effect with fixed = TRUE in grep(); emulate it
           # by lower-casing both the pattern and the targets when requested.
           if (isTRUE(ignore.case)) {
-            which(grepl(tolower(pattern), tolower(all_items$name), fixed = TRUE))
+            which(grepl(
+              tolower(pattern), tolower(all_items$name), fixed = TRUE
+            ))
           } else {
             grep(pattern, all_items$name, fixed = TRUE)
           }
@@ -986,12 +1085,15 @@ Lake <- R6::R6Class("Lake",
         }
         matched <- all_items[idx, , drop = FALSE]
         if (!nrow(matched) && fuzzy && nchar(pattern) > 0) {
-          ds <- utils::adist(pattern, all_items$name, ignore.case = ignore.case)[1, ]
+          ds <- utils::adist(
+            pattern, all_items$name, ignore.case = ignore.case
+          )[1, ]
           wr <- which(ds <= max_distance)
           if (length(wr)) {
             matched <- all_items[wr, , drop = FALSE]
             matched$distance <- as.integer(ds[wr])
-            matched$score <- 1 - matched$distance / pmax(nchar(all_items$name[wr]), nchar(pattern))
+            matched$score <- 1 - matched$distance /
+              pmax(nchar(all_items$name[wr]), nchar(pattern))
             matched$match_type <- "fuzzy"
           }
         }
@@ -1002,9 +1104,13 @@ Lake <- R6::R6Class("Lake",
       }
       if (!identical(prefer_type, "none") && nrow(all_items) > 0) {
         pf <- ifelse(all_items$type == prefer_type, 0L, 1L)
-        all_items <- all_items[order(pf, -all_items$score, all_items$distance), , drop = FALSE]
+        all_items <- all_items[
+          order(pf, -all_items$score, all_items$distance), , drop = FALSE
+        ]
       } else if (nrow(all_items) > 0) {
-        all_items <- all_items[order(-all_items$score, all_items$distance), , drop = FALSE]
+        all_items <- all_items[
+          order(-all_items$score, all_items$distance), , drop = FALSE
+        ]
       }
       if (is.finite(limit) && nrow(all_items) > limit) {
         all_items <- all_items[seq_len(limit), , drop = FALSE]
@@ -1066,9 +1172,16 @@ Lake <- R6::R6Class("Lake",
     #' @return Data frame with columns check, ok, detail
     doctor = function(verbose = TRUE) {
       checks <- list()
-      c1 <- tryCatch(DBI::dbIsValid(private$.state$conn), error = function(e) FALSE)
+      c1 <- tryCatch(
+        DBI::dbIsValid(private$.state$conn),
+        error = function(e) FALSE
+      )
       checks[[1L]] <- list(check = "duckdb connection is valid", ok = c1,
-        detail = if (c1) "DuckDB connection is active" else "Connection is invalid or closed",
+        detail = if (c1) {
+          "DuckDB connection is active"
+        } else {
+          "Connection is invalid or closed"
+        },
         fix = if (c1) "" else "Reinitialise with Lake$new()")
       c2 <- tryCatch({ self$tables(); TRUE }, error = function(e) FALSE)
       checks[[2L]] <- list(check = "tables readable", ok = c2,
@@ -1076,14 +1189,20 @@ Lake <- R6::R6Class("Lake",
         fix = if (c2) "" else "Check DuckDB file and permissions")
       c3 <- tryCatch({ self$objects(); TRUE }, error = function(e) FALSE)
       checks[[3L]] <- list(check = "objects readable", ok = c3,
-        detail = if (c3) "Object listing succeeded" else "Failed to list objects",
+        detail = if (c3) {
+          "Object listing succeeded"
+        } else {
+          "Failed to list objects"
+        },
         fix = if (c3) "" else "Check DuckDB file and permissions")
       c4 <- tryCatch(
         identical(getOption("ol.project"), private$.project),
         error = function(e) FALSE)
-      checks[[4L]] <- list(check = "default shortcuts point to this project", ok = c4,
+      checks[[4L]] <- list(
+        check = "default shortcuts point to this project", ok = c4,
         detail = if (c4) "Global shortcuts bound to this project"
-          else paste0("ol.project option is '", getOption("ol.project", "<unset>"),
+          else paste0("ol.project option is '",
+            getOption("ol.project", "<unset>"),
             "', expected '", private$.project, "'"),
         fix = if (c4) "" else paste0("use_lake('", private$.project, "')"))
       g <- tryCatch({
@@ -1134,7 +1253,8 @@ Lake <- R6::R6Class("Lake",
           ok = renv_found,
           detail = if (renv_found) {
             paste0("renv lockfile at ",
-              .ol_as_scalar_character(.ol_get_nested(ctx, c("renv", "lockfile")),
+              .ol_as_scalar_character(
+                .ol_get_nested(ctx, c("renv", "lockfile")),
                 "<unknown>"))
           } else {
             "No renv.lock found at the reproducibility path"
@@ -1150,7 +1270,8 @@ Lake <- R6::R6Class("Lake",
       rownames(result) <- NULL
       if (verbose) {
         for (i in seq_len(nrow(result))) {
-          cat(if (result$ok[i]) "[OK]" else "[!!]", result$check[i], "-", result$detail[i], "\n")
+          cat(if (result$ok[i]) "[OK]" else "[!!]", result$check[i], "-",
+              result$detail[i], "\n")
         }
       }
       invisible(result)
@@ -1180,7 +1301,8 @@ Lake <- R6::R6Class("Lake",
 
     # Initialize the backend connection
     .init_backend = function() {
-      .ol_init_backend(project = private$.project, engine = private$.backend_type)
+      .ol_init_backend(project = private$.project,
+                       engine = private$.backend_type)
       private$.state <- .ol_get_backend_state(private$.project)
     },
 
@@ -1191,7 +1313,8 @@ Lake <- R6::R6Class("Lake",
 
     # Support combined "name@ref" syntax (e.g. "parent@tag(v1)", "tbl@v2").
     # Only applied when no explicit ref was supplied (ref == "@latest"), since
-    # version references always begin with '@' and valid names do not contain it.
+    # version references always begin with '@' and valid names do not contain
+    # it.
     .split_name_ref = function(name, ref) {
       if (identical(ref, "@latest") &&
             is.character(name) && length(name) == 1 &&
@@ -1218,7 +1341,10 @@ Lake <- R6::R6Class("Lake",
       tag <- prefix_map[adapter_name]
       if (!is.na(tag)) return(paste0(name, ".", tag, "."))
       # Fallback: probe known prefixes against existing objects
-      objs <- tryCatch(self$objects(), error = function(e) data.frame(name = character(0)))
+      objs <- tryCatch(
+        self$objects(),
+        error = function(e) data.frame(name = character(0))
+      )
       for (kp in prefix_map) {
         manifest_name <- paste0(name, ".", kp, ".manifest")
         if (manifest_name %in% objs$name) return(paste0(name, ".", kp, "."))
@@ -1314,7 +1440,8 @@ Lake <- R6::R6Class("Lake",
 
     # Get lazy reference to table (always @latest, for ref() method)
     .get_lazy_ref = function(name) {
-      ol_read(name, ref = "@latest", project = private$.project, collect = FALSE)
+      ol_read(name, ref = "@latest", project = private$.project,
+              collect = FALSE)
     },
 
     # Apply formula filter
@@ -1347,7 +1474,11 @@ Lake <- R6::R6Class("Lake",
       for (dep in depends_on) {
         parent_name <- dep$name
         parent_ref <- if (!is.null(dep$ref)) dep$ref else "@latest"
-        parent_type <- if (private$.is_object(parent_name)) "object" else "table"
+        parent_type <- if (private$.is_object(parent_name)) {
+          "object"
+        } else {
+          "table"
+        }
 
         .ol_record_dependency(
           state = state,
@@ -1389,7 +1520,10 @@ Lake <- R6::R6Class("Lake",
 
     # Check if name is an object
     .is_object = function(name) {
-      objects <- tryCatch(self$objects(), error = function(e) data.frame(name = character(0)))
+      objects <- tryCatch(
+        self$objects(),
+        error = function(e) data.frame(name = character(0))
+      )
       name %in% objects$name
     },
 
@@ -1437,7 +1571,10 @@ Lake <- R6::R6Class("Lake",
 
     # Check if data is lazy (tbl_lazy, tbl_sql, tbl_dbi, or other dbplyr types)
     .is_lazy = function(data) {
-      inherits(data, c("tbl_lazy", "tbl_sql", "tbl_dbi", "tbl_duckdb_connection"))
+      inherits(
+        data,
+        c("tbl_lazy", "tbl_sql", "tbl_dbi", "tbl_duckdb_connection")
+      )
     },
 
     # Convert to lazy reference
@@ -1479,7 +1616,8 @@ Lake <- R6::R6Class("Lake",
 
 
 #' @title Dependency Tracker
-#' @description Tracks data dependencies during operations with version-aware lineage
+#' @description Tracks data dependencies during operations with version-aware
+#'   lineage
 #' @keywords internal
 DependencyTracker <- R6::R6Class("DependencyTracker",
   public = list(
@@ -1539,7 +1677,8 @@ DependencyTracker <- R6::R6Class("DependencyTracker",
       private$.read_stack[[length(private$.read_stack)]]$reads
     },
 
-    #' Get current tracked reads as character vector (for backward compatibility)
+    #' Get current tracked reads as character vector (for backward
+    #' compatibility)
     #' @return Character vector of dependency names
     current_read_names = function() {
       reads <- self$current_reads()

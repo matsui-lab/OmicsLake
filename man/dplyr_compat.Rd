@@ -3,6 +3,9 @@
 \name{dplyr_compat}
 \alias{dplyr_compat}
 \title{dplyr Compatibility Layer}
+\value{
+See the individual function help pages for return values.
+}
 \description{
 Make Lake work seamlessly with dplyr pipelines.
 Automatically tracks dependencies through dplyr operations.

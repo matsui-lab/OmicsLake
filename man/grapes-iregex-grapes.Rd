@@ -17,3 +17,7 @@ Logical vector
 \description{
 Case-insensitive regex match
 }
+\examples{
+genes <- c("ENSG001", "ensg002", "MT-CO1")
+genes[genes \%iregex\% "^ensg"]
+}

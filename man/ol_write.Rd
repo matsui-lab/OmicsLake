@@ -21,11 +21,16 @@ ol_write(
 
 \item{mode}{Write mode: "create", "overwrite", or "append"}
 
-\item{depends_on}{Optional character vector of table/object names that this table depends on}
+\item{depends_on}{Optional character vector of table/object names that this
+table depends on}
 }
 \value{
 Invisible qualified table name
 }
 \description{
 Write a table using the DuckDB backend
+}
+\examples{
+ol_init("ex_ol_write", root = tempfile())
+ol_write("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
 }

@@ -11,6 +11,14 @@ ol_drop(name, project = getOption("ol.project"))
 
 \item{project}{Project name}
 }
+\value{
+Invisible TRUE on success
+}
 \description{
 Drop (delete) a table from the project
+}
+\examples{
+ol_init("ex_ol_drop", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_drop("t")
 }

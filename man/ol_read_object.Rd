@@ -14,12 +14,22 @@ ol_read_object(
 \arguments{
 \item{name}{Name of the object to read}
 
-\item{ref}{Reference to read from (e.g., "@latest", "@tag", "v1.0"). Defaults to "@latest"}
+\item{ref}{Reference to read from (e.g., "@latest", "@tag", "v1.0").
+Defaults to "@latest"}
 
-\item{when}{Deprecated. Use ref parameter instead. If provided, "latest" or "first"}
+\item{when}{Deprecated. Use ref parameter instead. If provided, "latest"
+or "first"}
 
 \item{project}{Project name}
 }
+\value{
+The stored R object
+}
 \description{
 Read a stored object
+}
+\examples{
+ol_init("ex_ol_read_object", root = tempfile())
+ol_save("model", list(a = 1))
+ol_read_object("model")
 }

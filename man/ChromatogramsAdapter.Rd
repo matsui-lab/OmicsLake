@@ -3,6 +3,10 @@
 \name{ChromatogramsAdapter}
 \alias{ChromatogramsAdapter}
 \title{Chromatograms Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving
 \code{Chromatograms} objects.
@@ -10,6 +14,10 @@ Adapter for storing and retrieving
 \details{
 This adapter currently guarantees full-fidelity roundtrip by storing the
 complete object and manifest as internal components.
+}
+\examples{
+adapter <- ChromatogramsAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{ChromatogramsAdapter}

@@ -52,9 +52,6 @@ NULL
 
 # API Migration helpers
 
-#' Show migration guide for ol_* to Lake API
-#'
-#' @export
 .ol_migration_guide_lines <- c(
     strrep("=", 79L),
     "                    OmicsLake API Migration Guide",
@@ -180,6 +177,12 @@ NULL
     strrep("=", 78L)
 )
 
+#' Show migration guide for ol_* to Lake API
+#'
+#' @return Invisible NULL; prints the migration guide to the console.
+#' @export
+#' @examples
+#' show_migration_guide()
 show_migration_guide <- function() {
     writeLines(.ol_migration_guide_lines)
     invisible(NULL)

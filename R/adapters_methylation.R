@@ -5,6 +5,11 @@
 #' storing a full serialized object and manifest.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- MethylationAdapter$new()
+#' class(adapter)
 MethylationAdapter <- .ol_create_serialized_adapter(
   class_name = "MethylationAdapter",
   adapter_name = "Methylation",

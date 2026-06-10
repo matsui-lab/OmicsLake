@@ -3,12 +3,20 @@
 \name{RaggedExperimentAdapter}
 \alias{RaggedExperimentAdapter}
 \title{RaggedExperiment Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving RaggedExperiment objects.
 }
 \details{
 This adapter stores a full-fidelity serialized RaggedExperiment object and
 manifest.
+}
+\examples{
+adapter <- RaggedExperimentAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{RaggedExperimentAdapter}

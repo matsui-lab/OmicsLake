@@ -3,19 +3,23 @@
 \name{operators}
 \alias{operators}
 \title{Custom Query Operators}
+\value{
+See the individual operator help pages; each returns a logical
+  vector.
+}
 \description{
 SQL-like operators for use in Lake queries.
 These operators provide familiar SQL semantics for filtering data.
 }
 \examples{
-if (FALSE) {
-    # Pattern matching
-    df[df$gene \%like\% "MT-\%", ]
-
-    # Range filtering
-    df[df$value \%between\% c(10, 100), ]
-
-    # Case-insensitive matching
-    df[df$name \%ilike\% "john\%", ]
-}
+df <- data.frame(
+    gene = c("MT-CO1", "MT-CO2", "ACTB"),
+    value = c(50, 80, 5)
+)
+# Pattern matching
+df[df$gene \%like\% "MT-\%", ]
+# Range filtering
+df[df$value \%between\% c(10, 100), ]
+# Case-insensitive matching
+df[df$gene \%ilike\% "mt-\%", ]
 }

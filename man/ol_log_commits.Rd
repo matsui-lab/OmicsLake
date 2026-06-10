@@ -11,6 +11,15 @@ ol_log_commits(project = getOption("ol.project"), n = 20)
 
 \item{n}{Maximum number of commits to return}
 }
+\value{
+Data frame of commits with reproducibility and agent metadata columns
+}
 \description{
 View commit history
+}
+\examples{
+ol_init("ex_ol_log_commits", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_commit("note")
+ol_log_commits()
 }

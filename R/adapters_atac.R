@@ -4,6 +4,11 @@
 #' Supports explicit ATAC marker classes/metadata and ChromatinAssay objects.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- ATACAdapter$new()
+#' class(adapter)
 ATACAdapter <- .ol_create_serialized_adapter(
   class_name = "ATACAdapter",
   adapter_name = "ATAC",

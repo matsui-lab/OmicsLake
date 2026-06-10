@@ -17,3 +17,8 @@ Lineage data frame
 \description{
 Show lineage tree from the default lake
 }
+\examples{
+use_lake("ex_tree", root = tempfile())
+put("raw", data.frame(x = 1:3))
+tree()
+}

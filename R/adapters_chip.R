@@ -4,6 +4,11 @@
 #' Supports explicit ChIP marker classes/metadata.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- ChIPAdapter$new()
+#' class(adapter)
 ChIPAdapter <- .ol_create_serialized_adapter(
   class_name = "ChIPAdapter",
   adapter_name = "ChIP",

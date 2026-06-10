@@ -19,6 +19,10 @@ Invisible Lake object
 \description{
 Write data to the default lake
 }
+\examples{
+use_lake("ex_put", root = tempfile())
+put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+}
 \seealso{
 \code{\link{Lake}}
 }

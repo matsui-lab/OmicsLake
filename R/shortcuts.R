@@ -2,17 +2,14 @@
 #' @description Convenience functions for working with a default lake.
 #' These functions provide a simpler API when working with a single project.
 #'
+#' @return Each shortcut returns the value of the underlying \code{Lake}
+#' method it wraps (see the individual help pages).
 #' @examples
-#' if (FALSE) {
-#'     # Set up default lake
-#'     use_lake("my_project")
-#'
-#'     # Use shortcuts
-#'     put("counts", counts_df)
-#'     data <- fetch("counts")
-#'     snap("v1.0")
-#'     tree("counts")
-#' }
+#' use_lake("ex_shortcuts", root = tempfile())
+#' put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+#' fetch("counts")
+#' snap("v1.0")
+#' tree()
 #'
 #' @name shortcuts
 NULL
@@ -65,10 +62,8 @@ NULL
 #' @return The default Lake object (invisibly when setting)
 #' @export
 #' @examples
-#' if (FALSE) {
-#'     use_lake("my_analysis")
-#'     lake <- use_lake() # Get current lake
-#' }
+#' use_lake("ex_use_lake", root = tempfile())
+#' current <- use_lake() # Get current lake
 use_lake <- function(project = NULL, ...) {
     if (!is.null(project)) {
         if (!is.character(project) || length(project) != 1 || 
@@ -100,11 +95,9 @@ use_lake <- function(project = NULL, ...) {
 #' @return The default Lake object
 #' @export
 #' @examples
-#' if (FALSE) {
-#'     use_lake("my_project")
-#'     l <- lake()
-#'     l$put("data", df)
-#' }
+#' use_lake("ex_lake", root = tempfile())
+#' l <- lake()
+#' l$put("data", data.frame(x = 1:3))
 lake <- function() {
     if (is.null(.lake_env$default)) {
         use_lake()
@@ -119,6 +112,9 @@ lake <- function() {
 #' @param ... Additional arguments passed to Lake$put()
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_put", root = tempfile())
+#' put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
 #' @seealso \code{\link{Lake}}
 put <- function(name, data, ...) {
     lake()$put(name, data, ...)
@@ -132,6 +128,10 @@ put <- function(name, data, ...) {
 #' @param ... Additional arguments passed to Lake$get()
 #' @return The requested data
 #' @export
+#' @examples
+#' use_lake("ex_fetch", root = tempfile())
+#' put("counts", data.frame(gene = c("A", "B"), value = c(1, 2)))
+#' fetch("counts")
 #' @seealso \code{\link{Lake}}
 fetch <- function(name, ...) {
     lake()$get(name, ...)
@@ -142,6 +142,10 @@ fetch <- function(name, ...) {
 #' @param name Table name
 #' @return A lazy table reference for use with dplyr
 #' @export
+#' @examples
+#' use_lake("ex_ref", root = tempfile())
+#' put("t", data.frame(x = 1:5))
+#' dplyr::collect(dplyr::filter(ref("t"), x > 2))
 ref <- function(name) {
     lake()$ref(name)
 }
@@ -152,6 +156,10 @@ ref <- function(name) {
 #' @param ... Additional arguments passed to Lake$snap()
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_snap", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' snap("v1.0")
 snap <- function(label, ...) {
     lake()$snap(label, ...)
 }
@@ -162,6 +170,10 @@ snap <- function(label, ...) {
 #' @param tag Tag to apply
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_tag", root = tempfile())
+#' put("counts", data.frame(x = 1:3))
+#' tag("counts", "raw")
 tag <- function(name, tag) {
     lake()$tag(name, tag)
 }
@@ -172,6 +184,10 @@ tag <- function(name, tag) {
 #' @param ... Additional arguments passed to Lake$tree()
 #' @return Lineage data frame
 #' @export
+#' @examples
+#' use_lake("ex_tree", root = tempfile())
+#' put("raw", data.frame(x = 1:3))
+#' tree()
 tree <- function(name = NULL, ...) {
     lake()$tree(name, ...)
 }
@@ -182,6 +198,10 @@ tree <- function(name = NULL, ...) {
 #' @param ... Additional arguments passed to Lake$history()
 #' @return History data frame
 #' @export
+#' @examples
+#' use_lake("ex_history", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' history()
 history <- function(name = NULL, ...) {
     lake()$history(name, ...)
 }
@@ -190,6 +210,10 @@ history <- function(name = NULL, ...) {
 #'
 #' @return Data frame of table names
 #' @export
+#' @examples
+#' use_lake("ex_tables", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' tables()
 tables <- function() {
     lake()$tables()
 }
@@ -198,6 +222,10 @@ tables <- function() {
 #'
 #' @return Data frame of object names
 #' @export
+#' @examples
+#' use_lake("ex_objects", root = tempfile())
+#' put("model", list(a = 1, b = 2))
+#' objects()
 objects <- function() {
     lake()$objects()
 }
@@ -208,6 +236,10 @@ objects <- function() {
 #' @param type One of "any", "table", or "object"
 #' @return TRUE/FALSE
 #' @export
+#' @examples
+#' use_lake("ex_exists", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' lake_exists("t")
 lake_exists <- function(name, type = c("any", "table", "object")) {
     lake()$exists(name, type = type)
 }
@@ -227,6 +259,10 @@ lake_exists <- function(name, type = c("any", "table", "object")) {
 #' @param limit Maximum number of rows to return (Inf for all)
 #' @return Data frame with columns name, type, score, distance, and match_type
 #' @export
+#' @examples
+#' use_lake("ex_find", root = tempfile())
+#' put("counts", data.frame(x = 1:3))
+#' lake_find("count")
 lake_find <- function(pattern = NULL,
                         type = c("any", "table", "object"),
                         ignore.case = TRUE,
@@ -257,6 +293,10 @@ lake_find <- function(pattern = NULL,
 #' provided.
 #' @return One-row data frame with status fields
 #' @export
+#' @examples
+#' use_lake("ex_status", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' lake_status()
 lake_status <- function(project = NULL, ...) {
     if (!is.null(project)) {
         return(Lake$new(project, ...)$status())
@@ -273,6 +313,10 @@ lake_status <- function(project = NULL, ...) {
 #' @param verbose If TRUE, print a readable report
 #' @return Data frame with diagnostic checks
 #' @export
+#' @examples
+#' use_lake("ex_doctor", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' lake_doctor(verbose = FALSE)
 lake_doctor <- function(project = NULL, ..., verbose = TRUE) {
     if (!is.null(project)) {
         return(Lake$new(project, ...)$doctor(verbose = verbose))
@@ -286,6 +330,10 @@ lake_doctor <- function(project = NULL, ..., verbose = TRUE) {
 #' @param ... Additional arguments passed to Lake$drop()
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_drop", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' drop("t")
 drop <- function(name, ...) {
     lake()$drop(name, ...)
 }
@@ -296,6 +344,10 @@ drop <- function(name, ...) {
 #' @param ... Additional arguments passed to Lake$sql()
 #' @return Query results
 #' @export
+#' @examples
+#' use_lake("ex_sql", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' sql("SELECT COUNT(*) AS n FROM t")
 sql <- function(query, ...) {
     lake()$sql(query, ...)
 }
@@ -305,6 +357,11 @@ sql <- function(query, ...) {
 #' @param label Snapshot label
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_restore", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' snap("v1")
+#' restore("v1")
 restore <- function(label) {
     lake()$restore(label)
 }
@@ -315,6 +372,10 @@ restore <- function(label) {
 #' @param direction "up" or "down"
 #' @return Dependencies data frame
 #' @export
+#' @examples
+#' use_lake("ex_deps", root = tempfile())
+#' put("raw", data.frame(x = 1:3))
+#' deps("raw")
 deps <- function(name, direction = "up") {
     lake()$deps(name, direction)
 }
@@ -326,6 +387,11 @@ deps <- function(name, direction = "up") {
 #' @param ... Additional arguments
 #' @return Invisible Lake object
 #' @export
+#' @examples
+#' use_lake("ex_import", root = tempfile())
+#' f <- file.path(tempdir(), "imp.csv")
+#' write.csv(data.frame(x = 1:3), f, row.names = FALSE)
+#' import_data(f, "imported")
 import_data <- function(path, name, ...) {
     lake()$import(path, name, ...)
 }
@@ -337,6 +403,10 @@ import_data <- function(path, name, ...) {
 #' @param ... Additional arguments
 #' @return Invisible path
 #' @export
+#' @examples
+#' use_lake("ex_export", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' export_data("t", file.path(tempdir(), "t.parquet"))
 export_data <- function(name, path, ...) {
     lake()$export(name, path, ...)
 }
@@ -345,6 +415,10 @@ export_data <- function(name, path, ...) {
 #'
 #' @return A QueryBuilder instance
 #' @export
+#' @examples
+#' use_lake("ex_query", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' qb <- query()
 query <- function() {
     lake()$query()
 }
@@ -354,6 +428,10 @@ query <- function() {
 #' @param table Table name
 #' @return A QueryBuilder instance
 #' @export
+#' @examples
+#' use_lake("ex_from", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' qb <- from("t")
 from <- function(table) {
     lake()$from(table)
 }
@@ -361,6 +439,13 @@ from <- function(table) {
 #' @title Simple `lake_*` Aliases
 #' @description Consistent, memorable aliases that follow one naming rule:
 #' use `lake_<verb>` for common operations.
+#'
+#' @return Each alias returns the value of the function it forwards to.
+#' @examples
+#' lake_use("ex_aliases", root = tempfile())
+#' lake_put("counts", data.frame(x = 1:3))
+#' lake_get("counts")
+#' lake_snap("v1")
 #'
 #' @name lake_aliases
 NULL

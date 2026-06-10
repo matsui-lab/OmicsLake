@@ -16,6 +16,10 @@
 #' @param verbose If TRUE, print the five-step report
 #' @return A \code{lake_repair_report} object
 #' @export
+#' @examples
+#' use_lake("ex_lake_repair", root = tempfile())
+#' put("t", data.frame(x = 1:3))
+#' lake_repair()
 lake_repair <- function(target = NULL,
                         restore_label = NULL,
                         auto = FALSE,

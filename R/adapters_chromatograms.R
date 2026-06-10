@@ -8,6 +8,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- ChromatogramsAdapter$new()
+#' class(adapter)
 ChromatogramsAdapter <- R6::R6Class("ChromatogramsAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -22,7 +27,10 @@ ChromatogramsAdapter <- R6::R6Class("ChromatogramsAdapter",
         },
         put = function(lake, name, data) {
             if (!requireNamespace("Chromatograms", quietly = TRUE)) {
-                stop("Package 'Chromatograms' is required for Chromatograms storage", call. = FALSE)
+                stop(
+                    "Package 'Chromatograms' is required for Chromatograms storage",
+                    call. = FALSE
+                )
             }
             prefix <- paste0(name, ".__chrom__.")
             project <- lake$.__enclos_env__$private$.project

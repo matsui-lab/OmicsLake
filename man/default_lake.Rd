@@ -13,9 +13,7 @@ The default Lake object
 Get the current default lake
 }
 \examples{
-if (FALSE) {
-    use_lake("my_project")
-    l <- lake()
-    l$put("data", df)
-}
+use_lake("ex_lake", root = tempfile())
+l <- lake()
+l$put("data", data.frame(x = 1:3))
 }

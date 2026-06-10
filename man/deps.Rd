@@ -17,3 +17,8 @@ Dependencies data frame
 \description{
 Get dependencies from the default lake
 }
+\examples{
+use_lake("ex_deps", root = tempfile())
+put("raw", data.frame(x = 1:3))
+deps("raw")
+}

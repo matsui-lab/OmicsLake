@@ -3,11 +3,19 @@
 \name{SeuratAdapter}
 \alias{SeuratAdapter}
 \title{Seurat Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
 Adapter for storing and retrieving Seurat objects.
 }
 \details{
 This adapter stores a full-fidelity serialized Seurat object and manifest.
+}
+\examples{
+adapter <- SeuratAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{SeuratAdapter}

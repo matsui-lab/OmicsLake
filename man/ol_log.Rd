@@ -17,3 +17,8 @@ Data frame of version history
 \description{
 Return version log for a table
 }
+\examples{
+ol_init("ex_ol_log", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_log()
+}

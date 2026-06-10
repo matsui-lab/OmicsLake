@@ -3,17 +3,19 @@
 #' These operators provide familiar SQL semantics for filtering data.
 #'
 #' @name operators
+#' @return See the individual operator help pages; each returns a logical
+#'   vector.
 #' @examples
-#' if (FALSE) {
-#'     # Pattern matching
-#'     df[df$gene %like% "MT-%", ]
-#'
-#'     # Range filtering
-#'     df[df$value %between% c(10, 100), ]
-#'
-#'     # Case-insensitive matching
-#'     df[df$name %ilike% "john%", ]
-#' }
+#' df <- data.frame(
+#'     gene = c("MT-CO1", "MT-CO2", "ACTB"),
+#'     value = c(50, 80, 5)
+#' )
+#' # Pattern matching
+#' df[df$gene %like% "MT-%", ]
+#' # Range filtering
+#' df[df$value %between% c(10, 100), ]
+#' # Case-insensitive matching
+#' df[df$gene %ilike% "mt-%", ]
 NULL
 
 #' LIKE operator for SQL-style pattern matching
@@ -86,6 +88,9 @@ NULL
 #' @param range Numeric vector of length 2 (min, max)
 #' @return Logical vector
 #' @export
+#' @examples
+#' values <- 1:20
+#' values[values %!between% c(5, 15)]
 `%!between%` <- function(x, range) {
     if (length(range) != 2) {
         stop("range must be a vector of length 2 (min, max)", call. = FALSE)
@@ -125,6 +130,9 @@ NULL
 #' @param pattern Regular expression pattern
 #' @return Logical vector
 #' @export
+#' @examples
+#' genes <- c("ENSG001", "ensg002", "MT-CO1")
+#' genes[genes %iregex% "^ensg"]
 `%iregex%` <- function(x, pattern) {
     grepl(pattern, x, perl = TRUE, ignore.case = TRUE)
 }
@@ -146,6 +154,9 @@ is_null <- function(x) {
 #' @param x Vector to check
 #' @return Logical vector indicating non-NA values
 #' @export
+#' @examples
+#' x <- c(1, NA, 3, NA, 5)
+#' x[is_not_null(x)]
 is_not_null <- function(x) {
     !is.na(x)
 }
@@ -169,6 +180,9 @@ starts_with_str <- function(x, prefix) {
 #' @param suffix Suffix to check for
 #' @return Logical vector
 #' @export
+#' @examples
+#' files <- c("a.csv", "b.txt", "c.csv")
+#' files[ends_with_str(files, ".csv")]
 ends_with_str <- function(x, suffix) {
     endsWith(as.character(x), suffix)
 }
@@ -210,6 +224,9 @@ coalesce <- function(...) {
 #' @param na Value when NA (default: NA)
 #' @return Vector with conditional values
 #' @export
+#' @examples
+#' cond <- c(TRUE, FALSE, NA)
+#' if_else_na(cond, "yes", "no", na = "missing")
 if_else_na <- function(condition, true, false, na = NA) {
     result <- ifelse(condition, true, false)
     result[is.na(condition)] <- na

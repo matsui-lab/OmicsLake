@@ -12,3 +12,8 @@ Data frame of table names
 \description{
 List tables in the default lake
 }
+\examples{
+use_lake("ex_tables", root = tempfile())
+put("t", data.frame(x = 1:3))
+tables()
+}

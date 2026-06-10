@@ -42,7 +42,9 @@
         ol_save(paste0(prefix, "object"), data, project = project)
         structured_core <- private$.put_structured_core(lake, prefix, data)
         table_parts <- private$.put_table_parts(prefix, data, project)
-        private$.put_manifest(prefix, data, project, table_parts, structured_core)
+        private$.put_manifest(
+          prefix, data, project, table_parts, structured_core
+        )
         invisible(TRUE)
       },
       get = function(lake, name, ref = "@latest") {
@@ -50,7 +52,9 @@
         project <- lake$.__enclos_env__$private$.project
         private$.load_manifest(prefix, name, ref, project)
         tryCatch(
-          ol_read_object(paste0(prefix, "object"), ref = ref, project = project),
+          ol_read_object(
+            paste0(prefix, "object"), ref = ref, project = project
+          ),
           error = function(e) {
             stop(
               "Failed to restore ", adapter_name, " object for '", name, "'",
@@ -81,7 +85,9 @@
           ),
           stringsAsFactors = FALSE
         )
-        components$component_id <- gsub(prefix_pattern, "", components$component)
+        components$component_id <- gsub(
+          prefix_pattern, "", components$component
+        )
         components
       },
       exists = function(lake, name) {
@@ -118,13 +124,18 @@
       .manifest_pattern = function() {
         paste0("\\.__", token, "__\\.manifest$")
       },
-      .put_manifest = function(prefix, data, project, table_parts = character(0),
+      .put_manifest = function(prefix, data, project,
+                               table_parts = character(0),
                                structured_core = NULL) {
         manifest <- list(
           type = manifest_type,
           class = class(data)[1],
           table_parts = as.character(table_parts),
-          structured_core = if (is.null(structured_core)) NA_character_ else as.character(structured_core),
+          structured_core = if (is.null(structured_core)) {
+            NA_character_
+          } else {
+            as.character(structured_core)
+          },
           created_at = Sys.time()
         )
         ol_save(paste0(prefix, "manifest"), manifest, project = project)
@@ -183,7 +194,10 @@
         for (part_name in names(parts)) {
           table_name <- paste0(prefix, "part.", part_name)
           ok <- tryCatch({
-            ol_write(table_name, parts[[part_name]], project = project, mode = "overwrite")
+            ol_write(
+              table_name, parts[[part_name]],
+              project = project, mode = "overwrite"
+            )
             TRUE
           }, error = function(e) FALSE)
           if (isTRUE(ok)) {
@@ -238,9 +252,15 @@
             }
           }
         } else if (isS4(value)) {
-          slot_names <- tryCatch(methods::slotNames(value), error = function(e) character(0))
+          slot_names <- tryCatch(
+            methods::slotNames(value),
+            error = function(e) character(0)
+          )
           for (slot_name in slot_names) {
-            slot_value <- tryCatch(methods::slot(value, slot_name), error = function(e) NULL)
+            slot_value <- tryCatch(
+              methods::slot(value, slot_name),
+              error = function(e) NULL
+            )
             if (!is.null(slot_value)) {
               out <- private$.walk_extract_parts(
                 value = slot_value,
@@ -283,7 +303,8 @@
           return(df[, cols, drop = FALSE])
         }
 
-        if (is.atomic(value) && is.vector(value) && is.null(dim(value)) && length(value) > 0) {
+        if (is.atomic(value) && is.vector(value) && is.null(dim(value)) &&
+            length(value) > 0) {
           if (length(value) > 50000) {
             return(NULL)
           }
@@ -311,7 +332,9 @@
       },
       .load_manifest = function(prefix, name, ref, project) {
         tryCatch(
-          ol_read_object(paste0(prefix, "manifest"), ref = ref, project = project),
+          ol_read_object(
+            paste0(prefix, "manifest"), ref = ref, project = project
+          ),
           error = function(e) {
             stop(
               "Cannot find ", adapter_name, " manifest for '", name, "'",

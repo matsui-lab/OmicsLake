@@ -4,7 +4,8 @@
 \alias{DependencyTracker}
 \title{Dependency Tracker}
 \description{
-Tracks data dependencies during operations with version-aware lineage
+Tracks data dependencies during operations with version-aware
+  lineage
 }
 \keyword{Record}
 \keyword{a}
@@ -88,7 +89,8 @@ Get current tracked reads with version info
 
 \subsection{Returns}{
 List of dependency objects with name and ref
-Get current tracked reads as character vector (for backward compatibility)
+Get current tracked reads as character vector (for backward
+compatibility)
 }
 }
 \if{html}{\out{<hr>}}

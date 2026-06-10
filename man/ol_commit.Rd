@@ -13,6 +13,9 @@ ol_commit(note = "", params = list(), project = getOption("ol.project"))
 
 \item{project}{Project name}
 }
+\value{
+Invisible commit identifier string
+}
 \description{
 Commit with metadata (note and parameters)
 }
@@ -26,4 +29,9 @@ when available). Control this with:
 `options(ol.repro.strict = TRUE/FALSE)`,
 `options(ol.repro.require_clean_git = TRUE/FALSE)`,
 and AI metadata options such as `options(ol.agent.prompt_id = "...")`.
+}
+\examples{
+ol_init("ex_ol_commit", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_commit("initial load")
 }

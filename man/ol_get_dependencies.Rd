@@ -13,13 +13,21 @@ ol_get_dependencies(
 \arguments{
 \item{name}{Name of the table or object}
 
-\item{direction}{Direction to query: "upstream" (parents), "downstream" (children), or "both"}
+\item{direction}{Direction to query: "upstream" (parents), "downstream"
+(children), or "both"}
 
 \item{project}{Project name}
 }
 \value{
-Data frame with dependency info including version references (parent_ref, parent_version_id)
+Data frame with dependency info including version references
+  (parent_ref, parent_version_id)
 }
 \description{
 Get dependencies for a table or object
+}
+\examples{
+ol_init("ex_ol_get_dependencies", root = tempfile())
+ol_write("raw", data.frame(x = 1:3))
+ol_write("filtered", data.frame(x = 1:2), depends_on = "raw")
+ol_get_dependencies("filtered")
 }

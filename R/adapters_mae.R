@@ -14,6 +14,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- MAEAdapter$new()
+#' class(adapter)
 MAEAdapter <- R6::R6Class("MAEAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -125,9 +130,11 @@ MAEAdapter <- R6::R6Class("MAEAdapter",
                 return(character(0))
             }
             roots <- sort(unique(sub(manifest_pattern, "", manifests)))
-            roots[!grepl("\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
+            roots[!grepl(
+                "\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
                 roots,
-                perl = TRUE)]
+                perl = TRUE
+            )]
         }
     ),
     private = list(

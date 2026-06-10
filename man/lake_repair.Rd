@@ -44,3 +44,8 @@ Runs a five-step workflow:
 1) situation summary, 2) cause identification, 3) fix proposals,
 4) optional auto-execution, and 5) before/after comparison.
 }
+\examples{
+use_lake("ex_lake_repair", root = tempfile())
+put("t", data.frame(x = 1:3))
+lake_repair()
+}

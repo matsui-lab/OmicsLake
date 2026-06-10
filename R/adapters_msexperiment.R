@@ -14,6 +14,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- MsExperimentAdapter$new()
+#' class(adapter)
 MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -189,7 +194,8 @@ MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
         .put_sample_data = function(prefix, data, project) {
             sample_data <- as.data.frame(MsExperiment::sampleData(data))
             sample_ids <- rownames(sample_data)
-            if (is.null(sample_ids) || length(sample_ids) != nrow(sample_data) ||
+            if (is.null(sample_ids) ||
+                length(sample_ids) != nrow(sample_data) ||
                 anyNA(sample_ids) || any(!nzchar(as.character(sample_ids)))) {
                 sample_ids <- paste0("sample", seq_len(nrow(sample_data)))
             }
@@ -211,7 +217,10 @@ MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
             if (is.null(value)) {
                 return(list(mode = "none", adapter = NA_character_))
             }
-            has_content <- tryCatch(length(value) > 0L, error = function(e) TRUE)
+            has_content <- tryCatch(
+                length(value) > 0L,
+                error = function(e) TRUE
+            )
             if (!has_content) {
                 return(list(mode = "none", adapter = NA_character_))
             }
@@ -278,7 +287,10 @@ MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
             TRUE
         },
         .put_other_data = function(prefix, data, project) {
-            od <- tryCatch(MsExperiment::otherData(data), error = function(e) NULL)
+            od <- tryCatch(
+                MsExperiment::otherData(data),
+                error = function(e) NULL
+            )
             if (is.null(od) || length(od) == 0L) {
                 return(FALSE)
             }
@@ -286,7 +298,10 @@ MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
             TRUE
         },
         .put_metadata = function(prefix, data, project) {
-            meta <- tryCatch(S4Vectors::metadata(data), error = function(e) list())
+            meta <- tryCatch(
+                S4Vectors::metadata(data),
+                error = function(e) list()
+            )
             if (!length(meta)) {
                 return(FALSE)
             }
@@ -336,8 +351,10 @@ MsExperimentAdapter <- R6::R6Class("MsExperimentAdapter",
             mode <- private$.manifest_scalar(manifest$sample_data_mode, "table")
             sample_data <- if (identical(mode, "object")) {
                 tryCatch(
-                    ol_read_object(paste0(prefix, "sampleData.object"), ref = ref,
-                        project = project),
+                    ol_read_object(
+                        paste0(prefix, "sampleData.object"),
+                        ref = ref, project = project
+                    ),
                     error = function(e) NULL
                 )
             } else {

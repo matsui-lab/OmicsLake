@@ -12,3 +12,8 @@ Data frame of object names
 \description{
 List objects in the default lake
 }
+\examples{
+use_lake("ex_objects", root = tempfile())
+put("model", list(a = 1, b = 2))
+objects()
+}

@@ -3,32 +3,37 @@
 \name{Lake}
 \alias{Lake}
 \title{Lake - OmicsLake Core Class}
+\value{
+A \code{Lake} R6 generator; call \code{Lake$new()} to create a lake.
+}
 \description{
 R6 class for versioned, lineage-tracked data management.
-Provides a modern, fluent API for data operations with automatic dependency tracking.
+Provides a modern, fluent API for data operations with automatic
+dependency tracking.
 }
 \section{SummarizedExperiment Support}{
 
-SummarizedExperiment objects are stored via the SEAdapter pattern, which decomposes
-the object into queryable components:
+SummarizedExperiment objects are stored via the SEAdapter pattern, which
+decomposes the object into queryable components:
 \itemize{
   \item Assays are stored as tables (long format for efficient querying)
   \item colData and rowData are stored as separate tables
   \item Metadata is stored as a serialized R object
 }
 
-When you \code{put()} a SummarizedExperiment, all components are stored atomically
-within a transaction. When you \code{tag()} an SE object, all components are tagged
-together to maintain version consistency.
+When you \code{put()} a SummarizedExperiment, all components are stored
+atomically within a transaction. When you \code{tag()} an SE object, all
+components are tagged together to maintain version consistency.
 
-Legacy objects stored before the adapter registry are still readable via fallback
-detection.
+Legacy objects stored before the adapter registry are still readable via
+fallback detection.
 }
 
 \section{Storage Types}{
 
 \itemize{
-  \item \strong{Tables}: data.frames stored in DuckDB (queryable with SQL/dplyr)
+  \item \strong{Tables}: data.frames stored in DuckDB (queryable with
+    SQL/dplyr)
   \item \strong{Objects}: Arbitrary R objects serialized with qs/RDS
   \item \strong{SummarizedExperiment}: Decomposed storage via SEAdapter
 }
@@ -157,13 +162,15 @@ Write data to the lake
   - Character vector of names (uses @latest for all)
   - List of lists with 'name' and 'ref' elements for version-aware deps
 
-**Auto-tracking note**: When `auto_track=TRUE` (default), dependencies are
+**Auto-tracking note**: When `auto_track=TRUE` (default), dependencies
+are
 automatically detected from:
 1. `lake_deps` attribute on data (set by `save_as()` from dplyr pipes)
 2. Tracked reads within a `with_tracking()` or `wrap_fn()` context
 
 A simple `lake$get()` followed by `lake$put()` does NOT auto-capture
-dependencies. Use `save_as()`, `with_tracking()`, or specify `depends_on`.}
+dependencies. Use `save_as()`, `with_tracking()`, or specify
+`depends_on`.}
 
 \item{\code{tags}}{Optional tags for this version}
 }
@@ -187,13 +194,15 @@ Read data from the lake
 \describe{
 \item{\code{name}}{Name of the data to read}
 
-\item{\code{ref}}{Version reference ("@latest", "@first", "@tag(name)", or timestamp)}
+\item{\code{ref}}{Version reference ("@latest", "@first", "@tag(name)", or
+timestamp)}
 
 \item{\code{where}}{Filter condition (formula, e.g., ~ col > 5)}
 
 \item{\code{select}}{Columns to select (character vector)}
 
-\item{\code{collect}}{Whether to collect results immediately (FALSE returns lazy reference)}
+\item{\code{collect}}{Whether to collect results immediately (FALSE returns
+lazy reference)}
 }
 \if{html}{\out{</div>}}
 }
@@ -310,7 +319,8 @@ Compare two versions of data
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Comparison summary with row counts, column differences, and sample data
+Comparison summary with row counts, column differences, and
+  sample data
 }
 }
 \if{html}{\out{<hr>}}
@@ -450,7 +460,8 @@ Join two tables
 
 \item{\code{right}}{Right table name}
 
-\item{\code{by}}{Join columns (character vector or named vector for different column names)}
+\item{\code{by}}{Join columns (character vector or named vector for different
+column names)}
 
 \item{\code{type}}{Join type ("left", "inner", "right", "full")}
 }
@@ -662,7 +673,8 @@ Export data to a file
 
 \item{\code{path}}{Output file path}
 
-\item{\code{format}}{Output format ("parquet", "csv", "rds"). Auto-detected from extension if NULL.}
+\item{\code{format}}{Output format ("parquet", "csv", "rds"). Auto-detected
+from extension if NULL.}
 }
 \if{html}{\out{</div>}}
 }

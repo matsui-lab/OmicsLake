@@ -16,6 +16,11 @@
 #'
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- SCEAdapter$new()
+#' class(adapter)
 SCEAdapter <- R6::R6Class("SCEAdapter",
     inherit = LakeAdapter,
     public = list(
@@ -77,7 +82,9 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
                     alt_ref <- paste0(prefix, "altExp.", alt_name)
                     alt_type <- private$.manifest_alt_type(manifest, alt_name)
                     if (identical(alt_type, "sce")) {
-                        alt_obj <- SCEAdapter$new()$get(lake, alt_ref, ref = ref)
+                        alt_obj <- SCEAdapter$new()$get(
+                            lake, alt_ref, ref = ref
+                        )
                     } else {
                         alt_obj <- se_adapter$get(lake, alt_ref, ref = ref)
                     }
@@ -155,9 +162,11 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
                 return(character(0))
             }
             roots <- sort(unique(sub(manifest_pattern, "", manifests)))
-            roots[!grepl("\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
+            roots[!grepl(
+                "\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
                 roots,
-                perl = TRUE)]
+                perl = TRUE
+            )]
         }
     ),
     private = list(
@@ -182,8 +191,10 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
                 rd_names <- paste0("rd", seq_along(rdims))
             }
             for (i in seq_along(rd_names)) {
-                ol_save(paste0(prefix, "reducedDim.", rd_names[[i]]), rdims[[i]],
-                    project = project)
+                ol_save(
+                    paste0(prefix, "reducedDim.", rd_names[[i]]), rdims[[i]],
+                    project = project
+                )
             }
             if (is.null(rd_names)) character(0) else rd_names
         },
@@ -192,7 +203,9 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
             if (length(alt_names) == 0) {
                 return(list(names = character(0), types = character(0)))
             }
-            alt_types <- stats::setNames(character(length(alt_names)), alt_names)
+            alt_types <- stats::setNames(
+                character(length(alt_names)), alt_names
+            )
             for (alt_name in alt_names) {
                 alt_obj <- SingleCellExperiment::altExp(data, alt_name)
                 alt_ref <- paste0(prefix, "altExp.", alt_name)
@@ -385,8 +398,10 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
                 return(sce)
             }
             for (pair_name in pair_names) {
-                pair_obj <- ol_read_object(paste0(prefix, "rowPair.", pair_name),
-                    ref = ref, project = project)
+                pair_obj <- ol_read_object(
+                    paste0(prefix, "rowPair.", pair_name),
+                    ref = ref, project = project
+                )
                 SingleCellExperiment::rowPair(sce, pair_name) <- pair_obj
             }
             sce
@@ -397,13 +412,16 @@ SCEAdapter <- R6::R6Class("SCEAdapter",
                 return(sce)
             }
             for (pair_name in pair_names) {
-                pair_obj <- ol_read_object(paste0(prefix, "colPair.", pair_name),
-                    ref = ref, project = project)
+                pair_obj <- ol_read_object(
+                    paste0(prefix, "colPair.", pair_name),
+                    ref = ref, project = project
+                )
                 SingleCellExperiment::colPair(sce, pair_name) <- pair_obj
             }
             sce
         },
-        .restore_internal_extras = function(prefix, sce, manifest, ref, project) {
+        .restore_internal_extras = function(prefix, sce, manifest, ref,
+                                            project) {
             if (isTRUE(manifest$has_int_metadata_extra)) {
                 extra_md <- tryCatch(
                     ol_read_object(paste0(prefix, "int_metadata.extra"),

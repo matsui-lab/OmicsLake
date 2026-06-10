@@ -43,3 +43,8 @@ Data frame with columns name, type, score, distance, and match_type
 \description{
 Find data names in the default lake
 }
+\examples{
+use_lake("ex_find", root = tempfile())
+put("counts", data.frame(x = 1:3))
+lake_find("count")
+}

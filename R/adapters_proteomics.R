@@ -6,6 +6,11 @@
 #' proteomics-marked objects.
 #' @importFrom R6 R6Class
 #' @export
+#' @return An R6 generator for a \code{LakeAdapter} subclass that
+#'   serializes and restores objects of this omics layer.
+#' @examples
+#' adapter <- ProteomicsAdapter$new()
+#' class(adapter)
 ProteomicsAdapter <- .ol_create_serialized_adapter(
   class_name = "ProteomicsAdapter",
   adapter_name = "Proteomics",

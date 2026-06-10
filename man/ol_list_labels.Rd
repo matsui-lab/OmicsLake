@@ -9,6 +9,14 @@ ol_list_labels(project = getOption("ol.project"))
 \arguments{
 \item{project}{Project name}
 }
+\value{
+Data frame of project labels
+}
 \description{
 List all project-level labels
+}
+\examples{
+ol_init("ex_ol_list_labels", root = tempfile())
+ol_write("t", data.frame(x = 1:3))
+ol_list_labels()
 }

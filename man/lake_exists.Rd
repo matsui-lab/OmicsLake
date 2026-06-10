@@ -17,3 +17,8 @@ TRUE/FALSE
 \description{
 Check whether a data name exists in the default lake
 }
+\examples{
+use_lake("ex_exists", root = tempfile())
+put("t", data.frame(x = 1:3))
+lake_exists("t")
+}

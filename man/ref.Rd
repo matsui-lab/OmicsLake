@@ -15,3 +15,8 @@ A lazy table reference for use with dplyr
 \description{
 Get a lazy reference from the default lake
 }
+\examples{
+use_lake("ex_ref", root = tempfile())
+put("t", data.frame(x = 1:5))
+dplyr::collect(dplyr::filter(ref("t"), x > 2))
+}

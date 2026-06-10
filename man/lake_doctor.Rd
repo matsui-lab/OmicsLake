@@ -21,3 +21,8 @@ Data frame with diagnostic checks
 \description{
 Run diagnostics for the default lake (or a specified project)
 }
+\examples{
+use_lake("ex_doctor", root = tempfile())
+put("t", data.frame(x = 1:3))
+lake_doctor(verbose = FALSE)
+}

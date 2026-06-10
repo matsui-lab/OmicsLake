@@ -3,11 +3,20 @@
 \name{VCFAdapter}
 \alias{VCFAdapter}
 \title{VCF Adapter}
+\value{
+An R6 generator for a \code{LakeAdapter} subclass that
+  serializes and restores objects of this omics layer.
+}
 \description{
-Adapter for storing and retrieving VariantAnnotation VCF objects.
+Adapter for storing and retrieving VariantAnnotation VCF
+  objects.
 }
 \details{
 This adapter stores a full-fidelity serialized VCF object and manifest.
+}
+\examples{
+adapter <- VCFAdapter$new()
+class(adapter)
 }
 \section{Super class}{
 \code{\link[OmicsLake:LakeAdapter]{OmicsLake::LakeAdapter}} -> \code{VCFAdapter}

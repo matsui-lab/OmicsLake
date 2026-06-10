@@ -3,6 +3,9 @@
 \name{QueryBuilder}
 \alias{QueryBuilder}
 \title{QueryBuilder - Fluent Query Interface}
+\value{
+A \code{QueryBuilder} R6 generator; call \code{$new()} to create one.
+}
 \description{
 Build complex queries using a fluent, chainable API.
 Provides an intuitive way to construct queries without writing SQL.

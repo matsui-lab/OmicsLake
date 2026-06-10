@@ -19,3 +19,9 @@ Invisible TRUE on success
 \description{
 Removes a dependency relationship between two nodes.
 }
+\examples{
+use_lake("ex_unlink_dep", root = tempfile())
+put("raw", data.frame(x = 1:3))
+put("filtered", data.frame(x = 1:2), depends_on = "raw")
+unlink_dep("raw", "filtered")
+}

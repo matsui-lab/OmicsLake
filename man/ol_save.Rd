@@ -21,11 +21,16 @@ ol_save(
 
 \item{mime}{MIME type for object payload}
 
-\item{depends_on}{Optional character vector of table/object names that this object depends on}
+\item{depends_on}{Optional character vector of table/object names that this
+object depends on}
 }
 \value{
 Invisible TRUE on success
 }
 \description{
 Save an R object via the backend metadata table
+}
+\examples{
+ol_init("ex_ol_save", root = tempfile())
+ol_save("model", list(coef = 1:3))
 }

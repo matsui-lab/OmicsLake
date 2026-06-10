@@ -15,3 +15,8 @@ A QueryBuilder instance
 \description{
 Start a query from a table on the default lake
 }
+\examples{
+use_lake("ex_from", root = tempfile())
+put("t", data.frame(x = 1:3))
+qb <- from("t")
+}

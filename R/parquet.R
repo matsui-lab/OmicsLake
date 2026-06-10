@@ -1,15 +1,3 @@
-#' Export a table or object to a Parquet file
-#'
-#' @param name Name of the table or object to export
-#' @param path Output file path for the Parquet file
-#' @param ref Version reference (default: "@latest")
-#' @param project Project name
-#' @param compression Compression algorithm: "snappy" (default), "zstd", "lz4",
-#' "brotli", or "uncompressed"
-#' @param compression_level Compression level (codec-specific, NULL for default)
-#' @param row_group_size Number of rows per row group (default: 100000)
-#' @param overwrite Whether to overwrite existing file (default: FALSE)
-#' @export
 .ol_parquet_copy_sql <- function(conn, source_ident, path, compression,
     compression_level = NULL, row_group_size = NULL) {
     sql <- sprintf(
@@ -127,6 +115,23 @@
     invisible(TRUE)
 }
 
+#' Export a table or object to a Parquet file
+#'
+#' @param name Name of the table or object to export
+#' @param path Output file path for the Parquet file
+#' @param ref Version reference (default: "@latest")
+#' @param project Project name
+#' @param compression Compression algorithm: "snappy" (default), "zstd", "lz4",
+#' "brotli", or "uncompressed"
+#' @param compression_level Compression level (codec-specific, NULL for default)
+#' @param row_group_size Number of rows per row group (default: 100000)
+#' @param overwrite Whether to overwrite existing file (default: FALSE)
+#' @return Invisible normalized output path
+#' @export
+#' @examples
+#' ol_init("ex_export_parquet", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' ol_export_parquet("t", file.path(tempdir(), "t.parquet"), overwrite = TRUE)
 ol_export_parquet <- function(name, path, ref = "@latest",
                                 project = getOption("ol.project"),
                                 compression = c("snappy", "zstd", "lz4",
@@ -155,20 +160,6 @@ ol_export_parquet <- function(name, path, ref = "@latest",
     invisible(normalizePath(path))
 }
 
-#' Import a Parquet file into the project
-#'
-#' @param path Input file path(s) for Parquet file(s). Can be a single file,
-#' list of files, or glob pattern.
-#' @param name Destination table name in the project
-#' @param project Project name
-#' @param mode Import mode: "create", "overwrite", or "append"
-#' @param depends_on Optional character vector of table/object names that this
-#' import depends on
-#' @param hive_partitioning Whether to interpret path as Hive partitioned (NULL
-#' for auto-detect, TRUE/FALSE to force)
-#' @param union_by_name Whether to unify columns by name rather than position
-#' when reading multiple files
-#' @export
 .ol_parquet_read_expr <- function(conn, path, read_opts) {
     if (length(path) == 1) {
         read_expr <- sprintf("read_parquet(%s", DBI::dbQuoteString(conn, path))
@@ -194,6 +185,27 @@ ol_export_parquet <- function(name, path, ref = "@latest",
     paste0(read_expr, ", ", opts_str, ")")
 }
 
+#' Import a Parquet file into the project
+#'
+#' @param path Input file path(s) for Parquet file(s). Can be a single file,
+#' list of files, or glob pattern.
+#' @param name Destination table name in the project
+#' @param project Project name
+#' @param mode Import mode: "create", "overwrite", or "append"
+#' @param depends_on Optional character vector of table/object names that this
+#' import depends on
+#' @param hive_partitioning Whether to interpret path as Hive partitioned (NULL
+#' for auto-detect, TRUE/FALSE to force)
+#' @param union_by_name Whether to unify columns by name rather than position
+#' when reading multiple files
+#' @return Invisible TRUE on success
+#' @export
+#' @examples
+#' ol_init("ex_import_parquet", root = tempfile())
+#' ol_write("t", data.frame(x = 1:3))
+#' p <- file.path(tempdir(), "t.parquet")
+#' ol_export_parquet("t", p, overwrite = TRUE)
+#' ol_import_parquet(p, "t_imported")
 ol_import_parquet <- function(path, name,
                                 project = getOption("ol.project"),
                                 mode = c("create", "overwrite", "append"),

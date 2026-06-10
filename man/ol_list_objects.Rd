@@ -9,6 +9,14 @@ ol_list_objects(project = getOption("ol.project"))
 \arguments{
 \item{project}{Project name}
 }
+\value{
+Data frame of object names
+}
 \description{
 List all saved objects in the project
+}
+\examples{
+ol_init("ex_ol_list_objects", root = tempfile())
+ol_save("m", list(a = 1))
+ol_list_objects()
 }

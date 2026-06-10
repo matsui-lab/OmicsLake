@@ -14,12 +14,22 @@ ol_show_lineage(
 \arguments{
 \item{name}{Name of the table or object}
 
-\item{direction}{Direction to traverse: "upstream" (all ancestors) or "downstream" (all descendants)}
+\item{direction}{Direction to traverse: "upstream" (all ancestors) or
+"downstream" (all descendants)}
 
 \item{max_depth}{Maximum depth to traverse (default: 10)}
 
 \item{project}{Project name}
 }
+\value{
+Data frame describing the lineage tree
+}
 \description{
 Show lineage (full dependency tree) for a table or object
+}
+\examples{
+ol_init("ex_ol_show_lineage", root = tempfile())
+ol_write("raw", data.frame(x = 1:3))
+ol_write("filtered", data.frame(x = 1:2), depends_on = "raw")
+ol_show_lineage("filtered")
 }
