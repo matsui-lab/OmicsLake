@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="OmicsLake Development Team" />
+
+<meta name="date" content="2026-07-14" />
+
+<title>OmicsLake v2.0 クイックスタートガイド</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">OmicsLake v2.0 クイックスタートガイド</h1>
+<h4 class="author">OmicsLake Development Team</h4>
+<h4 class="date">2026-07-14</h4>
+
+
+
+<div id="はじめに" class="section level1">
+<h1>はじめに</h1>
+<p>OmicsLake v2.0は、データリネージ（データの系譜）を中核に据えた、
+モダンで使いやすいオミクスデータ管理パッケージです。
+既存の解析ワークフローに最小限の変更で導入でき、
+自動的にデータの依存関係を追跡します。</p>
+<div id="全コードを実行する前に" class="section level2">
+<h2>全コードを実行する前に</h2>
+<p>このビネットは、パッケージチェックを安定させるため既定で
+<code>eval = FALSE</code> 相当の設定になっています。
+ローカルで全チャンクを実行したい場合は、先に以下を設定してください。</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">omicslake.vignette.eval =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>その後、書き込み可能な作業ディレクトリでレンダリングしてください。</p>
+</div>
+<div id="次に読むガイド" class="section level2">
+<h2>次に読むガイド</h2>
+<ul>
+<li>代表ユースケース（レイヤー別）:
+<code>vignettes/omicslake_layer_use_cases.Rmd</code></li>
+<li>実践フロー（RNA-seq中心）:
+<code>vignettes/omicslake_practical_workflow.Rmd</code></li>
+<li>網羅的なAPI解説:
+<code>vignettes/omicslake_comprehensive_guide.Rmd</code></li>
+</ul>
+</div>
+<div id="主な特徴" class="section level2">
+<h2>主な特徴</h2>
+<ul>
+<li><strong>シンプルなAPI</strong>: <code>put()</code>,
+<code>get()</code>, <code>snap()</code>, <code>tree()</code>
+だけで基本操作が完結</li>
+<li><strong>自動リネージ追跡</strong>:
+dplyrパイプを通じて依存関係を自動検出</li>
+<li><strong>SQL不要</strong>:
+Formula構文やQueryBuilderでRネイティブにクエリ</li>
+<li><strong>既存コード対応</strong>:
+observe/wrapモードで既存スクリプトを変更せず追跡</li>
+</ul>
+</div>
+</div>
+<div id="インストール" class="section level1">
+<h1>インストール</h1>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># GitHubからインストール</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co"># Installation command is documented in README.md</span></span></code></pre></div>
+</div>
+<div id="基本的な使い方" class="section level1">
+<h1>基本的な使い方</h1>
+<div id="lakeの初期化" class="section level2">
+<h2>Lakeの初期化</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(OmicsLake)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co"># プロジェクトを作成/開く</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>lake <span class="ot">&lt;-</span> Lake<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;my_analysis&quot;</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co"># または、グローバルショートカットを使用</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="fu">use_lake</span>(<span class="st">&quot;my_analysis&quot;</span>)</span></code></pre></div>
+</div>
+<div id="データの保存と読み込み" class="section level2">
+<h2>データの保存と読み込み</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># データフレームを保存</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">100</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    <span class="at">sample_A =</span> <span class="fu">rpois</span>(<span class="dv">100</span>, <span class="dv">50</span>),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="at">sample_B =</span> <span class="fu">rpois</span>(<span class="dv">100</span>, <span class="dv">60</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>)</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;counts&quot;</span>, counts)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="co"># R オブジェクトも保存可能</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>params <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>    <span class="at">method =</span> <span class="st">&quot;TMM&quot;</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="at">log_transform =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>    <span class="at">threshold =</span> <span class="fl">0.05</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>)</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;analysis_params&quot;</span>, params)</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co"># 読み込み</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>data <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>)</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>my_params <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;analysis_params&quot;</span>)</span></code></pre></div>
+</div>
+<div id="formula構文でフィルタリング" class="section level2">
+<h2>Formula構文でフィルタリング</h2>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># SQL不要！Formula構文でフィルタ</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>high_expr <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>, <span class="at">where =</span> <span class="sc">~</span> sample_A <span class="sc">&gt;</span> <span class="dv">50</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># カスタム演算子も使用可能</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>mito_genes <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>, <span class="at">where =</span> <span class="sc">~</span> gene_id <span class="sc">%like%</span> <span class="st">&quot;MT-%&quot;</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># 複合条件</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>filtered <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>    <span class="at">where =</span> <span class="sc">~</span> sample_A <span class="sc">&gt;</span> <span class="dv">30</span> <span class="sc">&amp;</span> sample_B <span class="sc">%between%</span> <span class="fu">c</span>(<span class="dv">40</span>, <span class="dv">80</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co"># カラム選択も同時に</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>subset <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>,</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>    <span class="at">where =</span> <span class="sc">~</span> sample_A <span class="sc">&gt;</span> <span class="dv">50</span>,</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>    <span class="at">select =</span> <span class="fu">c</span>(<span class="st">&quot;gene_id&quot;</span>, <span class="st">&quot;sample_A&quot;</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="dplyr統合自動リネージ追跡" class="section level2">
+<h2>dplyr統合（自動リネージ追跡）</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># lake$ref() で遅延参照を取得</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co"># dplyrパイプ中の依存関係は自動追跡される！</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">ref</span>(<span class="st">&quot;counts&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="fu">filter</span>(sample_A <span class="sc">&gt;</span> <span class="dv">30</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        <span class="at">mean_expr =</span> (sample_A <span class="sc">+</span> sample_B) <span class="sc">/</span> <span class="dv">2</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>        <span class="at">log2_ratio =</span> <span class="fu">log2</span>(sample_B <span class="sc">/</span> sample_A)</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    <span class="fu">arrange</span>(<span class="fu">desc</span>(mean_expr)) <span class="sc">|&gt;</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>    <span class="fu">save_as</span>(<span class="st">&quot;processed_counts&quot;</span>, lake)</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co"># リネージを確認</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">tree</span>(<span class="st">&quot;processed_counts&quot;</span>)</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a><span class="co"># counts -&gt; processed_counts</span></span></code></pre></div>
+</div>
+<div id="複数テーブルのjoin" class="section level2">
+<h2>複数テーブルのJOIN</h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># メタデータを追加</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>metadata <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">100</span>),</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    <span class="at">gene_name =</span> <span class="fu">paste0</span>(<span class="st">&quot;Gene_&quot;</span>, LETTERS[<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>])[<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">25</span>)],</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    <span class="at">biotype =</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="st">&quot;protein_coding&quot;</span>, <span class="st">&quot;lncRNA&quot;</span>), <span class="dv">100</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;gene_metadata&quot;</span>, metadata)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co"># dplyrでJOIN</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">ref</span>(<span class="st">&quot;counts&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>    <span class="fu">left_join</span>(lake<span class="sc">$</span><span class="fu">ref</span>(<span class="st">&quot;gene_metadata&quot;</span>), <span class="at">by =</span> <span class="st">&quot;gene_id&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>    <span class="fu">filter</span>(biotype <span class="sc">==</span> <span class="st">&quot;protein_coding&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>    <span class="fu">group_by</span>(gene_name) <span class="sc">|&gt;</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>    <span class="fu">summarize</span>(<span class="at">total_A =</span> <span class="fu">sum</span>(sample_A), <span class="at">total_B =</span> <span class="fu">sum</span>(sample_B)) <span class="sc">|&gt;</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>    <span class="fu">save_as</span>(<span class="st">&quot;gene_summary&quot;</span>, lake)</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="co"># 依存関係は自動追跡</span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">tree</span>(<span class="st">&quot;gene_summary&quot;</span>)</span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co"># counts -----&gt; gene_summary</span></span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a><span class="co"># gene_metadata ↗</span></span></code></pre></div>
+</div>
+</div>
+<div id="querybuilder" class="section level1">
+<h1>QueryBuilder</h1>
+<p>SQLを書かずに複雑なクエリを構築できます。</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># メソッドチェーンでクエリを構築</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>result <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">from</span>(<span class="st">&quot;counts&quot;</span>)<span class="sc">$</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="fu">join</span>(<span class="st">&quot;gene_metadata&quot;</span>, <span class="at">on =</span> <span class="st">&quot;gene_id&quot;</span>)<span class="sc">$</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="fu">where</span>(biotype <span class="sc">==</span> <span class="st">&quot;protein_coding&quot;</span>)<span class="sc">$</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    <span class="fu">where</span>(sample_A <span class="sc">&gt;</span> <span class="dv">40</span>)<span class="sc">$</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="fu">select</span>(gene_id, gene_name, sample_A, sample_B)<span class="sc">$</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="fu">order_by</span>(<span class="fu">desc</span>(sample_A))<span class="sc">$</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>    <span class="fu">top</span>(<span class="dv">20</span>, <span class="at">by =</span> sample_A)<span class="sc">$</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>    <span class="fu">run</span>()</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># 結果をLakeに保存</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">from</span>(<span class="st">&quot;counts&quot;</span>)<span class="sc">$</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>    <span class="fu">where</span>(sample_A <span class="sc">&gt;</span> <span class="dv">50</span>)<span class="sc">$</span></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>    <span class="fu">as</span>(<span class="st">&quot;high_expression_genes&quot;</span>)</span></code></pre></div>
+</div>
+<div id="バージョン管理" class="section level1">
+<h1>バージョン管理</h1>
+<div id="スナップショットとタグ" class="section level2">
+<h2>スナップショットとタグ</h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># 現在の状態をスナップショット</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">snap</span>(<span class="st">&quot;v1.0_raw_data&quot;</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># データを更新</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>normalized <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>normalized<span class="sc">$</span>sample_A <span class="ot">&lt;-</span> <span class="fu">log2</span>(normalized<span class="sc">$</span>sample_A <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>normalized<span class="sc">$</span>sample_B <span class="ot">&lt;-</span> <span class="fu">log2</span>(normalized<span class="sc">$</span>sample_B <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;counts&quot;</span>, normalized)</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">snap</span>(<span class="st">&quot;v1.1_normalized&quot;</span>)</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co"># 個別データにタグ付け</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;counts&quot;</span>, <span class="st">&quot;before_normalization&quot;</span>)</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="co"># 過去バージョンを取得</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>original <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;counts&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(before_normalization)&quot;</span>)</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="co"># スナップショットに復元</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">restore</span>(<span class="st">&quot;v1.0_raw_data&quot;</span>)</span></code></pre></div>
+</div>
+<div id="履歴の確認" class="section level2">
+<h2>履歴の確認</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># プロジェクト履歴</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">log</span>()</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co"># 特定データの履歴</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">log</span>(<span class="st">&quot;counts&quot;</span>)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co"># スナップショット一覧</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">snaps</span>()</span></code></pre></div>
+</div>
+</div>
+<div id="リネージデータ系譜" class="section level1">
+<h1>リネージ（データ系譜）</h1>
+<div id="依存関係の確認" class="section level2">
+<h2>依存関係の確認</h2>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="co"># 上流の依存関係（このデータは何から作られた？）</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">deps</span>(<span class="st">&quot;gene_summary&quot;</span>, <span class="at">direction =</span> <span class="st">&quot;up&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># 下流の依存関係（このデータは何に使われている？）</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">deps</span>(<span class="st">&quot;counts&quot;</span>, <span class="at">direction =</span> <span class="st">&quot;down&quot;</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co"># 完全なリネージツリー</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">tree</span>(<span class="st">&quot;gene_summary&quot;</span>, <span class="at">direction =</span> <span class="st">&quot;up&quot;</span>, <span class="at">depth =</span> <span class="dv">10</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="co"># 影響分析（このデータを変更すると何が影響を受ける？）</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">impact</span>(<span class="st">&quot;counts&quot;</span>)</span></code></pre></div>
+</div>
+<div id="リネージの可視化" class="section level2">
+<h2>リネージの可視化</h2>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># グラフとして可視化（igraphパッケージが必要）</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">plot</span>(<span class="st">&quot;gene_summary&quot;</span>, <span class="at">direction =</span> <span class="st">&quot;both&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="軽量モード既存コードへの導入" class="section level1">
+<h1>軽量モード（既存コードへの導入）</h1>
+<div id="observe-コード変更なしで追跡" class="section level2">
+<h2>observe: コード変更なしで追跡</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># 既存のスクリプトを観察モードで実行</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">observe</span>({</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>    data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;input_data.csv&quot;</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    processed <span class="ot">&lt;-</span> data[data<span class="sc">$</span>value <span class="sc">&gt;</span> <span class="dv">0</span>, ]</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>    <span class="fu">write.csv</span>(processed, <span class="st">&quot;output_data.csv&quot;</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>})</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co"># 読み書きされたファイルが記録される</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a><span class="fu">print</span>(result<span class="sc">$</span>reads)</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="fu">print</span>(result<span class="sc">$</span>writes)</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="fu">print</span>(result<span class="sc">$</span>lineage)</span></code></pre></div>
+</div>
+<div id="wrap-関数をラップして追跡" class="section level2">
+<h2>wrap: 関数をラップして追跡</h2>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># 既存の関数をラップ</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>normalize_data <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>    x<span class="sc">$</span>normalized <span class="ot">&lt;-</span> <span class="fu">scale</span>(x<span class="sc">$</span>value)</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    x</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>}</span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>tracked_normalize <span class="ot">&lt;-</span> <span class="fu">wrap_fn</span>(normalize_data, lake, <span class="st">&quot;normalized_result&quot;</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># ラップされた関数を使用 - 自動的にリネージ記録</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">tracked_normalize</span>(my_data)</span></code></pre></div>
+</div>
+<div id="パイプラインの定義" class="section level2">
+<h2>パイプラインの定義</h2>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>pipeline <span class="ot">&lt;-</span> <span class="fu">create_pipeline</span>(lake, <span class="st">&quot;preprocessing&quot;</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>pipeline<span class="sc">$</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>    <span class="fu">step</span>(<span class="st">&quot;load&quot;</span>, <span class="cf">function</span>() <span class="fu">read.csv</span>(<span class="st">&quot;data.csv&quot;</span>))<span class="sc">$</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>    <span class="fu">step</span>(<span class="st">&quot;clean&quot;</span>, <span class="cf">function</span>(data) <span class="fu">na.omit</span>(data))<span class="sc">$</span></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>    <span class="fu">step</span>(<span class="st">&quot;normalize&quot;</span>, <span class="cf">function</span>(data) {</span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>    data<span class="sc">$</span>value <span class="ot">&lt;-</span> <span class="fu">scale</span>(data<span class="sc">$</span>value)</span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>    data</span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>})<span class="sc">$</span></span>
+<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>    <span class="fu">step</span>(<span class="st">&quot;filter&quot;</span>, <span class="cf">function</span>(data) data[data<span class="sc">$</span>quality <span class="sc">&gt;</span> <span class="fl">0.8</span>, ])</span>
+<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>result <span class="ot">&lt;-</span> pipeline<span class="sc">$</span><span class="fu">run</span>()</span>
+<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a></span>
+<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a><span class="co"># 各ステップがLakeに記録される</span></span>
+<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">tree</span>(<span class="st">&quot;preprocessing.filter&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="カスタム演算子" class="section level1">
+<h1>カスタム演算子</h1>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="co"># %like% - SQLのLIKEパターンマッチング</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>genes[genes <span class="sc">%like%</span> <span class="st">&quot;MT-%&quot;</span>] <span class="co"># MT-で始まる遺伝子</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>genes[genes <span class="sc">%like%</span> <span class="st">&quot;%kinase%&quot;</span>] <span class="co"># kinaseを含む</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co"># %ilike% - 大文字小文字を区別しない</span></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>names[names <span class="sc">%ilike%</span> <span class="st">&quot;john%&quot;</span>]</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="co"># %between% - 範囲フィルタ</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>values[values <span class="sc">%between%</span> <span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">100</span>)]</span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a><span class="co"># %regex% - 正規表現マッチング</span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>ids[ids <span class="sc">%regex%</span> <span class="st">&quot;^ENSG</span><span class="sc">\\</span><span class="st">d{11}$&quot;</span>]</span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a><span class="co"># %!in% - NOT IN</span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>letters[letters <span class="sc">%!in%</span> <span class="fu">c</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;e&quot;</span>, <span class="st">&quot;i&quot;</span>, <span class="st">&quot;o&quot;</span>, <span class="st">&quot;u&quot;</span>)]</span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="co"># is_null / is_not_null</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a>data[<span class="fu">is_not_null</span>(data<span class="sc">$</span>value), ]</span></code></pre></div>
+</div>
+<div id="ブラケット記法" class="section level1">
+<h1>ブラケット記法</h1>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a><span class="co"># シンプルな読み書き</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>lake[<span class="st">&quot;counts&quot;</span>] <span class="co"># 全データ読み込み</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>lake[<span class="st">&quot;new_data&quot;</span>] <span class="ot">&lt;-</span> df <span class="co"># 書き込み</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co"># フィルタ付き読み込み</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>lake[<span class="st">&quot;counts&quot;</span>, sample_A <span class="sc">&gt;</span> <span class="dv">50</span>]</span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co"># フィルタ + カラム選択</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>lake[<span class="st">&quot;counts&quot;</span>, sample_A <span class="sc">&gt;</span> <span class="dv">50</span>, .(gene_id, sample_A)]</span></code></pre></div>
+</div>
+<div id="インポートエクスポート" class="section level1">
+<h1>インポート/エクスポート</h1>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Parquetエクスポート</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">export</span>(<span class="st">&quot;counts&quot;</span>, <span class="st">&quot;counts.parquet&quot;</span>)</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co"># CSVエクスポート</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">export</span>(<span class="st">&quot;counts&quot;</span>, <span class="st">&quot;counts.csv&quot;</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co"># インポート</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">import</span>(<span class="st">&quot;external_data.parquet&quot;</span>, <span class="st">&quot;imported_data&quot;</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">import</span>(<span class="st">&quot;annotations.csv&quot;</span>, <span class="st">&quot;gene_annotations&quot;</span>)</span></code></pre></div>
+</div>
+<div id="bioconductor統合" class="section level1">
+<h1>Bioconductor統合</h1>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">library</span>(SummarizedExperiment)</span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a><span class="co"># SummarizedExperimentを直接保存</span></span>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a><span class="co"># assays, colData, rowData, metadata すべて保存される</span></span>
+<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;rna_experiment&quot;</span>, se_object)</span>
+<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a><span class="co"># 完全に復元</span></span>
+<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>se_restored <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;rna_experiment&quot;</span>)</span></code></pre></div>
+</div>
+<div id="グローバルショートカット" class="section level1">
+<h1>グローバルショートカット</h1>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># デフォルトLakeを設定</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a><span class="fu">use_lake</span>(<span class="st">&quot;my_project&quot;</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co"># 以降は lake$ なしで操作可能</span></span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a><span class="fu">put</span>(<span class="st">&quot;data&quot;</span>, df)</span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">fetch</span>(<span class="st">&quot;data&quot;</span>) <span class="co"># get()の代わりにfetch()</span></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="fu">snap</span>(<span class="st">&quot;checkpoint1&quot;</span>)</span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a><span class="fu">tree</span>(<span class="st">&quot;data&quot;</span>)</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a><span class="fu">tables</span>()</span>
+<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="fu">history</span>()</span></code></pre></div>
+</div>
+<div id="旧apiからの移行" class="section level1">
+<h1>旧APIからの移行</h1>
+<p>v1.0の<code>ol_*</code>関数は引き続き動作しますが、新APIへの移行を推奨します：</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co"># 移行ガイドを表示</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">show_migration_guide</span>()</span></code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th>旧API</th>
+<th>新API</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>ol_init(&quot;proj&quot;)</code></td>
+<td><code>Lake$new(&quot;proj&quot;)</code></td>
+</tr>
+<tr class="even">
+<td><code>ol_write(&quot;t&quot;, df)</code></td>
+<td><code>lake$put(&quot;t&quot;, df)</code></td>
+</tr>
+<tr class="odd">
+<td><code>ol_read(&quot;t&quot;)</code></td>
+<td><code>lake$get(&quot;t&quot;)</code></td>
+</tr>
+<tr class="even">
+<td><code>ol_label(&quot;v1&quot;)</code></td>
+<td><code>lake$snap(&quot;v1&quot;)</code></td>
+</tr>
+<tr class="odd">
+<td><code>ol_tag(&quot;t&quot;, &quot;v1&quot;)</code></td>
+<td><code>lake$tag(&quot;t&quot;, &quot;v1&quot;)</code></td>
+</tr>
+<tr class="even">
+<td><code>ol_checkout(&quot;v1&quot;)</code></td>
+<td><code>lake$restore(&quot;v1&quot;)</code></td>
+</tr>
+<tr class="odd">
+<td><code>ol_show_lineage(&quot;t&quot;)</code></td>
+<td><code>lake$tree(&quot;t&quot;)</code></td>
+</tr>
+<tr class="even">
+<td><code>ol_query(&quot;SQL&quot;)</code></td>
+<td><code>lake$sql(&quot;SQL&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="まとめ" class="section level1">
+<h1>まとめ</h1>
+<p>OmicsLake v2.0の主要機能：</p>
+<ol style="list-style-type: decimal">
+<li><strong>Lake R6クラス</strong> - シンプルで直感的なAPI</li>
+<li><strong>自動リネージ追跡</strong> -
+dplyrパイプで依存関係を自動検出</li>
+<li><strong>QueryBuilder</strong> - SQL不要のクエリ構築</li>
+<li><strong>Formula構文</strong> - Rらしいフィルタ記法</li>
+<li><strong>軽量モード</strong> - 既存コードへの非侵入的導入</li>
+<li><strong>Bioconductor統合</strong> - SE/MAEの完全サポート</li>
+</ol>
+<p>代表ユースケースの実装例は
+<code>vignettes/omicslake_layer_use_cases.Rmd</code>
+に集約しています。</p>
+<p>詳細は各関数のヘルプを参照してください：</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>?Lake</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>?QueryBuilder</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>?observe</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>?wrap_fn</span></code></pre></div>
+<div id="session-information" class="section level2">
+<h2>Session Information</h2>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

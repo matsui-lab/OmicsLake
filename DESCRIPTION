@@ -1,6 +1,7 @@
 Package: OmicsLake
-Title: OmicsLake: Versioned, On-Disk Omics Data Management for Bioconductor
-Version: 0.99.0
+Title: OmicsLake: Versioned, On-Disk Omics Data Management for
+        Bioconductor
+Version: 0.99.1
 Authors@R: person(given = "Yusuke", family = "Matsui", role = c("aut", "cre"), email = "mail.to.matsui@gmail.com", comment = c(ORCID = "0000-0003-3977-4313"))
 Author: Yusuke Matsui [aut, cre]
 Maintainer: Yusuke Matsui <mail.to.matsui@gmail.com>
@@ -9,10 +10,17 @@ Description: A lightweight framework for versioned, on-disk omics data managemen
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.5.0)
-Imports: jsonlite, digest, arrow, dplyr, dbplyr, DBI, duckdb, Matrix, SummarizedExperiment, S4Vectors, R6, rlang, tools, methods
-Suggests: MultiAssayExperiment, HDF5Array, DelayedArray, knitr, rmarkdown, testthat (>= 3.0.0), igraph, yaml, bench, grDevices, graphics, stats, utils, SingleCellExperiment, GenomicRanges, Spectra, MsExperiment, QFeatures, renv, tibble, pkgdown
+Imports: jsonlite, arrow, dplyr, dbplyr, DBI, duckdb, Matrix,
+        SummarizedExperiment, S4Vectors, R6, rlang, tools, methods,
+        withr
+Suggests: MultiAssayExperiment, HDF5Array, DelayedArray, knitr,
+        rmarkdown, testthat (>= 3.0.0), igraph, yaml, bench, grDevices,
+        graphics, stats, utils, SingleCellExperiment, GenomicRanges,
+        Spectra, MsExperiment, QFeatures, renv, tibble, pkgdown
 VignetteBuilder: knitr
 biocViews: Infrastructure, DataImport, DataRepresentation
 URL: https://github.com/matsui-lab/OmicsLake
 BugReports: https://github.com/matsui-lab/OmicsLake/issues
 RoxygenNote: 7.3.3
+NeedsCompilation: no
+Packaged: 2026-07-14 06:54:17 UTC; bmhi

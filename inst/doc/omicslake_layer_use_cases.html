@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="OmicsLake Development Team" />
+
+<meta name="date" content="2026-07-14" />
+
+<title>OmicsLake レイヤー別ユースケース集</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">OmicsLake レイヤー別ユースケース集</h1>
+<h4 class="author">OmicsLake Development Team</h4>
+<h4 class="date">2026-07-14</h4>
+
+
+
+<div id="はじめに" class="section level1">
+<h1>はじめに</h1>
+<p>このビネットは、OmicsLakeの有効性を「代表的な実務ユースケース」で示すための
+レイヤー別ワークフロー集です。
+各セクションは、次の流れで統一しています。</p>
+<ol style="list-style-type: decimal">
+<li>典型的な解析タスクに対応するオブジェクトを作成</li>
+<li><code>lake$put()</code> で保存し、解析マイルストーンを
+<code>lake$tag()</code> で固定</li>
+<li>次版を保存して、<code>@tag(...)</code> で過去状態を再現</li>
+</ol>
+<div id="全コードを実行する前に" class="section level2">
+<h2>全コードを実行する前に</h2>
+<p>このビネットは、パッケージチェックを安定させるため既定で
+<code>eval = FALSE</code> 相当の設定になっています。
+ローカルで全チャンクを実行したい場合は、先に以下を設定してください。</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">omicslake.vignette.eval =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+</div>
+<div id="対象レイヤー" class="section level2">
+<h2>対象レイヤー</h2>
+<ul>
+<li>Bulk RNA-seq: <code>SummarizedExperiment</code></li>
+<li>Single-cell RNA-seq: <code>SingleCellExperiment</code></li>
+<li>Multi-omics cohort: <code>MultiAssayExperiment</code></li>
+<li>Proteomics/Metabolomics raw MS: <code>Spectra</code></li>
+<li>Proteomics quantification graph: <code>QFeatures</code></li>
+<li>LC-MS統合コンテナ: <code>MsExperiment</code></li>
+</ul>
+</div>
+</div>
+<div id="初期化" class="section level1">
+<h1>初期化</h1>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(OmicsLake)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>lake_root <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">&quot;omicslake_vignettes&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="fu">dir.create</span>(lake_root, <span class="at">recursive =</span> <span class="cn">TRUE</span>, <span class="at">showWarnings =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>lake <span class="ot">&lt;-</span> Lake<span class="sc">$</span><span class="fu">new</span>(<span class="st">&quot;omicslake_layer_use_cases&quot;</span>, <span class="at">root =</span> lake_root)</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>use_case_checks <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>created_objects <span class="ot">&lt;-</span> <span class="fu">character</span>(<span class="dv">0</span>)</span></code></pre></div>
+</div>
+<div id="bulk-rna-seq-summarizedexperiment" class="section level1">
+<h1>1. Bulk RNA-seq (SummarizedExperiment)</h1>
+<p>ユースケース:
+生カウントを固定し、正規化版を追加して再現性を担保する。</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;SummarizedExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>    counts <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>        <span class="fu">rpois</span>(<span class="dv">24</span>, <span class="at">lambda =</span> <span class="dv">80</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>        <span class="at">nrow =</span> <span class="dv">6</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">4</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>            <span class="fu">paste0</span>(<span class="st">&quot;gene&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>),</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>            <span class="fu">c</span>(<span class="st">&quot;ctrl_1&quot;</span>, <span class="st">&quot;ctrl_2&quot;</span>, <span class="st">&quot;case_1&quot;</span>, <span class="st">&quot;case_2&quot;</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>        )</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    )</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>    se <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">counts =</span> counts),</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>        <span class="at">colData =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>            <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">&quot;ctrl&quot;</span>, <span class="st">&quot;ctrl&quot;</span>, <span class="st">&quot;case&quot;</span>, <span class="st">&quot;case&quot;</span>),</span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>            <span class="at">row.names =</span> <span class="fu">colnames</span>(counts)</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>        )</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>    )</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>, se)</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>, <span class="st">&quot;raw_qc_passed&quot;</span>)</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>    se_norm <span class="ot">&lt;-</span> se</span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>    SummarizedExperiment<span class="sc">::</span><span class="fu">assay</span>(se_norm, <span class="st">&quot;logcounts&quot;</span>) <span class="ot">&lt;-</span> <span class="fu">log2</span>(counts <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>    S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(se_norm)<span class="sc">$</span>normalization <span class="ot">&lt;-</span> <span class="st">&quot;log2(count + 1)&quot;</span></span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>, se_norm)</span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>    se_raw <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(raw_qc_passed)&quot;</span>)</span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>    se_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>)</span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;raw assayNames:&quot;</span>,</span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>        <span class="fu">paste</span>(SummarizedExperiment<span class="sc">::</span><span class="fu">assayNames</span>(se_raw), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest assayNames:&quot;</span>,</span>
+<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>        <span class="fu">paste</span>(SummarizedExperiment<span class="sc">::</span><span class="fu">assayNames</span>(se_latest), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a></span>
+<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;bulk_rnaseq_se&quot;</span>)</span>
+<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>se <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;SummarizedExperiment&quot;</span>,</span>
+<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-44"><a href="#cb3-44" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="sc">!</span>(<span class="st">&quot;logcounts&quot;</span> <span class="sc">%in%</span></span>
+<span id="cb3-45"><a href="#cb3-45" tabindex="-1"></a>            SummarizedExperiment<span class="sc">::</span><span class="fu">assayNames</span>(se_raw)) <span class="sc">&amp;&amp;</span></span>
+<span id="cb3-46"><a href="#cb3-46" tabindex="-1"></a>            (<span class="st">&quot;logcounts&quot;</span> <span class="sc">%in%</span> SummarizedExperiment<span class="sc">::</span><span class="fu">assayNames</span>(se_latest)),</span>
+<span id="cb3-47"><a href="#cb3-47" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;raw -&gt; normalized transition is reproducible&quot;</span></span>
+<span id="cb3-48"><a href="#cb3-48" tabindex="-1"></a>    )</span>
+<span id="cb3-49"><a href="#cb3-49" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb3-50"><a href="#cb3-50" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>se <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb3-51"><a href="#cb3-51" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;SummarizedExperiment&quot;</span>,</span>
+<span id="cb3-52"><a href="#cb3-52" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb3-53"><a href="#cb3-53" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb3-54"><a href="#cb3-54" tabindex="-1"></a>    )</span>
+<span id="cb3-55"><a href="#cb3-55" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="single-cell-rna-seq-singlecellexperiment" class="section level1">
+<h1>2. Single-cell RNA-seq (SingleCellExperiment)</h1>
+<p>ユースケース:
+QC後のSCEを固定し、次版でクラスタリング結果を更新する。</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;SingleCellExperiment&quot;</span>, <span class="st">&quot;SummarizedExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>    sc_counts <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>        <span class="fu">rpois</span>(<span class="dv">40</span>, <span class="at">lambda =</span> <span class="dv">5</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>        <span class="at">nrow =</span> <span class="dv">10</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">4</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">paste0</span>(<span class="st">&quot;g&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>), <span class="fu">paste0</span>(<span class="st">&quot;cell&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>))</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    )</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    sce <span class="ot">&lt;-</span> SingleCellExperiment<span class="sc">::</span><span class="fu">SingleCellExperiment</span>(</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">counts =</span> sc_counts),</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>        <span class="at">colData =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>            <span class="at">donor =</span> <span class="fu">c</span>(<span class="st">&quot;D1&quot;</span>, <span class="st">&quot;D1&quot;</span>, <span class="st">&quot;D2&quot;</span>, <span class="st">&quot;D2&quot;</span>),</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>            <span class="at">row.names =</span> <span class="fu">colnames</span>(sc_counts)</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>        )</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>    )</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>    SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDim</span>(sce, <span class="st">&quot;PCA&quot;</span>) <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>        <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.2</span>, <span class="fl">0.3</span>, <span class="fl">0.8</span>, <span class="fl">0.7</span>, <span class="fl">0.6</span>, <span class="fl">0.5</span>),</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">2</span>,</span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">colnames</span>(sc_counts), <span class="fu">c</span>(<span class="st">&quot;PC1&quot;</span>, <span class="st">&quot;PC2&quot;</span>))</span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>    )</span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a>    SingleCellExperiment<span class="sc">::</span><span class="fu">sizeFactors</span>(sce) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.95</span>, <span class="fl">1.00</span>, <span class="fl">1.05</span>, <span class="fl">1.10</span>)</span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a>    adt <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">counts =</span> <span class="fu">matrix</span>(</span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a>            <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">18</span>, <span class="dv">21</span>, <span class="dv">17</span>, <span class="dv">8</span>, <span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">5</span>),</span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a>            <span class="at">nrow =</span> <span class="dv">2</span>,</span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a>            <span class="at">ncol =</span> <span class="dv">4</span>,</span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a>            <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;CD3&quot;</span>, <span class="st">&quot;CD19&quot;</span>), <span class="fu">colnames</span>(sc_counts))</span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a>        ))</span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a>    )</span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a>    SingleCellExperiment<span class="sc">::</span><span class="fu">altExp</span>(sce, <span class="st">&quot;ADT&quot;</span>) <span class="ot">&lt;-</span> adt</span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;pbmc_sce&quot;</span>, sce, <span class="at">depends_on =</span> <span class="st">&quot;bulk_rnaseq_se&quot;</span>)</span>
+<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;pbmc_sce&quot;</span>, <span class="st">&quot;pre_cluster&quot;</span>)</span>
+<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a></span>
+<span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a>    sce_v2 <span class="ot">&lt;-</span> sce</span>
+<span id="cb4-38"><a href="#cb4-38" tabindex="-1"></a>    SingleCellExperiment<span class="sc">::</span><span class="fu">colLabels</span>(sce_v2) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;T&quot;</span>, <span class="st">&quot;T&quot;</span>, <span class="st">&quot;B&quot;</span>, <span class="st">&quot;B&quot;</span>)</span>
+<span id="cb4-39"><a href="#cb4-39" tabindex="-1"></a>    SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDim</span>(sce_v2, <span class="st">&quot;UMAP&quot;</span>) <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb4-40"><a href="#cb4-40" tabindex="-1"></a>        <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="fl">1.0</span>, <span class="sc">-</span><span class="fl">1.1</span>, <span class="sc">-</span><span class="fl">0.9</span>, <span class="fl">0.4</span>, <span class="fl">0.6</span>, <span class="sc">-</span><span class="fl">0.3</span>, <span class="sc">-</span><span class="fl">0.2</span>),</span>
+<span id="cb4-41"><a href="#cb4-41" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">2</span>,</span>
+<span id="cb4-42"><a href="#cb4-42" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">colnames</span>(sc_counts), <span class="fu">c</span>(<span class="st">&quot;UMAP1&quot;</span>, <span class="st">&quot;UMAP2&quot;</span>))</span>
+<span id="cb4-43"><a href="#cb4-43" tabindex="-1"></a>    )</span>
+<span id="cb4-44"><a href="#cb4-44" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;pbmc_sce&quot;</span>, sce_v2)</span>
+<span id="cb4-45"><a href="#cb4-45" tabindex="-1"></a></span>
+<span id="cb4-46"><a href="#cb4-46" tabindex="-1"></a>    sce_pre <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;pbmc_sce&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(pre_cluster)&quot;</span>)</span>
+<span id="cb4-47"><a href="#cb4-47" tabindex="-1"></a>    sce_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;pbmc_sce&quot;</span>)</span>
+<span id="cb4-48"><a href="#cb4-48" tabindex="-1"></a></span>
+<span id="cb4-49"><a href="#cb4-49" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;pre_cluster reducedDims:&quot;</span>,</span>
+<span id="cb4-50"><a href="#cb4-50" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">names</span>(SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDims</span>(sce_pre)), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb4-51"><a href="#cb4-51" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb4-52"><a href="#cb4-52" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest reducedDims:&quot;</span>,</span>
+<span id="cb4-53"><a href="#cb4-53" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">names</span>(SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDims</span>(sce_latest)), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb4-54"><a href="#cb4-54" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb4-55"><a href="#cb4-55" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;pbmc_sce&quot;</span>)</span>
+<span id="cb4-56"><a href="#cb4-56" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>sce <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb4-57"><a href="#cb4-57" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;SingleCellExperiment&quot;</span>,</span>
+<span id="cb4-58"><a href="#cb4-58" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-59"><a href="#cb4-59" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-60"><a href="#cb4-60" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-61"><a href="#cb4-61" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="sc">!</span>(<span class="st">&quot;UMAP&quot;</span> <span class="sc">%in%</span></span>
+<span id="cb4-62"><a href="#cb4-62" tabindex="-1"></a>            <span class="fu">names</span>(SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDims</span>(sce_pre))) <span class="sc">&amp;&amp;</span></span>
+<span id="cb4-63"><a href="#cb4-63" tabindex="-1"></a>            (<span class="st">&quot;UMAP&quot;</span> <span class="sc">%in%</span> <span class="fu">names</span>(SingleCellExperiment<span class="sc">::</span><span class="fu">reducedDims</span>(sce_latest))),</span>
+<span id="cb4-64"><a href="#cb4-64" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;pre_cluster tag preserves pre-UMAP state&quot;</span></span>
+<span id="cb4-65"><a href="#cb4-65" tabindex="-1"></a>    )</span>
+<span id="cb4-66"><a href="#cb4-66" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb4-67"><a href="#cb4-67" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>sce <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb4-68"><a href="#cb4-68" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;SingleCellExperiment&quot;</span>,</span>
+<span id="cb4-69"><a href="#cb4-69" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb4-70"><a href="#cb4-70" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb4-71"><a href="#cb4-71" tabindex="-1"></a>    )</span>
+<span id="cb4-72"><a href="#cb4-72" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="multi-omics-cohort-multiassayexperiment" class="section level1">
+<h1>3. Multi-omics cohort (MultiAssayExperiment)</h1>
+<p>ユースケース:
+RNA/proteinを患者単位で統合し、統合版の差分管理を行う。</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;MultiAssayExperiment&quot;</span>, <span class="st">&quot;SummarizedExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>    rna_mat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>        <span class="fu">rpois</span>(<span class="dv">16</span>, <span class="at">lambda =</span> <span class="dv">100</span>),</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>        <span class="at">nrow =</span> <span class="dv">4</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">4</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">paste0</span>(<span class="st">&quot;gene&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>), <span class="fu">paste0</span>(<span class="st">&quot;r&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    )</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    prot_mat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>        <span class="fu">rnorm</span>(<span class="dv">16</span>, <span class="at">mean =</span> <span class="dv">25</span>, <span class="at">sd =</span> <span class="dv">5</span>),</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>        <span class="at">nrow =</span> <span class="dv">4</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>        <span class="at">ncol =</span> <span class="dv">4</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>        <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">paste0</span>(<span class="st">&quot;prot&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>), <span class="fu">paste0</span>(<span class="st">&quot;p&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>))</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>    )</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>    se_rna <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">counts =</span> rna_mat)</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>    )</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>    se_prot <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">intensity =</span> prot_mat)</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>    )</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>    col_data <span class="ot">&lt;-</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>        <span class="at">response =</span> <span class="fu">c</span>(<span class="st">&quot;R&quot;</span>, <span class="st">&quot;NR&quot;</span>, <span class="st">&quot;R&quot;</span>, <span class="st">&quot;NR&quot;</span>),</span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>        <span class="at">age =</span> <span class="fu">c</span>(<span class="dv">62</span><span class="dt">L</span>, <span class="dv">70</span><span class="dt">L</span>, <span class="dv">59</span><span class="dt">L</span>, <span class="dv">66</span><span class="dt">L</span>),</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>        <span class="at">row.names =</span> <span class="fu">paste0</span>(<span class="st">&quot;patient&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>    )</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a></span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>    sample_map <span class="ot">&lt;-</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a>        <span class="at">assay =</span> <span class="fu">factor</span>(</span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a>            <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">&quot;rna&quot;</span>, <span class="dv">4</span>), <span class="fu">rep</span>(<span class="st">&quot;protein&quot;</span>, <span class="dv">4</span>)),</span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a>            <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">&quot;rna&quot;</span>, <span class="st">&quot;protein&quot;</span>)</span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a>        ),</span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a>        <span class="at">primary =</span> <span class="fu">rep</span>(<span class="fu">paste0</span>(<span class="st">&quot;patient&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>), <span class="dv">2</span>),</span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a>        <span class="at">colname =</span> <span class="fu">c</span>(<span class="fu">colnames</span>(rna_mat), <span class="fu">colnames</span>(prot_mat))</span>
+<span id="cb5-35"><a href="#cb5-35" tabindex="-1"></a>    )</span>
+<span id="cb5-36"><a href="#cb5-36" tabindex="-1"></a></span>
+<span id="cb5-37"><a href="#cb5-37" tabindex="-1"></a>    mae <span class="ot">&lt;-</span> MultiAssayExperiment<span class="sc">::</span><span class="fu">MultiAssayExperiment</span>(</span>
+<span id="cb5-38"><a href="#cb5-38" tabindex="-1"></a>        <span class="at">experiments =</span> <span class="fu">list</span>(<span class="at">rna =</span> se_rna, <span class="at">protein =</span> se_prot),</span>
+<span id="cb5-39"><a href="#cb5-39" tabindex="-1"></a>        <span class="at">colData =</span> col_data,</span>
+<span id="cb5-40"><a href="#cb5-40" tabindex="-1"></a>        <span class="at">sampleMap =</span> sample_map</span>
+<span id="cb5-41"><a href="#cb5-41" tabindex="-1"></a>    )</span>
+<span id="cb5-42"><a href="#cb5-42" tabindex="-1"></a></span>
+<span id="cb5-43"><a href="#cb5-43" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;cohort_mae&quot;</span>, mae, <span class="at">depends_on =</span> <span class="fu">c</span>(<span class="st">&quot;bulk_rnaseq_se&quot;</span>, <span class="st">&quot;pbmc_sce&quot;</span>))</span>
+<span id="cb5-44"><a href="#cb5-44" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;cohort_mae&quot;</span>, <span class="st">&quot;integration_v1&quot;</span>)</span>
+<span id="cb5-45"><a href="#cb5-45" tabindex="-1"></a></span>
+<span id="cb5-46"><a href="#cb5-46" tabindex="-1"></a>    S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(mae)<span class="sc">$</span>integration <span class="ot">&lt;-</span> <span class="st">&quot;combat + quantile&quot;</span></span>
+<span id="cb5-47"><a href="#cb5-47" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;cohort_mae&quot;</span>, mae)</span>
+<span id="cb5-48"><a href="#cb5-48" tabindex="-1"></a></span>
+<span id="cb5-49"><a href="#cb5-49" tabindex="-1"></a>    mae_v1 <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;cohort_mae&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(integration_v1)&quot;</span>)</span>
+<span id="cb5-50"><a href="#cb5-50" tabindex="-1"></a>    mae_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;cohort_mae&quot;</span>)</span>
+<span id="cb5-51"><a href="#cb5-51" tabindex="-1"></a></span>
+<span id="cb5-52"><a href="#cb5-52" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;MAE experiments:&quot;</span>,</span>
+<span id="cb5-53"><a href="#cb5-53" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">names</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">experiments</span>(mae_v1)), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb5-54"><a href="#cb5-54" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-55"><a href="#cb5-55" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest integration method:&quot;</span>,</span>
+<span id="cb5-56"><a href="#cb5-56" tabindex="-1"></a>        S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(mae_latest)<span class="sc">$</span>integration,</span>
+<span id="cb5-57"><a href="#cb5-57" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-58"><a href="#cb5-58" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;cohort_mae&quot;</span>)</span>
+<span id="cb5-59"><a href="#cb5-59" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>mae <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb5-60"><a href="#cb5-60" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;MultiAssayExperiment&quot;</span>,</span>
+<span id="cb5-61"><a href="#cb5-61" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-62"><a href="#cb5-62" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-63"><a href="#cb5-63" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-64"><a href="#cb5-64" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="fu">is.null</span>(S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(mae_v1)<span class="sc">$</span>integration) <span class="sc">&amp;&amp;</span></span>
+<span id="cb5-65"><a href="#cb5-65" tabindex="-1"></a>            <span class="fu">identical</span>(S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(mae_latest)<span class="sc">$</span>integration,</span>
+<span id="cb5-66"><a href="#cb5-66" tabindex="-1"></a>                <span class="st">&quot;combat + quantile&quot;</span>),</span>
+<span id="cb5-67"><a href="#cb5-67" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;integration metadata differs between tagged and latest&quot;</span></span>
+<span id="cb5-68"><a href="#cb5-68" tabindex="-1"></a>    )</span>
+<span id="cb5-69"><a href="#cb5-69" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb5-70"><a href="#cb5-70" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>mae <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb5-71"><a href="#cb5-71" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;MultiAssayExperiment&quot;</span>,</span>
+<span id="cb5-72"><a href="#cb5-72" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb5-73"><a href="#cb5-73" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb5-74"><a href="#cb5-74" tabindex="-1"></a>    )</span>
+<span id="cb5-75"><a href="#cb5-75" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="proteomics-metabolomics-raw-ms-spectra" class="section level1">
+<h1>4. Proteomics / Metabolomics raw MS (Spectra)</h1>
+<p>ユースケース:
+生スペクトルを固定し、再アノテーション版と比較可能にする。</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;Spectra&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>    make_spectra <span class="ot">&lt;-</span> <span class="cf">function</span>(spectra_data, peaks_list) {</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>        df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(spectra_data)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>        df<span class="sc">$</span>mz <span class="ot">&lt;-</span> <span class="fu">I</span>(<span class="fu">lapply</span>(peaks_list, <span class="cf">function</span>(x) <span class="fu">as.numeric</span>(x[, <span class="st">&quot;mz&quot;</span>])))</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>        df<span class="sc">$</span>intensity <span class="ot">&lt;-</span> <span class="fu">I</span>(<span class="fu">lapply</span>(peaks_list, <span class="cf">function</span>(x) {</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>            <span class="fu">as.numeric</span>(x[, <span class="st">&quot;intensity&quot;</span>])</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>        }))</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        backend <span class="ot">&lt;-</span> Spectra<span class="sc">::</span><span class="fu">backendInitialize</span>(Spectra<span class="sc">::</span><span class="fu">MsBackendMemory</span>(),</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>            <span class="at">data =</span> df)</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>        Spectra<span class="sc">::</span><span class="fu">Spectra</span>(backend)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    }</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>    peaks_a <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">mz =</span> <span class="fu">c</span>(<span class="fl">445.34</span>, <span class="fl">446.28</span>), <span class="at">intensity =</span> <span class="fu">c</span>(<span class="dv">1400</span>, <span class="dv">620</span>))</span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>    peaks_b <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">mz =</span> <span class="fu">c</span>(<span class="fl">512.22</span>, <span class="fl">513.77</span>, <span class="fl">514.11</span>), <span class="at">intensity =</span> <span class="fu">c</span>(<span class="dv">2200</span>, <span class="dv">910</span>, <span class="dv">330</span>))</span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>    proteomics_sp <span class="ot">&lt;-</span> <span class="fu">make_spectra</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>        <span class="at">spectra_data =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>            <span class="at">msLevel =</span> <span class="fu">c</span>(<span class="dv">2</span><span class="dt">L</span>, <span class="dv">2</span><span class="dt">L</span>),</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>            <span class="at">rtime =</span> <span class="fu">c</span>(<span class="fl">120.4</span>, <span class="fl">123.0</span>),</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>            <span class="at">precursorMz =</span> <span class="fu">c</span>(<span class="fl">700.33</span>, <span class="fl">808.44</span>),</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>            <span class="at">sample =</span> <span class="fu">c</span>(<span class="st">&quot;prot_1&quot;</span>, <span class="st">&quot;prot_2&quot;</span>)</span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>        ),</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>        <span class="at">peaks_list =</span> <span class="fu">list</span>(peaks_a, peaks_b)</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>    )</span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>    metabolomics_sp <span class="ot">&lt;-</span> <span class="fu">make_spectra</span>(</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>        <span class="at">spectra_data =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>            <span class="at">msLevel =</span> <span class="dv">1</span><span class="dt">L</span>,</span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>            <span class="at">rtime =</span> <span class="fl">300.2</span>,</span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>            <span class="at">sample =</span> <span class="st">&quot;met_1&quot;</span>,</span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a>            <span class="at">polarity =</span> <span class="dv">1</span><span class="dt">L</span></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a>        ),</span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a>        <span class="at">peaks_list =</span> <span class="fu">list</span>(<span class="fu">cbind</span>(<span class="at">mz =</span> <span class="fu">c</span>(<span class="fl">155.07</span>, <span class="fl">181.05</span>), <span class="at">intensity =</span> <span class="fu">c</span>(<span class="dv">980</span>, <span class="dv">410</span>)))</span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a>    )</span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a></span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;proteomics_ms&quot;</span>, proteomics_sp)</span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;metabolomics_ms&quot;</span>, metabolomics_sp)</span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;proteomics_ms&quot;</span>, <span class="st">&quot;search_input&quot;</span>)</span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a></span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a>    sp_v2_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(proteomics_sp))</span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a>    sp_v2_df<span class="sc">$</span>sample <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;prot_1_reannot&quot;</span>, <span class="st">&quot;prot_2_reannot&quot;</span>)</span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a>    proteomics_sp_v2 <span class="ot">&lt;-</span> <span class="fu">make_spectra</span>(</span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a>        <span class="at">spectra_data =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(sp_v2_df),</span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a>        <span class="at">peaks_list =</span> Spectra<span class="sc">::</span><span class="fu">peaksData</span>(proteomics_sp)</span>
+<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a>    )</span>
+<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;proteomics_ms&quot;</span>, proteomics_sp_v2)</span>
+<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a></span>
+<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a>    sp_tag <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;proteomics_ms&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(search_input)&quot;</span>)</span>
+<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a>    sp_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;proteomics_ms&quot;</span>)</span>
+<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a></span>
+<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;search_input samples:&quot;</span>,</span>
+<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">as.character</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(sp_tag)<span class="sc">$</span>sample), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest samples:&quot;</span>,</span>
+<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">as.character</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(sp_latest)<span class="sc">$</span>sample), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb6-56"><a href="#cb6-56" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb6-57"><a href="#cb6-57" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="fu">c</span>(<span class="st">&quot;proteomics_ms&quot;</span>, <span class="st">&quot;metabolomics_ms&quot;</span>))</span>
+<span id="cb6-58"><a href="#cb6-58" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>spectra <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb6-59"><a href="#cb6-59" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Spectra&quot;</span>,</span>
+<span id="cb6-60"><a href="#cb6-60" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-61"><a href="#cb6-61" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-62"><a href="#cb6-62" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-63"><a href="#cb6-63" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="sc">!</span><span class="fu">identical</span>(</span>
+<span id="cb6-64"><a href="#cb6-64" tabindex="-1"></a>            <span class="fu">as.character</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(sp_tag)<span class="sc">$</span>sample),</span>
+<span id="cb6-65"><a href="#cb6-65" tabindex="-1"></a>            <span class="fu">as.character</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(sp_latest)<span class="sc">$</span>sample)</span>
+<span id="cb6-66"><a href="#cb6-66" tabindex="-1"></a>        ),</span>
+<span id="cb6-67"><a href="#cb6-67" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;re-annotation changes are reversible by tag&quot;</span></span>
+<span id="cb6-68"><a href="#cb6-68" tabindex="-1"></a>    )</span>
+<span id="cb6-69"><a href="#cb6-69" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb6-70"><a href="#cb6-70" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>spectra <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb6-71"><a href="#cb6-71" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Spectra&quot;</span>,</span>
+<span id="cb6-72"><a href="#cb6-72" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb6-73"><a href="#cb6-73" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb6-74"><a href="#cb6-74" tabindex="-1"></a>    )</span>
+<span id="cb6-75"><a href="#cb6-75" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="proteomics-quantification-graph-qfeatures" class="section level1">
+<h1>5. Proteomics quantification graph (QFeatures)</h1>
+<p>ユースケース:
+PSM→peptide→proteinの多層定量を単一オブジェクトとして管理する。</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;QFeatures&quot;</span>, <span class="st">&quot;SummarizedExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="st">&quot;MultiAssayExperiment&quot;</span>))) {</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    qf <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    available <span class="ot">&lt;-</span> <span class="fu">tryCatch</span>(utils<span class="sc">::</span><span class="fu">data</span>(<span class="at">package =</span> <span class="st">&quot;QFeatures&quot;</span>)<span class="sc">$</span>results,</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        <span class="at">error =</span> <span class="cf">function</span>(e) <span class="cn">NULL</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.null</span>(available) <span class="sc">&amp;&amp;</span> <span class="st">&quot;feat1&quot;</span> <span class="sc">%in%</span> available[, <span class="st">&quot;Item&quot;</span>]) {</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>        <span class="fu">data</span>(<span class="st">&quot;feat1&quot;</span>, <span class="at">package =</span> <span class="st">&quot;QFeatures&quot;</span>, <span class="at">envir =</span> <span class="fu">environment</span>())</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>        qf <span class="ot">&lt;-</span> <span class="fu">get</span>(<span class="st">&quot;feat1&quot;</span>, <span class="at">envir =</span> <span class="fu">environment</span>())</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>    }</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.null</span>(qf)) {</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>        psm <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>            <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">intensity =</span> <span class="fu">matrix</span>(</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>                <span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">12</span>, <span class="dv">8</span>, <span class="dv">9</span>),</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>                <span class="at">nrow =</span> <span class="dv">2</span>,</span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>                <span class="at">ncol =</span> <span class="dv">2</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>                <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;pepA&quot;</span>, <span class="st">&quot;pepB&quot;</span>), <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>))</span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a>            )),</span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a>            <span class="at">rowData =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(<span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;id1&quot;</span>, <span class="st">&quot;id2&quot;</span>),</span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a>                <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">&quot;pepA&quot;</span>, <span class="st">&quot;pepB&quot;</span>))</span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a>        )</span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a>        pep <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a>            <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">intensity =</span> <span class="fu">matrix</span>(</span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a>                <span class="fu">c</span>(<span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">4</span>, <span class="dv">5</span>),</span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a>                <span class="at">nrow =</span> <span class="dv">2</span>,</span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a>                <span class="at">ncol =</span> <span class="dv">2</span>,</span>
+<span id="cb7-28"><a href="#cb7-28" tabindex="-1"></a>                <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;prot1&quot;</span>, <span class="st">&quot;prot2&quot;</span>), <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>))</span>
+<span id="cb7-29"><a href="#cb7-29" tabindex="-1"></a>            )),</span>
+<span id="cb7-30"><a href="#cb7-30" tabindex="-1"></a>            <span class="at">rowData =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(<span class="at">id =</span> <span class="fu">c</span>(<span class="st">&quot;id1&quot;</span>, <span class="st">&quot;id2&quot;</span>),</span>
+<span id="cb7-31"><a href="#cb7-31" tabindex="-1"></a>                <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">&quot;prot1&quot;</span>, <span class="st">&quot;prot2&quot;</span>))</span>
+<span id="cb7-32"><a href="#cb7-32" tabindex="-1"></a>        )</span>
+<span id="cb7-33"><a href="#cb7-33" tabindex="-1"></a>        qf <span class="ot">&lt;-</span> QFeatures<span class="sc">::</span><span class="fu">QFeatures</span>(</span>
+<span id="cb7-34"><a href="#cb7-34" tabindex="-1"></a>            <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">psms =</span> psm, <span class="at">peptides =</span> pep),</span>
+<span id="cb7-35"><a href="#cb7-35" tabindex="-1"></a>            <span class="at">colData =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(<span class="at">condition =</span> <span class="fu">c</span>(<span class="st">&quot;A&quot;</span>, <span class="st">&quot;B&quot;</span>),</span>
+<span id="cb7-36"><a href="#cb7-36" tabindex="-1"></a>                <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>))</span>
+<span id="cb7-37"><a href="#cb7-37" tabindex="-1"></a>        )</span>
+<span id="cb7-38"><a href="#cb7-38" tabindex="-1"></a>    }</span>
+<span id="cb7-39"><a href="#cb7-39" tabindex="-1"></a></span>
+<span id="cb7-40"><a href="#cb7-40" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;protein_qf&quot;</span>, qf, <span class="at">depends_on =</span> <span class="st">&quot;proteomics_ms&quot;</span>)</span>
+<span id="cb7-41"><a href="#cb7-41" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;protein_qf&quot;</span>, <span class="st">&quot;quant_v1&quot;</span>)</span>
+<span id="cb7-42"><a href="#cb7-42" tabindex="-1"></a></span>
+<span id="cb7-43"><a href="#cb7-43" tabindex="-1"></a>    qf_v2 <span class="ot">&lt;-</span> qf</span>
+<span id="cb7-44"><a href="#cb7-44" tabindex="-1"></a>    first_assay <span class="ot">&lt;-</span> <span class="fu">names</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">experiments</span>(qf_v2))[<span class="dv">1</span>]</span>
+<span id="cb7-45"><a href="#cb7-45" tabindex="-1"></a>    assay_mat <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">assay</span>(qf_v2[[first_assay]], <span class="dv">1</span>)</span>
+<span id="cb7-46"><a href="#cb7-46" tabindex="-1"></a>    assay_mat[<span class="dv">1</span>, <span class="dv">1</span>] <span class="ot">&lt;-</span> assay_mat[<span class="dv">1</span>, <span class="dv">1</span>] <span class="sc">*</span> <span class="fl">1.1</span></span>
+<span id="cb7-47"><a href="#cb7-47" tabindex="-1"></a>    SummarizedExperiment<span class="sc">::</span><span class="fu">assay</span>(qf_v2[[first_assay]], <span class="dv">1</span>) <span class="ot">&lt;-</span> assay_mat</span>
+<span id="cb7-48"><a href="#cb7-48" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;protein_qf&quot;</span>, qf_v2)</span>
+<span id="cb7-49"><a href="#cb7-49" tabindex="-1"></a></span>
+<span id="cb7-50"><a href="#cb7-50" tabindex="-1"></a>    qf_prev <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;protein_qf&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(quant_v1)&quot;</span>)</span>
+<span id="cb7-51"><a href="#cb7-51" tabindex="-1"></a>    qf_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;protein_qf&quot;</span>)</span>
+<span id="cb7-52"><a href="#cb7-52" tabindex="-1"></a></span>
+<span id="cb7-53"><a href="#cb7-53" tabindex="-1"></a>    first_assay_prev <span class="ot">&lt;-</span> <span class="fu">names</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">experiments</span>(qf_prev))[<span class="dv">1</span>]</span>
+<span id="cb7-54"><a href="#cb7-54" tabindex="-1"></a>    first_assay_latest <span class="ot">&lt;-</span> <span class="fu">names</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">experiments</span>(qf_latest))[<span class="dv">1</span>]</span>
+<span id="cb7-55"><a href="#cb7-55" tabindex="-1"></a></span>
+<span id="cb7-56"><a href="#cb7-56" tabindex="-1"></a>    prev_value <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">assay</span>(qf_prev[[first_assay_prev]], <span class="dv">1</span>)[<span class="dv">1</span>, <span class="dv">1</span>]</span>
+<span id="cb7-57"><a href="#cb7-57" tabindex="-1"></a>    latest_value <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">assay</span>(qf_latest[[first_assay_latest]], <span class="dv">1</span>)[<span class="dv">1</span>, <span class="dv">1</span>]</span>
+<span id="cb7-58"><a href="#cb7-58" tabindex="-1"></a></span>
+<span id="cb7-59"><a href="#cb7-59" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;quant_v1 first value:&quot;</span>, prev_value, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb7-60"><a href="#cb7-60" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest first value:&quot;</span>, latest_value, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb7-61"><a href="#cb7-61" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;protein_qf&quot;</span>)</span>
+<span id="cb7-62"><a href="#cb7-62" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>qfeatures <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb7-63"><a href="#cb7-63" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;QFeatures&quot;</span>,</span>
+<span id="cb7-64"><a href="#cb7-64" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-65"><a href="#cb7-65" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-66"><a href="#cb7-66" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-67"><a href="#cb7-67" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="fu">isTRUE</span>(latest_value <span class="sc">!=</span> prev_value),</span>
+<span id="cb7-68"><a href="#cb7-68" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;quantification change is traceable by tag&quot;</span></span>
+<span id="cb7-69"><a href="#cb7-69" tabindex="-1"></a>    )</span>
+<span id="cb7-70"><a href="#cb7-70" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb7-71"><a href="#cb7-71" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>qfeatures <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb7-72"><a href="#cb7-72" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;QFeatures&quot;</span>,</span>
+<span id="cb7-73"><a href="#cb7-73" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb7-74"><a href="#cb7-74" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb7-75"><a href="#cb7-75" tabindex="-1"></a>    )</span>
+<span id="cb7-76"><a href="#cb7-76" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="lc-ms統合コンテナ-msexperiment" class="section level1">
+<h1>6. LC-MS統合コンテナ (MsExperiment)</h1>
+<p>ユースケース: raw spectra・feature table・sample
+metadataを1つの単位で配布する。</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;MsExperiment&quot;</span>, <span class="st">&quot;Spectra&quot;</span>, <span class="st">&quot;SummarizedExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    make_spectra <span class="ot">&lt;-</span> <span class="cf">function</span>(spectra_data, peaks_list) {</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>        df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(spectra_data)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>        df<span class="sc">$</span>mz <span class="ot">&lt;-</span> <span class="fu">I</span>(<span class="fu">lapply</span>(peaks_list, <span class="cf">function</span>(x) <span class="fu">as.numeric</span>(x[, <span class="st">&quot;mz&quot;</span>])))</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>        df<span class="sc">$</span>intensity <span class="ot">&lt;-</span> <span class="fu">I</span>(<span class="fu">lapply</span>(peaks_list, <span class="cf">function</span>(x) {</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>            <span class="fu">as.numeric</span>(x[, <span class="st">&quot;intensity&quot;</span>])</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>        }))</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        backend <span class="ot">&lt;-</span> Spectra<span class="sc">::</span><span class="fu">backendInitialize</span>(Spectra<span class="sc">::</span><span class="fu">MsBackendMemory</span>(),</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>            <span class="at">data =</span> df)</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>        Spectra<span class="sc">::</span><span class="fu">Spectra</span>(backend)</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>    }</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>    spectra_obj <span class="ot">&lt;-</span> <span class="fu">make_spectra</span>(</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>        <span class="at">spectra_data =</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>            <span class="at">msLevel =</span> <span class="fu">c</span>(<span class="dv">2</span><span class="dt">L</span>, <span class="dv">2</span><span class="dt">L</span>),</span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>            <span class="at">rtime =</span> <span class="fu">c</span>(<span class="fl">200.0</span>, <span class="fl">212.5</span>),</span>
+<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>            <span class="at">sample =</span> <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>)</span>
+<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>        ),</span>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a>        <span class="at">peaks_list =</span> <span class="fu">list</span>(</span>
+<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a>            <span class="fu">cbind</span>(<span class="at">mz =</span> <span class="fu">c</span>(<span class="fl">300.2</span>, <span class="fl">301.1</span>), <span class="at">intensity =</span> <span class="fu">c</span>(<span class="dv">900</span>, <span class="dv">410</span>)),</span>
+<span id="cb8-21"><a href="#cb8-21" tabindex="-1"></a>            <span class="fu">cbind</span>(<span class="at">mz =</span> <span class="fu">c</span>(<span class="fl">450.3</span>, <span class="fl">452.0</span>), <span class="at">intensity =</span> <span class="fu">c</span>(<span class="dv">1300</span>, <span class="dv">520</span>))</span>
+<span id="cb8-22"><a href="#cb8-22" tabindex="-1"></a>        )</span>
+<span id="cb8-23"><a href="#cb8-23" tabindex="-1"></a>    )</span>
+<span id="cb8-24"><a href="#cb8-24" tabindex="-1"></a></span>
+<span id="cb8-25"><a href="#cb8-25" tabindex="-1"></a>    qdata <span class="ot">&lt;-</span> SummarizedExperiment<span class="sc">::</span><span class="fu">SummarizedExperiment</span>(</span>
+<span id="cb8-26"><a href="#cb8-26" tabindex="-1"></a>        <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">intensity =</span> <span class="fu">matrix</span>(</span>
+<span id="cb8-27"><a href="#cb8-27" tabindex="-1"></a>            <span class="fu">c</span>(<span class="dv">100</span>, <span class="dv">120</span>, <span class="dv">80</span>, <span class="dv">95</span>),</span>
+<span id="cb8-28"><a href="#cb8-28" tabindex="-1"></a>            <span class="at">nrow =</span> <span class="dv">2</span>,</span>
+<span id="cb8-29"><a href="#cb8-29" tabindex="-1"></a>            <span class="at">ncol =</span> <span class="dv">2</span>,</span>
+<span id="cb8-30"><a href="#cb8-30" tabindex="-1"></a>            <span class="at">dimnames =</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;feature1&quot;</span>, <span class="st">&quot;feature2&quot;</span>), <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>))</span>
+<span id="cb8-31"><a href="#cb8-31" tabindex="-1"></a>        ))</span>
+<span id="cb8-32"><a href="#cb8-32" tabindex="-1"></a>    )</span>
+<span id="cb8-33"><a href="#cb8-33" tabindex="-1"></a></span>
+<span id="cb8-34"><a href="#cb8-34" tabindex="-1"></a>    sample_df <span class="ot">&lt;-</span> S4Vectors<span class="sc">::</span><span class="fu">DataFrame</span>(</span>
+<span id="cb8-35"><a href="#cb8-35" tabindex="-1"></a>        <span class="at">batch =</span> <span class="fu">c</span>(<span class="st">&quot;B1&quot;</span>, <span class="st">&quot;B1&quot;</span>),</span>
+<span id="cb8-36"><a href="#cb8-36" tabindex="-1"></a>        <span class="at">injection_order =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="dt">L</span>, <span class="dv">2</span><span class="dt">L</span>),</span>
+<span id="cb8-37"><a href="#cb8-37" tabindex="-1"></a>        <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">&quot;s1&quot;</span>, <span class="st">&quot;s2&quot;</span>)</span>
+<span id="cb8-38"><a href="#cb8-38" tabindex="-1"></a>    )</span>
+<span id="cb8-39"><a href="#cb8-39" tabindex="-1"></a></span>
+<span id="cb8-40"><a href="#cb8-40" tabindex="-1"></a>    mse <span class="ot">&lt;-</span> MsExperiment<span class="sc">::</span><span class="fu">MsExperiment</span>(</span>
+<span id="cb8-41"><a href="#cb8-41" tabindex="-1"></a>        <span class="at">experimentFiles =</span> MsExperiment<span class="sc">::</span><span class="fu">MsExperimentFiles</span>(),</span>
+<span id="cb8-42"><a href="#cb8-42" tabindex="-1"></a>        <span class="at">spectra =</span> spectra_obj,</span>
+<span id="cb8-43"><a href="#cb8-43" tabindex="-1"></a>        <span class="at">qdata =</span> qdata,</span>
+<span id="cb8-44"><a href="#cb8-44" tabindex="-1"></a>        <span class="at">sampleData =</span> sample_df,</span>
+<span id="cb8-45"><a href="#cb8-45" tabindex="-1"></a>        <span class="at">otherData =</span> S4Vectors<span class="sc">::</span><span class="fu">List</span>(<span class="at">source =</span> <span class="st">&quot;demo_lcms&quot;</span>)</span>
+<span id="cb8-46"><a href="#cb8-46" tabindex="-1"></a>    )</span>
+<span id="cb8-47"><a href="#cb8-47" tabindex="-1"></a></span>
+<span id="cb8-48"><a href="#cb8-48" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;lcms_mse&quot;</span>, mse,</span>
+<span id="cb8-49"><a href="#cb8-49" tabindex="-1"></a>        <span class="at">depends_on =</span> <span class="fu">c</span>(<span class="st">&quot;proteomics_ms&quot;</span>, <span class="st">&quot;metabolomics_ms&quot;</span>, <span class="st">&quot;protein_qf&quot;</span>))</span>
+<span id="cb8-50"><a href="#cb8-50" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;lcms_mse&quot;</span>, <span class="st">&quot;feature_table_v1&quot;</span>)</span>
+<span id="cb8-51"><a href="#cb8-51" tabindex="-1"></a></span>
+<span id="cb8-52"><a href="#cb8-52" tabindex="-1"></a>    sample_df_v2 <span class="ot">&lt;-</span> sample_df</span>
+<span id="cb8-53"><a href="#cb8-53" tabindex="-1"></a>    sample_df_v2<span class="sc">$</span>batch <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;B2&quot;</span>, <span class="st">&quot;B2&quot;</span>)</span>
+<span id="cb8-54"><a href="#cb8-54" tabindex="-1"></a>    mse_v2 <span class="ot">&lt;-</span> MsExperiment<span class="sc">::</span><span class="fu">MsExperiment</span>(</span>
+<span id="cb8-55"><a href="#cb8-55" tabindex="-1"></a>        <span class="at">experimentFiles =</span> MsExperiment<span class="sc">::</span><span class="fu">MsExperimentFiles</span>(),</span>
+<span id="cb8-56"><a href="#cb8-56" tabindex="-1"></a>        <span class="at">spectra =</span> spectra_obj,</span>
+<span id="cb8-57"><a href="#cb8-57" tabindex="-1"></a>        <span class="at">qdata =</span> qdata,</span>
+<span id="cb8-58"><a href="#cb8-58" tabindex="-1"></a>        <span class="at">sampleData =</span> sample_df_v2,</span>
+<span id="cb8-59"><a href="#cb8-59" tabindex="-1"></a>        <span class="at">otherData =</span> S4Vectors<span class="sc">::</span><span class="fu">List</span>(<span class="at">source =</span> <span class="st">&quot;demo_lcms&quot;</span>)</span>
+<span id="cb8-60"><a href="#cb8-60" tabindex="-1"></a>    )</span>
+<span id="cb8-61"><a href="#cb8-61" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;lcms_mse&quot;</span>, mse_v2)</span>
+<span id="cb8-62"><a href="#cb8-62" tabindex="-1"></a></span>
+<span id="cb8-63"><a href="#cb8-63" tabindex="-1"></a>    mse_old <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;lcms_mse&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(feature_table_v1)&quot;</span>)</span>
+<span id="cb8-64"><a href="#cb8-64" tabindex="-1"></a>    mse_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;lcms_mse&quot;</span>)</span>
+<span id="cb8-65"><a href="#cb8-65" tabindex="-1"></a></span>
+<span id="cb8-66"><a href="#cb8-66" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;feature_table_v1 batch:&quot;</span>,</span>
+<span id="cb8-67"><a href="#cb8-67" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">as.character</span>(MsExperiment<span class="sc">::</span><span class="fu">sampleData</span>(mse_old)<span class="sc">$</span>batch), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb8-68"><a href="#cb8-68" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb8-69"><a href="#cb8-69" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;latest batch:&quot;</span>,</span>
+<span id="cb8-70"><a href="#cb8-70" tabindex="-1"></a>        <span class="fu">paste</span>(<span class="fu">as.character</span>(MsExperiment<span class="sc">::</span><span class="fu">sampleData</span>(mse_latest)<span class="sc">$</span>batch), <span class="at">collapse =</span> <span class="st">&quot;, &quot;</span>),</span>
+<span id="cb8-71"><a href="#cb8-71" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb8-72"><a href="#cb8-72" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;lcms_mse&quot;</span>)</span>
+<span id="cb8-73"><a href="#cb8-73" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>msexperiment <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb8-74"><a href="#cb8-74" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;MsExperiment&quot;</span>,</span>
+<span id="cb8-75"><a href="#cb8-75" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-76"><a href="#cb8-76" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-77"><a href="#cb8-77" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb8-78"><a href="#cb8-78" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="sc">!</span><span class="fu">identical</span>(</span>
+<span id="cb8-79"><a href="#cb8-79" tabindex="-1"></a>            <span class="fu">as.character</span>(MsExperiment<span class="sc">::</span><span class="fu">sampleData</span>(mse_old)<span class="sc">$</span>batch),</span>
+<span id="cb8-80"><a href="#cb8-80" tabindex="-1"></a>            <span class="fu">as.character</span>(MsExperiment<span class="sc">::</span><span class="fu">sampleData</span>(mse_latest)<span class="sc">$</span>batch)</span>
+<span id="cb8-81"><a href="#cb8-81" tabindex="-1"></a>        ),</span>
+<span id="cb8-82"><a href="#cb8-82" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;sample metadata revision is version-controlled&quot;</span></span>
+<span id="cb8-83"><a href="#cb8-83" tabindex="-1"></a>    )</span>
+<span id="cb8-84"><a href="#cb8-84" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb8-85"><a href="#cb8-85" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>msexperiment <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb8-86"><a href="#cb8-86" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;MsExperiment&quot;</span>,</span>
+<span id="cb8-87"><a href="#cb8-87" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb8-88"><a href="#cb8-88" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;required packages are missing&quot;</span></span>
+<span id="cb8-89"><a href="#cb8-89" tabindex="-1"></a>    )</span>
+<span id="cb8-90"><a href="#cb8-90" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="クロスレイヤーの公開マニフェスト" class="section level1">
+<h1>7. クロスレイヤーの公開マニフェスト</h1>
+<p>ユースケース:
+リリース対象の成果物を1つの表で固定し、依存系譜を可視化する。</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>release_manifest <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>    <span class="at">layer =</span> <span class="fu">c</span>(<span class="st">&quot;bulk&quot;</span>, <span class="st">&quot;single-cell&quot;</span>, <span class="st">&quot;multi-omics&quot;</span>, <span class="st">&quot;raw-ms&quot;</span>, <span class="st">&quot;quant&quot;</span>, <span class="st">&quot;lcms&quot;</span>),</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    <span class="at">object_name =</span> <span class="fu">c</span>(</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>        <span class="st">&quot;bulk_rnaseq_se&quot;</span>, <span class="st">&quot;pbmc_sce&quot;</span>, <span class="st">&quot;cohort_mae&quot;</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>        <span class="st">&quot;proteomics_ms&quot;</span>, <span class="st">&quot;protein_qf&quot;</span>, <span class="st">&quot;lcms_mse&quot;</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    ),</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="at">release_tag =</span> <span class="fu">c</span>(</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>        <span class="st">&quot;raw_qc_passed&quot;</span>, <span class="st">&quot;pre_cluster&quot;</span>, <span class="st">&quot;integration_v1&quot;</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>        <span class="st">&quot;search_input&quot;</span>, <span class="st">&quot;quant_v1&quot;</span>, <span class="st">&quot;feature_table_v1&quot;</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    ),</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>    <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>)</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>lake<span class="sc">$</span><span class="fu">put</span>(</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    <span class="st">&quot;release_manifest&quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    release_manifest,</span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>    <span class="at">depends_on =</span> release_manifest<span class="sc">$</span>object_name[</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>        release_manifest<span class="sc">$</span>object_name <span class="sc">%in%</span> created_objects</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>    ]</span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>)</span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a></span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>lineage <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">tree</span>(<span class="st">&quot;release_manifest&quot;</span>, <span class="at">direction =</span> <span class="st">&quot;up&quot;</span>, <span class="at">depth =</span> <span class="dv">2</span>)</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="fu">head</span>(lineage)</span></code></pre></div>
+</div>
+<div id="チュートリアル由来データでの検証" class="section level1">
+<h1>8. チュートリアル由来データでの検証</h1>
+<div id="multiassayexperiment公式データ-miniacc" class="section level2">
+<h2>8.1 MultiAssayExperiment公式データ (<code>miniACC</code>)</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;MultiAssayExperiment&quot;</span>, <span class="st">&quot;S4Vectors&quot;</span>))) {</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>    <span class="fu">data</span>(<span class="st">&quot;miniACC&quot;</span>, <span class="at">package =</span> <span class="st">&quot;MultiAssayExperiment&quot;</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;tutorial_miniacc_mae&quot;</span>, miniACC, <span class="at">depends_on =</span> <span class="st">&quot;cohort_mae&quot;</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;tutorial_miniacc_mae&quot;</span>, <span class="st">&quot;tutorial_raw&quot;</span>)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    miniACC_v2 <span class="ot">&lt;-</span> miniACC</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>    S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(miniACC_v2)<span class="sc">$</span>omicslake_note <span class="ot">&lt;-</span> <span class="st">&quot;tutorial_curated_v2&quot;</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;tutorial_miniacc_mae&quot;</span>, miniACC_v2)</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>    miniacc_tag <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;tutorial_miniacc_mae&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(tutorial_raw)&quot;</span>)</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>    miniacc_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;tutorial_miniacc_mae&quot;</span>)</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;miniACC experiments:&quot;</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>        <span class="fu">length</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">experiments</span>(miniacc_latest)),</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;miniACC samples:&quot;</span>,</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>        <span class="fu">nrow</span>(MultiAssayExperiment<span class="sc">::</span><span class="fu">colData</span>(miniacc_latest)),</span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>        <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;tutorial_miniacc_mae&quot;</span>)</span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>tutorial_miniacc <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Tutorial miniACC (MAE)&quot;</span>,</span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="fu">is.null</span>(</span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a>            S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(miniacc_tag)<span class="sc">$</span>omicslake_note</span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a>        ) <span class="sc">&amp;&amp;</span> <span class="fu">identical</span>(</span>
+<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a>            S4Vectors<span class="sc">::</span><span class="fu">metadata</span>(miniacc_latest)<span class="sc">$</span>omicslake_note,</span>
+<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a>            <span class="st">&quot;tutorial_curated_v2&quot;</span></span>
+<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a>        ),</span>
+<span id="cb10-33"><a href="#cb10-33" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;official MultiAssayExperiment sample data is versioned&quot;</span></span>
+<span id="cb10-34"><a href="#cb10-34" tabindex="-1"></a>    )</span>
+<span id="cb10-35"><a href="#cb10-35" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb10-36"><a href="#cb10-36" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>tutorial_miniacc <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb10-37"><a href="#cb10-37" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Tutorial miniACC (MAE)&quot;</span>,</span>
+<span id="cb10-38"><a href="#cb10-38" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb10-39"><a href="#cb10-39" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;MultiAssayExperiment is unavailable&quot;</span></span>
+<span id="cb10-40"><a href="#cb10-40" tabindex="-1"></a>    )</span>
+<span id="cb10-41"><a href="#cb10-41" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+<div id="spectra公式データ-fft_spectrum" class="section level2">
+<h2>8.2 Spectra公式データ (<code>fft_spectrum</code>)</h2>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">pkg_ready</span>(<span class="fu">c</span>(<span class="st">&quot;Spectra&quot;</span>))) {</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>    <span class="fu">data</span>(<span class="st">&quot;fft_spectrum&quot;</span>, <span class="at">package =</span> <span class="st">&quot;Spectra&quot;</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    depends <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="st">&quot;proteomics_ms&quot;</span> <span class="sc">%in%</span> created_objects) <span class="st">&quot;proteomics_ms&quot;</span> <span class="cf">else</span> <span class="cn">NULL</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;tutorial_fft_spectra&quot;</span>, fft_spectrum, <span class="at">depends_on =</span> depends)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">tag</span>(<span class="st">&quot;tutorial_fft_spectra&quot;</span>, <span class="st">&quot;tutorial_raw&quot;</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>    fft_v2 <span class="ot">&lt;-</span> fft_spectrum</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>    Spectra<span class="sc">::</span><span class="fu">spectraData</span>(fft_v2)<span class="sc">$</span>processing <span class="ot">&lt;-</span> <span class="st">&quot;fft_filter_v2&quot;</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>    lake<span class="sc">$</span><span class="fu">put</span>(<span class="st">&quot;tutorial_fft_spectra&quot;</span>, fft_v2)</span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>    fft_tag <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;tutorial_fft_spectra&quot;</span>, <span class="at">ref =</span> <span class="st">&quot;@tag(tutorial_raw)&quot;</span>)</span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a>    fft_latest <span class="ot">&lt;-</span> lake<span class="sc">$</span><span class="fu">get</span>(<span class="st">&quot;tutorial_fft_spectra&quot;</span>)</span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a></span>
+<span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a>    raw_sd <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(fft_tag))</span>
+<span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>    latest_sd <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(Spectra<span class="sc">::</span><span class="fu">spectraData</span>(fft_latest))</span>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>    raw_proc <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="st">&quot;processing&quot;</span> <span class="sc">%in%</span> <span class="fu">names</span>(raw_sd)) {</span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>        <span class="fu">as.character</span>(raw_sd<span class="sc">$</span>processing)</span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>        <span class="fu">rep</span>(<span class="cn">NA_character_</span>, <span class="fu">nrow</span>(raw_sd))</span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a>    }</span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a>    latest_proc <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="st">&quot;processing&quot;</span> <span class="sc">%in%</span> <span class="fu">names</span>(latest_sd)) {</span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a>        <span class="fu">as.character</span>(latest_sd<span class="sc">$</span>processing)</span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a>        <span class="fu">rep</span>(<span class="cn">NA_character_</span>, <span class="fu">nrow</span>(latest_sd))</span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a>    }</span>
+<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a></span>
+<span id="cb11-28"><a href="#cb11-28" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">&quot;fft_spectrum records:&quot;</span>, <span class="fu">nrow</span>(latest_sd), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb11-29"><a href="#cb11-29" tabindex="-1"></a></span>
+<span id="cb11-30"><a href="#cb11-30" tabindex="-1"></a>    created_objects <span class="ot">&lt;-</span> <span class="fu">union</span>(created_objects, <span class="st">&quot;tutorial_fft_spectra&quot;</span>)</span>
+<span id="cb11-31"><a href="#cb11-31" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>tutorial_fft <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb11-32"><a href="#cb11-32" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Tutorial fft_spectrum (Spectra)&quot;</span>,</span>
+<span id="cb11-33"><a href="#cb11-33" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb11-34"><a href="#cb11-34" tabindex="-1"></a>        <span class="at">latest_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb11-35"><a href="#cb11-35" tabindex="-1"></a>        <span class="at">tag_readable =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb11-36"><a href="#cb11-36" tabindex="-1"></a>        <span class="at">version_delta_detected =</span> <span class="sc">!</span><span class="fu">identical</span>(raw_proc, latest_proc),</span>
+<span id="cb11-37"><a href="#cb11-37" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;official Spectra sample data supports tag-based rollback&quot;</span></span>
+<span id="cb11-38"><a href="#cb11-38" tabindex="-1"></a>    )</span>
+<span id="cb11-39"><a href="#cb11-39" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb11-40"><a href="#cb11-40" tabindex="-1"></a>    use_case_checks<span class="sc">$</span>tutorial_fft <span class="ot">&lt;-</span> <span class="fu">record_check</span>(</span>
+<span id="cb11-41"><a href="#cb11-41" tabindex="-1"></a>        <span class="at">layer =</span> <span class="st">&quot;Tutorial fft_spectrum (Spectra)&quot;</span>,</span>
+<span id="cb11-42"><a href="#cb11-42" tabindex="-1"></a>        <span class="at">available =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb11-43"><a href="#cb11-43" tabindex="-1"></a>        <span class="at">note =</span> <span class="st">&quot;Spectra is unavailable&quot;</span></span>
+<span id="cb11-44"><a href="#cb11-44" tabindex="-1"></a>    )</span>
+<span id="cb11-45"><a href="#cb11-45" tabindex="-1"></a>}</span></code></pre></div>
+</div>
+</div>
+<div id="有効性チェック自動" class="section level1">
+<h1>9. 有効性チェック（自動）</h1>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>checks_df <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, use_case_checks)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>logical_to_int <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="fu">ifelse</span>(<span class="fu">is.na</span>(x), <span class="dv">0</span><span class="dt">L</span>, <span class="fu">as.integer</span>(x))</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>}</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>checks_df<span class="sc">$</span>achieved <span class="ot">&lt;-</span> <span class="fu">logical_to_int</span>(checks_df<span class="sc">$</span>latest_readable) <span class="sc">+</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>    <span class="fu">logical_to_int</span>(checks_df<span class="sc">$</span>tag_readable) <span class="sc">+</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>    <span class="fu">logical_to_int</span>(checks_df<span class="sc">$</span>version_delta_detected)</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>checks_df<span class="sc">$</span>target <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(checks_df<span class="sc">$</span>available, <span class="dv">3</span><span class="dt">L</span>, <span class="dv">0</span><span class="dt">L</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>checks_df<span class="sc">$</span>status <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(</span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>    <span class="sc">!</span>checks_df<span class="sc">$</span>available,</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>    <span class="st">&quot;SKIPPED&quot;</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>    <span class="fu">ifelse</span>(checks_df<span class="sc">$</span>achieved <span class="sc">==</span> checks_df<span class="sc">$</span>target, <span class="st">&quot;PASS&quot;</span>, <span class="st">&quot;PARTIAL&quot;</span>)</span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>)</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>checks_df <span class="ot">&lt;-</span> checks_df[, <span class="fu">c</span>(</span>
+<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a>    <span class="st">&quot;layer&quot;</span>, <span class="st">&quot;status&quot;</span>, <span class="st">&quot;achieved&quot;</span>, <span class="st">&quot;target&quot;</span>, <span class="st">&quot;available&quot;</span>,</span>
+<span id="cb12-19"><a href="#cb12-19" tabindex="-1"></a>    <span class="st">&quot;latest_readable&quot;</span>, <span class="st">&quot;tag_readable&quot;</span>, <span class="st">&quot;version_delta_detected&quot;</span>, <span class="st">&quot;note&quot;</span></span>
+<span id="cb12-20"><a href="#cb12-20" tabindex="-1"></a>)]</span>
+<span id="cb12-21"><a href="#cb12-21" tabindex="-1"></a>checks_df</span></code></pre></div>
+</div>
+<div id="まとめ" class="section level1">
+<h1>まとめ</h1>
+<p>このビネットで示したポイントは次の3つです。</p>
+<ul>
+<li>各オミクス層の主要Bioconductorコンテナを同一APIで保存・復元できる</li>
+<li>解析マイルストーンをタグで固定し、過去状態を確実に再現できる</li>
+<li>レイヤー間の依存を<code>depends_on</code>で明示し、公開時の説明責任を担保できる</li>
+<li>チュートリアル由来データを含む自動評価で、再現性要件の達成度を可視化できる</li>
+</ul>
+<div id="session-information" class="section level2">
+<h2>Session Information</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

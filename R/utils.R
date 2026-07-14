@@ -12,6 +12,9 @@
     if (length(miss)) stop("Please install: ", paste(miss, collapse = ", "))
 }
 
+# Internal NULL-coalescing helper.
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 .ol_validate_name <- function(name, type = "name") {
     if (is.null(name) || !is.character(name) || !length(name) || 
         !nzchar(name)) {

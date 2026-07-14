@@ -1,0 +1,48 @@
+# OmicsLake Evaluation Suite - Medium Configuration
+# Paper-grade evaluation (runs in 30-60 minutes)
+
+project_root: "~/.omicslake_eval_medium"
+seed: 42
+threads: 4
+
+sizes:
+  small:
+    n_rows: 100000
+    n_cols: 20
+  medium:
+    n_rows: 1000000
+    n_cols: 50
+  large:
+    n_rows: 5000000
+    n_cols: 20
+
+reps:
+  bench: 10
+  heavy: 5
+
+cache_mode:
+  enable: true
+  modes: ["cold", "warm"]
+
+workloads:
+  W0_io: true
+  W1_queries: true
+  W2_lineage: true
+  W3_case_study: true
+
+baselines:
+  B1_duckdb_dbplyr: true
+  B2_file_based: true
+
+outputs:
+  results_dir: "inst/eval/results"
+  formats: ["jsonl", "csv"]
+
+case_study:
+  n_genes: 20000
+  n_samples: 6
+
+validation:
+  check_pushdown: true
+  check_lineage: true
+  strict_mode: true

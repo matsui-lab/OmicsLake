@@ -597,6 +597,3 @@ QueryBuilder <- R6::R6Class("QueryBuilder",
         }
     )
 )
-
-# NULL coalescing operator (local definition to avoid importFrom dependency)
-`%||%` <- function(x, y) if (is.null(x)) y else x

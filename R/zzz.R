@@ -1,4 +1,11 @@
+#' @importFrom S4Vectors DataFrame List metadata
+#' @importFrom stats aggregate IQR median rexp rnorm runif sd
 "_PACKAGE"
+
+utils::globalVariables(c(
+    ".data", "cat1", "category", "derived", "gene_id", "gene_type",
+    "id", "mean_expr", "num1", "private", "term", "x1"
+))
 
 .onLoad <- function(libname, pkgname) {
     if (exists(".adapter_registry", inherits = TRUE)) {

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="OmicsLake Development Team" />
+
+<meta name="date" content="2026-07-14" />
+
+<title>OmicsLake Practical Workflow: Integrating Phase 1-4 Functions</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">OmicsLake Practical Workflow: Integrating
+Phase 1-4 Functions</h1>
+<h4 class="author">OmicsLake Development Team</h4>
+<h4 class="date">2026-07-14</h4>
+
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This vignette introduces a practical workflow that integrates the
+features implemented in OmicsLake. Using RNA-seq differential expression
+analysis as an example, we demonstrate how the following features work
+together:</p>
+<div id="before-you-run-all-chunks" class="section level2">
+<h2>Before you run all chunks</h2>
+<p>This vignette defaults to non-evaluated chunks during package build.
+To run all code locally, enable:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">omicslake.vignette.eval =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>For a script-first entry point of the same analysis class
+(<code>count -&gt; edgeR -&gt; limma-voom -&gt; ORA</code>), run:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">bash</span> tools/run_demo_count_edger_limma_voom_ora.sh</span></code></pre></div>
+<p>For representative layer-by-layer use cases
+(SE/SCE/MAE/Spectra/QFeatures/ MsExperiment), see:</p>
+<ul>
+<li><p><code>vignettes/omicslake_layer_use_cases_EN.Rmd</code></p></li>
+<li><p><strong>Phase 1</strong>: SQL query interface
+(<code>ol_query()</code>)</p></li>
+<li><p><strong>Phase 2</strong>: aggregation and window functions
+(<code>ol_aggregate()</code>,</p></li>
+<li><p><code>ol_add_rank()</code>, <code>ol_top_n()</code>,
+etc.)</p></li>
+<li><p><strong>Phase 3</strong>: Parquet import/export
+(<code>ol_import_parquet()</code>,</p></li>
+<li><p><code>ol_export_parquet()</code>)</p></li>
+<li><p><strong>Phase 4</strong>: database views
+(<code>ol_create_view()</code>, <code>ol_drop_view()</code>,</p></li>
+<li><p><code>ol_list_views()</code>)</p></li>
+</ul>
+</div>
+<div id="project-setup" class="section level2">
+<h2>Project setup</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(OmicsLake)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="fu">ol_init</span>(<span class="st">&quot;rnaseq_analysis&quot;</span>)</span></code></pre></div>
+</div>
+<div id="preparing-the-data" class="section level2">
+<h2>Preparing the data</h2>
+<p>First, prepare sample RNA-seq count data:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>raw_counts <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">1000</span>),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="at">control_1 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">50</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>    <span class="at">control_2 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">50</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="at">control_3 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">50</span>),</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="at">treated_1 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">80</span>),</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    <span class="at">treated_2 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">80</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>    <span class="at">treated_3 =</span> <span class="fu">rpois</span>(<span class="dv">1000</span>, <span class="at">lambda =</span> <span class="dv">80</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>)</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;raw_counts&quot;</span>, raw_counts)</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="fu">ol_commit</span>(<span class="st">&quot;Import raw count data&quot;</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="fu">ol_label</span>(<span class="st">&quot;data_import&quot;</span>)</span></code></pre></div>
+</div>
+<div id="phase-1-filtering-data-with-sql-queries" class="section level2">
+<h2>Phase 1: Filtering data with SQL queries</h2>
+<p>Use an SQL query to filter out low-expressed genes. This is a common
+preprocessing step in RNA-seq analysis.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>filtered_counts <span class="ot">&lt;-</span> <span class="fu">ol_query</span>(<span class="st">&quot;\</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="st">    SELECT</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="st">    gene_id,</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="st">    control_1, control_2, control_3,</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="st">    treated_1, treated_2, treated_3</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="st">    FROM raw_counts</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="st">    WHERE (</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="st">        control_1 + control_2 + control_3 +</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="st">        treated_1 + treated_2 + treated_3</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="st">    ) &gt;= 30</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="st">&quot;</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Original genes:&quot;</span>, <span class="fu">nrow</span>(raw_counts), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;After filtering:&quot;</span>, <span class="fu">nrow</span>(filtered_counts), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;filtered_counts&quot;</span>, filtered_counts)</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="fu">ol_commit</span>(<span class="st">&quot;Filter low-expression genes using SQL&quot;</span>)</span></code></pre></div>
+<p>Using an SQL query, you can also calculate the average expression and
+difference between treated and control means for each gene:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>gene_stats <span class="ot">&lt;-</span> <span class="fu">ol_query</span>(<span class="st">&quot;\</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="st">    SELECT</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="st">    gene_id,</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="st">    (control_1 + control_2 + control_3) / 3.0 AS control_mean,</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="st">    (treated_1 + treated_2 + treated_3) / 3.0 AS treated_mean,</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="st">    (</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="st">        (treated_1 + treated_2 + treated_3) / 3.0 -</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="st">        (control_1 + control_2 + control_3) / 3.0</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="st">    ) AS mean_diff</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="st">    FROM filtered_counts</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="st">    ORDER BY mean_diff DESC</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a><span class="st">&quot;</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="fu">head</span>(gene_stats, <span class="dv">10</span>)</span></code></pre></div>
+</div>
+<div id="phase-2-statistical-analysis-with-aggregation-functions" class="section level2">
+<h2>Phase 2: Statistical analysis with aggregation functions</h2>
+<p>Use the Phase 2 aggregation functions to perform more advanced
+statistical analyses.</p>
+<div id="calculate-statistics-for-each-gene" class="section level3">
+<h3>Calculate statistics for each gene</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>gene_summary <span class="ot">&lt;-</span> <span class="fu">ol_aggregate</span>(<span class="st">&quot;filtered_counts&quot;</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="at">group_by =</span> <span class="st">&quot;gene_id&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="at">control_mean =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;avg&quot;</span>, <span class="at">col =</span> <span class="st">&quot;control_1, control_2, control_3&quot;</span>),</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    <span class="at">treated_mean =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;avg&quot;</span>, <span class="at">col =</span> <span class="st">&quot;treated_1, treated_2, treated_3&quot;</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    <span class="at">control_sd =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;stddev&quot;</span>, <span class="at">col =</span> <span class="st">&quot;control_1, control_2, control_3&quot;</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>    <span class="at">treated_sd =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;stddev&quot;</span>, <span class="at">col =</span> <span class="st">&quot;treated_1, treated_2, treated_3&quot;</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;gene_summary&quot;</span>, gene_summary)</span></code></pre></div>
+</div>
+<div id="extract-top-expressed-genes" class="section level3">
+<h3>Extract top expressed genes</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>top_control <span class="ot">&lt;-</span> <span class="fu">ol_top_n</span>(<span class="st">&quot;filtered_counts&quot;</span>,</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="at">n =</span> <span class="dv">20</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="at">order_by =</span> <span class="st">&quot;control_1&quot;</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="at">descending =</span> <span class="cn">TRUE</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>)</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Top 20 genes in control samples:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">head</span>(top_control, <span class="dv">10</span>))</span></code></pre></div>
+</div>
+<div id="add-rankings" class="section level3">
+<h3>Add rankings</h3>
+<p>Assign a rank to each gene based on expression:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>ranked_genes <span class="ot">&lt;-</span> <span class="fu">ol_add_rank</span>(<span class="st">&quot;filtered_counts&quot;</span>,</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>    <span class="at">rank_by =</span> <span class="st">&quot;treated_1&quot;</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    <span class="at">as_column =</span> <span class="st">&quot;expression_rank&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="at">descending =</span> <span class="cn">TRUE</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;ranked_genes&quot;</span>, ranked_genes)</span></code></pre></div>
+</div>
+<div id="compute-cumulative-statistics" class="section level3">
+<h3>Compute cumulative statistics</h3>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>cumulative_expr <span class="ot">&lt;-</span> <span class="fu">ol_cumulative_sum</span>(<span class="st">&quot;ranked_genes&quot;</span>,</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>    <span class="at">column =</span> <span class="st">&quot;treated_1&quot;</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>    <span class="at">order_by =</span> <span class="st">&quot;expression_rank&quot;</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>    <span class="at">as_column =</span> <span class="st">&quot;cumulative_expression&quot;</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;cumulative_expr&quot;</span>, cumulative_expr)</span></code></pre></div>
+</div>
+</div>
+<div id="phase-3-sharing-results-with-parquet" class="section level2">
+<h2>Phase 3: Sharing results with Parquet</h2>
+<p>Export analysis results in Parquet format so that you can share them
+with collaborators or use them in other tools.</p>
+<div id="exporting-results" class="section level3">
+<h3>Exporting results</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">ol_export_parquet</span>(<span class="st">&quot;gene_summary&quot;</span>,</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>    <span class="st">&quot;gene_summary_results.parquet&quot;</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>    <span class="at">compression =</span> <span class="st">&quot;zstd&quot;</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    <span class="at">compression_level =</span> <span class="dv">3</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="fu">ol_export_parquet</span>(<span class="st">&quot;ranked_genes&quot;</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>    <span class="st">&quot;ranked_genes.parquet&quot;</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>    <span class="at">compression =</span> <span class="st">&quot;snappy&quot;</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>)</span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Exported results to Parquet files</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="importing-external-data" class="section level3">
+<h3>Importing external data</h3>
+<p>Example of importing data provided by collaborators:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>external_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">1000</span>, <span class="dv">50</span>)),</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>    <span class="at">log2fc =</span> <span class="fu">rnorm</span>(<span class="dv">50</span>, <span class="dv">0</span>, <span class="dv">2</span>),</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="at">pvalue =</span> <span class="fu">runif</span>(<span class="dv">50</span>, <span class="dv">0</span>, <span class="fl">0.1</span>),</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>    <span class="at">padj =</span> <span class="fu">runif</span>(<span class="dv">50</span>, <span class="dv">0</span>, <span class="fl">0.1</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>)</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="fu">write.csv</span>(external_results, <span class="st">&quot;external_de_results.csv&quot;</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a><span class="fu">library</span>(arrow)</span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="fu">write_parquet</span>(external_results, <span class="st">&quot;external_de_results.parquet&quot;</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a><span class="fu">ol_import_parquet</span>(<span class="st">&quot;external_de_results.parquet&quot;</span>,</span>
+<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>    <span class="st">&quot;external_de_results&quot;</span>,</span>
+<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>    <span class="at">mode =</span> <span class="st">&quot;create&quot;</span></span>
+<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>)</span>
+<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>imported <span class="ot">&lt;-</span> <span class="fu">ol_read</span>(<span class="st">&quot;external_de_results&quot;</span>)</span>
+<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Imported&quot;</span>, <span class="fu">nrow</span>(imported), <span class="st">&quot;genes from external analysis</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="phase-4-compare-multiple-versions-with-database-views" class="section level2">
+<h2>Phase 4: Compare multiple versions with database views</h2>
+<p>Database views are a powerful feature for comparing multiple analysis
+results or reusing complex queries.</p>
+<div id="scenario-compare-two-different-analysis-methods" class="section level3">
+<h3>Scenario: Compare two different analysis methods</h3>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">456</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>deseq2_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">100</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    <span class="at">log2fc =</span> <span class="fu">rnorm</span>(<span class="dv">100</span>, <span class="dv">0</span>, <span class="fl">1.5</span>),</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>    <span class="at">pvalue =</span> <span class="fu">runif</span>(<span class="dv">100</span>, <span class="dv">0</span>, <span class="fl">0.1</span>),</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>    <span class="at">padj =</span> <span class="fu">runif</span>(<span class="dv">100</span>, <span class="dv">0</span>, <span class="fl">0.1</span>),</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>    <span class="at">baseMean =</span> <span class="fu">runif</span>(<span class="dv">100</span>, <span class="dv">10</span>, <span class="dv">1000</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>)</span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;de_results_deseq2&quot;</span>, deseq2_results)</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="fu">ol_tag</span>(<span class="st">&quot;de_results_deseq2&quot;</span>, <span class="st">&quot;deseq2_method&quot;</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">789</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>edger_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">120</span>),</span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>    <span class="at">log2fc =</span> <span class="fu">rnorm</span>(<span class="dv">120</span>, <span class="dv">0</span>, <span class="fl">1.8</span>),</span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>    <span class="at">pvalue =</span> <span class="fu">runif</span>(<span class="dv">120</span>, <span class="dv">0</span>, <span class="fl">0.1</span>),</span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>    <span class="at">padj =</span> <span class="fu">runif</span>(<span class="dv">120</span>, <span class="dv">0</span>, <span class="fl">0.1</span>),</span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a>    <span class="at">logCPM =</span> <span class="fu">runif</span>(<span class="dv">120</span>, <span class="dv">2</span>, <span class="dv">10</span>)</span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a>)</span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;de_results_edger&quot;</span>, edger_results)</span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a><span class="fu">ol_tag</span>(<span class="st">&quot;de_results_edger&quot;</span>, <span class="st">&quot;edger_method&quot;</span>)</span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a><span class="fu">ol_commit</span>(<span class="st">&quot;Complete DE analysis with DESeq2 and edgeR&quot;</span>)</span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a><span class="fu">ol_label</span>(<span class="st">&quot;de_analysis_complete&quot;</span>)</span></code></pre></div>
+</div>
+<div id="create-a-view-compare-methods" class="section level3">
+<h3>Create a view: Compare methods</h3>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">ol_create_view</span>(<span class="st">&quot;method_comparison&quot;</span>,</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>    <span class="st">&quot;SELECT</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="st">    d.gene_id,</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="st">    d.log2fc AS deseq2_lfc,</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="st">    e.log2fc AS edger_lfc,</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="st">    ABS(d.log2fc - e.log2fc) AS lfc_difference,</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="st">    d.padj AS deseq2_padj,</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="st">    e.padj AS edger_padj,</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="st">    CASE</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="st">        WHEN d.padj &lt; 0.05 AND e.padj &lt; 0.05 THEN &#39;both_significant&#39;</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="st">        WHEN d.padj &lt; 0.05 THEN &#39;deseq2_only&#39;</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="st">        WHEN e.padj &lt; 0.05 THEN &#39;edger_only&#39;</span></span>
+<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="st">        ELSE &#39;neither&#39;</span></span>
+<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="st">    END AS significance_status</span></span>
+<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="st">    FROM de_results_deseq2 d</span></span>
+<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="st">    INNER JOIN de_results_edger e ON d.gene_id = e.gene_id</span></span>
+<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="st">    ORDER BY lfc_difference DESC&quot;</span>,</span>
+<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a>    <span class="at">depends_on =</span> <span class="fu">c</span>(<span class="st">&quot;de_results_deseq2&quot;</span>, <span class="st">&quot;de_results_edger&quot;</span>)</span>
+<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a>)</span>
+<span id="cb14-20"><a href="#cb14-20" tabindex="-1"></a></span>
+<span id="cb14-21"><a href="#cb14-21" tabindex="-1"></a>comparison <span class="ot">&lt;-</span> <span class="fu">ol_read</span>(<span class="st">&quot;method_comparison&quot;</span>)</span>
+<span id="cb14-22"><a href="#cb14-22" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Comparing&quot;</span>, <span class="fu">nrow</span>(comparison), <span class="st">&quot;genes detected by both methods</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="using-the-view-check-concordance" class="section level3">
+<h3>Using the view: Check concordance</h3>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">table</span>(comparison<span class="sc">$</span>significance_status)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>high_discordance <span class="ot">&lt;-</span> comparison[comparison<span class="sc">$</span>lfc_difference <span class="sc">&gt;</span> <span class="dv">1</span>, ]</span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">Genes with high log2FC discordance (&gt;1):&quot;</span>, <span class="fu">nrow</span>(high_discordance), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="create-multiple-views" class="section level3">
+<h3>Create multiple views</h3>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">ol_create_view</span>(<span class="st">&quot;significant_genes_deseq2&quot;</span>,</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>    <span class="st">&quot;SELECT * FROM de_results_deseq2 WHERE padj &lt; 0.05 ORDER BY log2fc DESC&quot;</span>,</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>    <span class="at">depends_on =</span> <span class="st">&quot;de_results_deseq2&quot;</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>)</span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="fu">ol_create_view</span>(<span class="st">&quot;significant_genes_edger&quot;</span>,</span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>    <span class="st">&quot;SELECT * FROM de_results_edger WHERE padj &lt; 0.05 ORDER BY log2fc DESC&quot;</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>    <span class="at">depends_on =</span> <span class="st">&quot;de_results_edger&quot;</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>)</span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a><span class="fu">ol_create_view</span>(<span class="st">&quot;consensus_significant&quot;</span>,</span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>    <span class="st">&quot;SELECT</span></span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="st">    d.gene_id,</span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a><span class="st">    (d.log2fc + e.log2fc) / 2 AS avg_log2fc,</span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a><span class="st">    d.padj AS deseq2_padj,</span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="st">    e.padj AS edger_padj</span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="st">    FROM de_results_deseq2 d</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="st">    INNER JOIN de_results_edger e ON d.gene_id = e.gene_id</span></span>
+<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a><span class="st">    WHERE d.padj &lt; 0.05 AND e.padj &lt; 0.05</span></span>
+<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="st">    ORDER BY avg_log2fc DESC&quot;</span>,</span>
+<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a>    <span class="at">depends_on =</span> <span class="fu">c</span>(<span class="st">&quot;de_results_deseq2&quot;</span>, <span class="st">&quot;de_results_edger&quot;</span>)</span>
+<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a>)</span>
+<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a></span>
+<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a>consensus <span class="ot">&lt;-</span> <span class="fu">ol_read</span>(<span class="st">&quot;consensus_significant&quot;</span>)</span>
+<span id="cb16-25"><a href="#cb16-25" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Consensus significant genes:&quot;</span>, <span class="fu">nrow</span>(consensus), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+<div id="list-views" class="section level3">
+<h3>List views</h3>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>views <span class="ot">&lt;-</span> <span class="fu">ol_list_views</span>()</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="fu">print</span>(views)</span></code></pre></div>
+</div>
+<div id="deleting-views" class="section level3">
+<h3>Deleting views</h3>
+<p>You can delete a view when it is no longer needed:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="fu">ol_drop_view</span>(<span class="st">&quot;significant_genes_edger&quot;</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>views_after <span class="ot">&lt;-</span> <span class="fu">ol_list_views</span>()</span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Remaining views:&quot;</span>, <span class="fu">nrow</span>(views_after), <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="integrated-workflow-example-combine-all-features" class="section level2">
+<h2>Integrated workflow example: Combine all features</h2>
+<p>Here is a complete workflow example combining the features described
+so far:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">ol_init</span>(<span class="st">&quot;complete_analysis&quot;</span>)</span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">999</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>counts <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">500</span>),</span>
+<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>    <span class="at">ctrl1 =</span> <span class="fu">rpois</span>(<span class="dv">500</span>, <span class="dv">40</span>),</span>
+<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>    <span class="at">ctrl2 =</span> <span class="fu">rpois</span>(<span class="dv">500</span>, <span class="dv">40</span>),</span>
+<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>    <span class="at">trt1 =</span> <span class="fu">rpois</span>(<span class="dv">500</span>, <span class="dv">60</span>),</span>
+<span id="cb19-9"><a href="#cb19-9" tabindex="-1"></a>    <span class="at">trt2 =</span> <span class="fu">rpois</span>(<span class="dv">500</span>, <span class="dv">60</span>)</span>
+<span id="cb19-10"><a href="#cb19-10" tabindex="-1"></a>)</span>
+<span id="cb19-11"><a href="#cb19-11" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="#cb19-12" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;raw_data&quot;</span>, counts)</span>
+<span id="cb19-13"><a href="#cb19-13" tabindex="-1"></a></span>
+<span id="cb19-14"><a href="#cb19-14" tabindex="-1"></a>filtered <span class="ot">&lt;-</span> <span class="fu">ol_query</span>(<span class="st">&quot;\</span></span>
+<span id="cb19-15"><a href="#cb19-15" tabindex="-1"></a><span class="st">    SELECT * FROM raw_data</span></span>
+<span id="cb19-16"><a href="#cb19-16" tabindex="-1"></a><span class="st">    WHERE (ctrl1 + ctrl2 + trt1 + trt2) &gt;= 20</span></span>
+<span id="cb19-17"><a href="#cb19-17" tabindex="-1"></a><span class="st">&quot;</span>)</span>
+<span id="cb19-18"><a href="#cb19-18" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;filtered_data&quot;</span>, filtered)</span>
+<span id="cb19-19"><a href="#cb19-19" tabindex="-1"></a></span>
+<span id="cb19-20"><a href="#cb19-20" tabindex="-1"></a>stats <span class="ot">&lt;-</span> <span class="fu">ol_aggregate</span>(<span class="st">&quot;filtered_data&quot;</span>,</span>
+<span id="cb19-21"><a href="#cb19-21" tabindex="-1"></a>    <span class="at">group_by =</span> <span class="st">&quot;gene_id&quot;</span>,</span>
+<span id="cb19-22"><a href="#cb19-22" tabindex="-1"></a>    <span class="at">ctrl_mean =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;avg&quot;</span>, <span class="at">col =</span> <span class="st">&quot;ctrl1, ctrl2&quot;</span>),</span>
+<span id="cb19-23"><a href="#cb19-23" tabindex="-1"></a>    <span class="at">trt_mean =</span> <span class="fu">list</span>(<span class="at">func =</span> <span class="st">&quot;avg&quot;</span>, <span class="at">col =</span> <span class="st">&quot;trt1, trt2&quot;</span>)</span>
+<span id="cb19-24"><a href="#cb19-24" tabindex="-1"></a>)</span>
+<span id="cb19-25"><a href="#cb19-25" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;gene_stats&quot;</span>, stats)</span>
+<span id="cb19-26"><a href="#cb19-26" tabindex="-1"></a></span>
+<span id="cb19-27"><a href="#cb19-27" tabindex="-1"></a><span class="fu">ol_export_parquet</span>(<span class="st">&quot;gene_stats&quot;</span>, <span class="st">&quot;analysis_stats.parquet&quot;</span>)</span>
+<span id="cb19-28"><a href="#cb19-28" tabindex="-1"></a></span>
+<span id="cb19-29"><a href="#cb19-29" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">111</span>)</span>
+<span id="cb19-30"><a href="#cb19-30" tabindex="-1"></a>de_final <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb19-31"><a href="#cb19-31" tabindex="-1"></a>    <span class="at">gene_id =</span> <span class="fu">paste0</span>(<span class="st">&quot;GENE&quot;</span>, <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">500</span>, <span class="dv">80</span>)),</span>
+<span id="cb19-32"><a href="#cb19-32" tabindex="-1"></a>    <span class="at">log2fc =</span> <span class="fu">rnorm</span>(<span class="dv">80</span>, <span class="dv">0</span>, <span class="dv">2</span>),</span>
+<span id="cb19-33"><a href="#cb19-33" tabindex="-1"></a>    <span class="at">padj =</span> <span class="fu">runif</span>(<span class="dv">80</span>, <span class="dv">0</span>, <span class="fl">0.05</span>)</span>
+<span id="cb19-34"><a href="#cb19-34" tabindex="-1"></a>)</span>
+<span id="cb19-35"><a href="#cb19-35" tabindex="-1"></a><span class="fu">ol_write</span>(<span class="st">&quot;de_final&quot;</span>, de_final)</span>
+<span id="cb19-36"><a href="#cb19-36" tabindex="-1"></a></span>
+<span id="cb19-37"><a href="#cb19-37" tabindex="-1"></a><span class="fu">ol_create_view</span>(<span class="st">&quot;enriched_results&quot;</span>,</span>
+<span id="cb19-38"><a href="#cb19-38" tabindex="-1"></a>    <span class="st">&quot;SELECT</span></span>
+<span id="cb19-39"><a href="#cb19-39" tabindex="-1"></a><span class="st">    d.gene_id,</span></span>
+<span id="cb19-40"><a href="#cb19-40" tabindex="-1"></a><span class="st">    d.log2fc,</span></span>
+<span id="cb19-41"><a href="#cb19-41" tabindex="-1"></a><span class="st">    d.padj,</span></span>
+<span id="cb19-42"><a href="#cb19-42" tabindex="-1"></a><span class="st">    s.ctrl_mean,</span></span>
+<span id="cb19-43"><a href="#cb19-43" tabindex="-1"></a><span class="st">    s.trt_mean,</span></span>
+<span id="cb19-44"><a href="#cb19-44" tabindex="-1"></a><span class="st">    s.trt_mean - s.ctrl_mean AS mean_change</span></span>
+<span id="cb19-45"><a href="#cb19-45" tabindex="-1"></a><span class="st">    FROM de_final d</span></span>
+<span id="cb19-46"><a href="#cb19-46" tabindex="-1"></a><span class="st">    LEFT JOIN gene_stats s ON d.gene_id = s.gene_id</span></span>
+<span id="cb19-47"><a href="#cb19-47" tabindex="-1"></a><span class="st">    WHERE d.padj &lt; 0.05</span></span>
+<span id="cb19-48"><a href="#cb19-48" tabindex="-1"></a><span class="st">    ORDER BY ABS(d.log2fc) DESC&quot;</span>,</span>
+<span id="cb19-49"><a href="#cb19-49" tabindex="-1"></a>    <span class="at">depends_on =</span> <span class="fu">c</span>(<span class="st">&quot;de_final&quot;</span>, <span class="st">&quot;gene_stats&quot;</span>)</span>
+<span id="cb19-50"><a href="#cb19-50" tabindex="-1"></a>)</span>
+<span id="cb19-51"><a href="#cb19-51" tabindex="-1"></a></span>
+<span id="cb19-52"><a href="#cb19-52" tabindex="-1"></a>enriched <span class="ot">&lt;-</span> <span class="fu">ol_read</span>(<span class="st">&quot;enriched_results&quot;</span>)</span>
+<span id="cb19-53"><a href="#cb19-53" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Enriched analysis results:&quot;</span>, <span class="fu">nrow</span>(enriched), <span class="st">&quot;genes</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb19-54"><a href="#cb19-54" tabindex="-1"></a></span>
+<span id="cb19-55"><a href="#cb19-55" tabindex="-1"></a>top_results <span class="ot">&lt;-</span> <span class="fu">ol_top_n</span>(</span>
+<span id="cb19-56"><a href="#cb19-56" tabindex="-1"></a>    <span class="st">&quot;enriched_results&quot;</span>,</span>
+<span id="cb19-57"><a href="#cb19-57" tabindex="-1"></a>    <span class="at">n =</span> <span class="dv">10</span>,</span>
+<span id="cb19-58"><a href="#cb19-58" tabindex="-1"></a>    <span class="at">order_by =</span> <span class="st">&quot;log2fc&quot;</span>,</span>
+<span id="cb19-59"><a href="#cb19-59" tabindex="-1"></a>    <span class="at">descending =</span> <span class="cn">TRUE</span></span>
+<span id="cb19-60"><a href="#cb19-60" tabindex="-1"></a>)</span>
+<span id="cb19-61"><a href="#cb19-61" tabindex="-1"></a><span class="fu">print</span>(top_results)</span>
+<span id="cb19-62"><a href="#cb19-62" tabindex="-1"></a></span>
+<span id="cb19-63"><a href="#cb19-63" tabindex="-1"></a><span class="fu">ol_commit</span>(<span class="st">&quot;Complete integrated analysis workflow&quot;</span>)</span>
+<span id="cb19-64"><a href="#cb19-64" tabindex="-1"></a><span class="fu">ol_label</span>(<span class="st">&quot;final_results&quot;</span>)</span></code></pre></div>
+</div>
+<div id="practical-tips-and-best-practices" class="section level2">
+<h2>Practical tips and best practices</h2>
+<div id="use-cases-for-phase-1-sql-queries" class="section level3">
+<h3>Use cases for Phase 1 (SQL queries)</h3>
+<ul>
+<li>Applying complex filtering conditions</li>
+<li>Joining multiple tables</li>
+<li>Shaping data before aggregation</li>
+<li>Classification using conditional statements (CASE expressions)</li>
+</ul>
+</div>
+<div id="use-cases-for-phase-2-aggregation-functions" class="section level3">
+<h3>Use cases for Phase 2 (aggregation functions)</h3>
+<ul>
+<li>Calculate statistics for each group</li>
+<li>Moving averages and cumulative sums using window functions</li>
+<li>Calculate rankings or percentiles</li>
+<li>Simultaneous aggregation of multiple columns</li>
+</ul>
+</div>
+<div id="use-cases-for-phase-3-parquet" class="section level3">
+<h3>Use cases for Phase 3 (Parquet)</h3>
+<ul>
+<li>Efficient storage of large datasets</li>
+<li>Data sharing with other tools (Python, Spark, etc.)</li>
+<li>Long-term archiving of analysis results</li>
+<li>Transferring data to cloud storage</li>
+</ul>
+</div>
+<div id="use-cases-for-phase-4-views" class="section level3">
+<h3>Use cases for Phase 4 (views)</h3>
+<ul>
+<li>Comparing multiple analysis versions</li>
+<li>Reusing complex queries</li>
+<li>Logical abstraction of data</li>
+<li>Analysis flows with explicit dependencies</li>
+</ul>
+</div>
+<div id="combination-patterns" class="section level3">
+<h3>Combination patterns</h3>
+<ol style="list-style-type: decimal">
+<li><strong>Query → Aggregate → Export</strong>: data preprocessing,
+statistical analysis,</li>
+<li>and saving results</li>
+<li><strong>View → Query → Aggregate</strong>: integrated analysis of
+multiple data sources</li>
+<li><strong>Import → View → Export</strong>: integrate external data and
+re-export</li>
+<li><strong>Aggregate → View → Query</strong>: stepwise data
+transformation pipeline</li>
+</ol>
+</div>
+</div>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p>This vignette showed a practical RNA-seq analysis workflow using the
+Phase 1-4 features of OmicsLake. Each phase’s functions can be used
+independently, but combining them allows you to construct a more
+powerful and flexible analysis pipeline.</p>
+<p>In particular, the database view feature of Phase 4 is very useful
+when comparing multiple analysis methods or parameter sets. By using
+views, you can make complex SQL queries reusable and explicitly manage
+analysis dependencies.</p>
+<p>For detailed API specifications, please refer to the comprehensive
+guide (<code>omicslake_comprehensive_guide.Rmd</code>).</p>
+</div>
+<div id="session-information" class="section level2">
+<h2>Session Information</h2>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

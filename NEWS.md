@@ -1,5 +1,12 @@
 # OmicsLake NEWS
 
+## OmicsLake 0.99.1
+
+- Prepared the public Bioconductor submission snapshot.
+- Isolated test storage in a temporary directory for reliable package checks.
+- Preserved callers' random-number state in evaluation helpers.
+- Completed missing evaluation-topic return-value documentation.
+
 ## OmicsLake 0.99.0
 
 - Bioconductor submission preparation release.
