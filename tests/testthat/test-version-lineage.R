@@ -248,7 +248,7 @@ test_that("lake_sources attribute flows through dplyr pipe operations", {
 })
 
 test_that("tagged read works after current table is dropped", {
-  # Codex Review Fix 1: get(name, ref="@tag(...)") should work even if current table is dropped
+  # Tagged versions remain readable after the current table is dropped.
   lake <- Lake$new("test_tag_after_drop")
 
   # Create table and tag it
@@ -276,7 +276,7 @@ test_that("tagged read works after current table is dropped", {
 })
 
 test_that("legacy format refs are paired by index in put()", {
-  # Codex Review Fix 2: legacy lake_source_ref vector should pair with lake_source by index
+  # Legacy source references remain paired with source names by index.
   lake <- Lake$new("test_legacy_ref_pairing")
 
   lake$put("a", data.frame(x = 1:3))

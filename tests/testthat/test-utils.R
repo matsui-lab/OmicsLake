@@ -29,7 +29,8 @@ test_that(".ol_now_id generates timestamp format", {
 
 test_that(".ol_norm normalizes paths", {
   path <- .ol_norm("~/test")
-  expect_true(startsWith(path, "/"))
+  expect_equal(basename(path), "test")
+  expect_false(grepl("\\\\", path, fixed = TRUE))
 })
 
 test_that(".ol_assert_project stops on NULL project", {

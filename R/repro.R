@@ -286,15 +286,15 @@
 .ol_collect_agent_context <- function() {
     prompt_id <- .ol_option_or_env(
         "ol.agent.prompt_id",
-        c("OL_PROMPT_ID", "CODEX_PROMPT_ID", "OPENAI_PROMPT_ID")
+        c("OL_PROMPT_ID")
     )
     run_id <- .ol_option_or_env(
         "ol.agent.run_id",
-        c("OL_AGENT_RUN_ID", "CODEX_SESSION_ID")
+        c("OL_AGENT_RUN_ID")
     )
     agent_name <- .ol_option_or_env(
         "ol.agent.name",
-        c("OL_AGENT_NAME", "CODEX_AGENT_NAME")
+        c("OL_AGENT_NAME")
     )
     script_path <- .ol_option_or_env(
         "ol.agent.script_path",
@@ -731,14 +731,14 @@
 
 #' Enable Strict Reproducibility Mode
 #'
-#' Applies an opinionated, audit-first option preset for AI-assisted analysis:
+#' Applies an opinionated, audit-first option preset for agent-mediated analysis:
 #' reproducibility metadata capture ON, clean-git requirement ON, and
 #' snapshot validation ON.
 #'
 #' @param path Base path used for Git/renv detection (usually repository root)
-#' @param prompt_id Optional AI prompt/work-item identifier
-#' @param run_id Optional AI run/session identifier
-#' @param agent_name Optional AI agent name
+#' @param prompt_id Optional prompt/work-item identifier
+#' @param run_id Optional run/session identifier
+#' @param agent_name Optional software-agent name
 #' @param include Metadata components to capture
 #' @param snapshot_validate_mode Snapshot validation behavior: "error", "warn",
 #' or "off"

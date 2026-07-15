@@ -27,10 +27,8 @@ Notes:
   - Example:
     - `NO_CHECK_FUNCTION_LEN=1 NO_CHECK_FORMATTING=1 ./tools/check_bioc.sh`
 
-Latest local run (2026-07-14, OmicsLake 0.99.1):
-- `R CMD check`: `0 ERROR | 0 WARNING | 1 NOTE`
-  - the NOTE was caused only by the restricted local environment being unable
-    to reach the configured CRAN repository
+Latest local run (2026-07-15, OmicsLake 0.99.3):
+- `R CMD check`: `Status: OK`
 - `BiocCheck`: `0 ERRORS | 0 WARNINGS | 8 NOTES`
 - Remaining BiocCheck NOTE categories are advisory coding-style checks,
   including function length, line length, indentation, and console output.
@@ -66,16 +64,17 @@ GitHub Actions should pass:
 - No project-local artifacts in package root
 - No unresolved TODO/FIXME in exported user-facing APIs
 
-## 7. Open Bioconductor submission
+## 7. Bioconductor submission status
 
-Open a new package issue in the current 2026 submission tracker:
-https://github.com/Bioconductor/BiocContributions/issues/new
+- Submission issue: https://github.com/Bioconductor/BiocContributions/issues/97
+- Policies accepted and the package was cloned to BiocStaging.
+- The first external build identified two optional-adapter test assumptions and
+  one Windows-only path assertion. OmicsLake 0.99.2 corrected those checks.
+- OmicsLake 0.99.3 standardizes optional agent-context capture on the
+  package-specific `OL_*` environment variables and uses neutral
+  software-agent terminology in tests and documentation.
 
-Use the repository-only issue template and point it to:
-https://github.com/matsui-lab/OmicsLake
-
-The tracker runs policy and precheck workflows against the public repository's
-default branch.
+The tracker and BiocStaging builds should be monitored after each devel update.
 
 ## 8. Maintainer account checks (manual)
 

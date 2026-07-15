@@ -1,12 +1,16 @@
 Package: OmicsLake
 Title: OmicsLake: Versioned, On-Disk Omics Data Management for
         Bioconductor
-Version: 0.99.1
+Version: 0.99.3
 Authors@R: person(given = "Yusuke", family = "Matsui", role = c("aut", "cre"), email = "mail.to.matsui@gmail.com", comment = c(ORCID = "0000-0003-3977-4313"))
 Author: Yusuke Matsui [aut, cre]
 Maintainer: Yusuke Matsui <mail.to.matsui@gmail.com>
-Description: A lightweight framework for versioned, on-disk omics data management using DuckDB + Arrow + Parquet.
-    Provides simple read/write-style functions and Bioconductor-compatible readers (SummarizedExperiment, MultiAssayExperiment).
+Description: A lightweight framework for versioned, on-disk omics data
+    management using DuckDB, Arrow, and Parquet. It provides read/write-style
+    functions, snapshots, and version-aware dataset lineage for tracked or
+    explicitly annotated workflows. Adapters preserve supported Bioconductor
+    containers, including SummarizedExperiment and MultiAssayExperiment, while
+    retaining queryable tabular components.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.5.0)
@@ -16,11 +20,12 @@ Imports: jsonlite, arrow, dplyr, dbplyr, DBI, duckdb, Matrix,
 Suggests: MultiAssayExperiment, HDF5Array, DelayedArray, knitr,
         rmarkdown, testthat (>= 3.0.0), igraph, yaml, bench, grDevices,
         graphics, stats, utils, SingleCellExperiment, GenomicRanges,
-        Spectra, MsExperiment, QFeatures, renv, tibble, pkgdown
+        Spectra, MsExperiment, QFeatures, xcms, Chromatograms, renv,
+        tibble, pkgdown
 VignetteBuilder: knitr
 biocViews: Infrastructure, DataImport, DataRepresentation
 URL: https://github.com/matsui-lab/OmicsLake
 BugReports: https://github.com/matsui-lab/OmicsLake/issues
 RoxygenNote: 7.3.3
 NeedsCompilation: no
-Packaged: 2026-07-14 06:54:17 UTC; bmhi
+Packaged: 2026-07-15 14:02:11 UTC; bmhi

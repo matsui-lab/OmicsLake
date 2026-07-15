@@ -267,7 +267,7 @@ test_that("ol_enable_strict_repro_mode sets one-command strict defaults", {
     path = tmpdir,
     prompt_id = "prompt-one-command",
     run_id = "run-one-command",
-    agent_name = "codex"
+    agent_name = "analysis-agent"
   )
 
   expect_true(is.list(prev))
@@ -281,5 +281,5 @@ test_that("ol_enable_strict_repro_mode sets one-command strict defaults", {
   expect_equal(getOption("ol.snapshot.validate.max_tables"), 200L)
   expect_equal(getOption("ol.agent.prompt_id"), "prompt-one-command")
   expect_equal(getOption("ol.agent.run_id"), "run-one-command")
-  expect_equal(getOption("ol.agent.name"), "codex")
+  expect_equal(getOption("ol.agent.name"), "analysis-agent")
 })

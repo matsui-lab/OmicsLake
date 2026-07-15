@@ -15,11 +15,11 @@ ol_enable_strict_repro_mode(
 \arguments{
 \item{path}{Base path used for Git/renv detection (usually repository root)}
 
-\item{prompt_id}{Optional AI prompt/work-item identifier}
+\item{prompt_id}{Optional prompt/work-item identifier}
 
-\item{run_id}{Optional AI run/session identifier}
+\item{run_id}{Optional run/session identifier}
 
-\item{agent_name}{Optional AI agent name}
+\item{agent_name}{Optional software-agent name}
 
 \item{include}{Metadata components to capture}
 
@@ -31,7 +31,7 @@ ol_enable_strict_repro_mode(
 Named list of previous option values (invisible)
 }
 \description{
-Applies an opinionated, audit-first option preset for AI-assisted analysis:
+Applies an opinionated, audit-first option preset for agent-mediated analysis:
 reproducibility metadata capture ON, clean-git requirement ON, and
 snapshot validation ON.
 }

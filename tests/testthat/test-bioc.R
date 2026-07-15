@@ -571,9 +571,9 @@ test_that("Lake handles MsExperiment via adapter", {
   expect_false(any(grepl("^mse_obj\\.__mse__\\.", lake$objects()$name)))
 })
 
-test_that("Lake handles XCMS-like objects via adapter fallback", {
-  if (requireNamespace("xcms", quietly = TRUE)) {
-    skip("xcms is installed; fallback-only mock test is not applicable")
+test_that("XCMS adapter reports its optional dependency", {
+  if (length(find.package("xcms", quiet = TRUE)) > 0L) {
+    skip("xcms is installed; missing-dependency test is not applicable")
   }
 
   if (methods::isClass("XCMSnExp")) {
@@ -592,44 +592,17 @@ test_that("Lake handles XCMS-like objects via adapter fallback", {
     params = list(method = "centWave", ppm = 15L)
   ))
 
-  lake$put("xcms_obj", xcms_obj)
-  stored_objects <- lake$objects()$name
   expect_true("xcms" %in% names(get_adapters()))
-  expect_true(any(grepl("^xcms_obj\\.__xcms__\\.manifest$", stored_objects)))
-  expect_true(any(grepl("^xcms_obj\\.__xcms__\\.object$", stored_objects)))
-  expect_false("xcms_obj" %in% stored_objects)
-
-  restored <- lake$get("xcms_obj")
-  expect_s4_class(restored, "XCMSnExp")
-  expect_equal(restored@payload, xcms_obj@payload)
-
-  lake$tag("xcms_obj", "v1")
-  xcms_obj_v2 <- methods::new("XCMSnExp", payload = list(
-    chrom_peaks = data.frame(mz = c(100.1, 150.2), rt = c(30.2, 31.5)),
-    params = list(method = "centWave", ppm = 20L)
-  ))
-  lake$put("xcms_obj", xcms_obj_v2)
-  latest <- lake$get("xcms_obj")
-  tagged <- lake$get("xcms_obj", ref = "@tag(v1)")
-  expect_equal(latest@payload$params$ppm, 20L)
-  expect_equal(tagged@payload$params$ppm, 15L)
-
-  found <- lake$find("xcms_obj", type = "object")
-  expect_true(nrow(found) >= 1)
-  expect_equal(found$name[[1]], "xcms_obj")
-  all_objects <- lake$find(type = "object")
-  expect_false(any(grepl("\\.__(se|sce|mae|spectra|qfeatures|mse|xcms|chrom|seurat)__\\.",
-    all_objects$name, perl = TRUE)))
-
-  lake$drop("xcms_obj")
-  expect_false(lake$exists("xcms_obj"))
-  expect_false(any(grepl("^xcms_obj\\.__xcms__\\.", lake$tables()$table_name)))
-  expect_false(any(grepl("^xcms_obj\\.__xcms__\\.", lake$objects()$name)))
+  expect_error(
+    lake$put("xcms_obj", xcms_obj),
+    "Package 'xcms' is required for XCMSnExp/XcmsExperiment storage",
+    fixed = TRUE
+  )
 })
 
-test_that("Lake handles Chromatograms-like objects via adapter fallback", {
-  if (requireNamespace("Chromatograms", quietly = TRUE)) {
-    skip("Chromatograms is installed; fallback-only mock test is not applicable")
+test_that("Chromatograms adapter reports its optional dependency", {
+  if (length(find.package("Chromatograms", quiet = TRUE)) > 0L) {
+    skip("Chromatograms is installed; missing-dependency test is not applicable")
   }
 
   if (methods::isClass("Chromatograms")) {
@@ -651,37 +624,12 @@ test_that("Lake handles Chromatograms-like objects via adapter fallback", {
     meta = list(mode = "positive", n = 2L)
   )
 
-  lake$put("chrom_obj", chrom_obj)
-  stored_objects <- lake$objects()$name
   expect_true("Chromatograms" %in% names(get_adapters()))
-  expect_true(any(grepl("^chrom_obj\\.__chrom__\\.manifest$", stored_objects)))
-  expect_true(any(grepl("^chrom_obj\\.__chrom__\\.object$", stored_objects)))
-  expect_false("chrom_obj" %in% stored_objects)
-
-  restored <- lake$get("chrom_obj")
-  expect_s4_class(restored, "Chromatograms")
-  expect_equal(restored@meta, chrom_obj@meta)
-  expect_equal(restored@chroms, chrom_obj@chroms)
-
-  lake$tag("chrom_obj", "v1")
-  chrom_obj_v2 <- methods::new("Chromatograms",
-    chroms = chrom_obj@chroms,
-    meta = list(mode = "negative", n = 2L)
+  expect_error(
+    lake$put("chrom_obj", chrom_obj),
+    "Package 'Chromatograms' is required for Chromatograms storage",
+    fixed = TRUE
   )
-  lake$put("chrom_obj", chrom_obj_v2)
-  latest <- lake$get("chrom_obj")
-  tagged <- lake$get("chrom_obj", ref = "@tag(v1)")
-  expect_equal(latest@meta$mode, "negative")
-  expect_equal(tagged@meta$mode, "positive")
-
-  found <- lake$find("chrom_obj", type = "object")
-  expect_true(nrow(found) >= 1)
-  expect_equal(found$name[[1]], "chrom_obj")
-
-  lake$drop("chrom_obj")
-  expect_false(lake$exists("chrom_obj"))
-  expect_false(any(grepl("^chrom_obj\\.__chrom__\\.", lake$tables()$table_name)))
-  expect_false(any(grepl("^chrom_obj\\.__chrom__\\.", lake$objects()$name)))
 })
 
 test_that("SE adapter preserves rowRanges for RangedSummarizedExperiment", {
